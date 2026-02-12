@@ -17,6 +17,7 @@ import {
   useTriageMode,
   useMetrics,
   useMutations,
+  useDependencies,
 } from "./github-issues/hooks";
 import { useAnalyzePreview } from "./github-issues/hooks/useAnalyzePreview";
 import {
@@ -155,6 +156,9 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
 
   // Metrics
   const { metrics, timeWindow: metricsTimeWindow, isLoading: isMetricsLoading, computeMetrics, setTimeWindow: setMetricsTimeWindow } = useMetrics();
+
+  // Dependencies for selected issue
+  const { dependencies, isLoading: isDepsLoading, error: depsError } = useDependencies(selectedIssue?.number ?? null);
 
   // Issue mutations (edit, close, reopen, comment, labels, assignees)
   const mutations = useMutations(selectedProject?.id ?? '');
@@ -395,6 +399,9 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
               onAddAssignees={handleAddAssignees}
               onRemoveAssignees={handleRemoveAssignees}
               collaborators={collaborators}
+              dependencies={dependencies}
+              isDepsLoading={isDepsLoading}
+              depsError={depsError}
             />
           ) : (
             <EmptyState message="Select an issue to view details" />

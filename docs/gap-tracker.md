@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 12 / 41 complete
+**Status:** 13 / 41 complete
 
 ---
 
@@ -121,17 +121,17 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** GAP-07
 
 ### GAP-08: `useDependencies` hook not called in GitHubIssues.tsx
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Small
 - **Doc ref:** Phase 5 PRD > US-6 > AC-6.2; Phase 5 impl plan WP-4 Step 4.3
 - **Files to modify:** `renderer/components/GitHubIssues.tsx`
 - **Source hook:** `hooks/useDependencies.ts` — returns dependencies, isLoading, error, refetch
-- **Fix:** Add useDependencies to hooks import. Call with selectedIssue?.number. Pass dependencies, isDepsLoading, depsError to IssueDetail.
-- **Tests:** Verify dependency props passed to IssueDetail when issue selected
-- **Test status:** `PENDING`
+- **Fix:** Added useDependencies to hooks import, called with selectedIssue?.number, passed dependencies/isDepsLoading/depsError to IssueDetail
+- **Tests:** Existing IssueDetail integration tests already cover dependency rendering (DependencyList test)
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** GAP-08
 
 ### GAP-09: BulkResultsPanel not mounted in GitHubIssues.tsx
 - **Status:** `PENDING`
@@ -556,6 +556,7 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 | 2026-02-12 | GAP-04+05 | DONE — LabelManager+AssigneeManager wired in IssueDetail, repoLabels/collaborators fetched via IPC, 6 new tests, 20 pass | GAP-04+05 |
 | 2026-02-12 | GAP-06 | DONE — CreateSpecButton wired in IssueDetail with onCreateSpec prop, 3 new tests, 23 pass | GAP-06 |
 | 2026-02-12 | GAP-07 | DONE — CompletenessBreakdown wired in EnrichmentPanel, 2 new tests, 12 pass, lint warnings fixed | GAP-07 |
+| 2026-02-12 | GAP-08 | DONE — useDependencies hook wired in GitHubIssues.tsx, deps passed to IssueDetail | GAP-08 |
 
 ---
 
