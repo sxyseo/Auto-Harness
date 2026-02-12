@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 8 / 41 complete
+**Status:** 10 / 41 complete
 
 ---
 
@@ -69,30 +69,30 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** (combined with GAP-02)
 
 ### GAP-04: LabelManager not used in IssueDetail.tsx
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Medium
 - **Doc ref:** Phase 5 PRD > US-4 > AC-4.3; Phase 2 PRD > US-3 > AC3.1-3.10
-- **Files to modify:** `renderer/components/github-issues/components/IssueDetail.tsx`
+- **Files to modify:** `renderer/components/github-issues/components/IssueDetail.tsx`, `types/index.ts`, `GitHubIssues.tsx`
 - **Source component:** `LabelManager.tsx` — accepts currentLabels, repoLabels, onAddLabel, onRemoveLabel, disabled, isLoading
-- **Fix:** Import LabelManager. At lines 123-139 (static badges), conditionally render LabelManager when onAddLabels/onRemoveLabels provided. Pass currentLabels from issue.labels.map(l => l.name). NOTE: repoLabels needs fetching via IPC or passing from parent.
-- **Tests:** Render with onAddLabels → LabelManager visible; without → static badges
-- **Test status:** `PENDING`
+- **Fix:** Added `repoLabels` to IssueDetailProps, fetched via IPC in GitHubIssues.tsx, LabelManager renders when onAddLabels+onRemoveLabels+repoLabels provided with single→array adapter
+- **Tests:** 3 new tests: LabelManager visible with props, static badges without, onRemoveLabel calls onRemoveLabels([label])
+- **Test status:** `PASS` (20/20)
 - **Depends on:** GAP-01
-- **Commit:** —
+- **Commit:** (combined with GAP-05)
 
 ### GAP-05: AssigneeManager not used in IssueDetail.tsx
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Medium
 - **Doc ref:** Phase 5 PRD > US-4 > AC-4.4; Phase 2 PRD > US-4 > AC4.1-4.9
-- **Files to modify:** `renderer/components/github-issues/components/IssueDetail.tsx`
+- **Files to modify:** `renderer/components/github-issues/components/IssueDetail.tsx`, `types/index.ts`, `GitHubIssues.tsx`
 - **Source component:** `AssigneeManager.tsx` — accepts currentAssignees, collaborators, onAddAssignee, onRemoveAssignee, disabled
-- **Fix:** Import AssigneeManager. At lines 274-291 (static badges), conditionally render when onAddAssignees/onRemoveAssignees provided. NOTE: collaborators list needs fetching.
-- **Tests:** Render with onAddAssignees → AssigneeManager visible; without → static badges
-- **Test status:** `PENDING`
+- **Fix:** Added `collaborators` to IssueDetailProps, fetched via IPC in GitHubIssues.tsx, AssigneeManager renders when onAddAssignees+onRemoveAssignees+collaborators provided with single→array adapter
+- **Tests:** 3 new tests: AssigneeManager visible with props, static badges without, onRemoveAssignee calls onRemoveAssignees([login])
+- **Test status:** `PASS` (20/20)
 - **Depends on:** GAP-01
-- **Commit:** —
+- **Commit:** (combined with GAP-04)
 
 ### GAP-06: CreateSpecButton not used in IssueDetail.tsx
 - **Status:** `PENDING`
@@ -553,6 +553,7 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 | 2026-02-12 | GAP-01 | DONE — useMutations wired in GitHubIssues.tsx, 9 callbacks passed to IssueDetail | GAP-01 |
 | 2026-02-12 | GAP-21 | DONE — optimistic store updates in useMutations, 21 tests pass | GAP-21 |
 | 2026-02-12 | GAP-02+03 | DONE — InlineEditor wired for title (required) and body (multiline) in IssueDetail, 7 new tests, 14 pass | GAP-02+03 |
+| 2026-02-12 | GAP-04+05 | DONE — LabelManager+AssigneeManager wired in IssueDetail, repoLabels/collaborators fetched via IPC, 6 new tests, 20 pass | GAP-04+05 |
 
 ---
 

@@ -174,4 +174,90 @@ describe('IssueDetail integration', () => {
     render(<IssueDetail {...baseProps} issue={issueNoBody} onEditBody={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Edit mutations.editBody' })).toBeDefined();
   });
+
+  // GAP-04: LabelManager integration
+  it('renders LabelManager when onAddLabels, onRemoveLabels, and repoLabels are provided', () => {
+    const repoLabels = [
+      { name: 'bug', color: 'ff0000' },
+      { name: 'feature', color: '00ff00' },
+    ];
+    render(
+      <IssueDetail
+        {...baseProps}
+        onAddLabels={vi.fn()}
+        onRemoveLabels={vi.fn()}
+        repoLabels={repoLabels}
+      />,
+    );
+    // LabelManager renders a section with aria-label "Label manager"
+    expect(screen.getByLabelText('Label manager')).toBeDefined();
+    // Should show the "Add Label" button
+    expect(screen.getByRole('button', { name: 'Add label' })).toBeDefined();
+    // Should show current label with remove button
+    expect(screen.getByLabelText('Remove label bug')).toBeDefined();
+  });
+
+  it('renders static label badges when onAddLabels is not provided', () => {
+    render(<IssueDetail {...baseProps} />);
+    // No LabelManager section
+    expect(screen.queryByLabelText('Label manager')).toBeNull();
+    // Static badge with label name still renders
+    expect(screen.getByText('bug')).toBeDefined();
+  });
+
+  it('LabelManager onRemoveLabel calls onRemoveLabels with array', () => {
+    const onRemoveLabels = vi.fn();
+    const repoLabels = [{ name: 'bug', color: 'ff0000' }];
+    render(
+      <IssueDetail
+        {...baseProps}
+        onAddLabels={vi.fn()}
+        onRemoveLabels={onRemoveLabels}
+        repoLabels={repoLabels}
+      />,
+    );
+    // Click the remove button on the 'bug' label
+    fireEvent.click(screen.getByLabelText('Remove label bug'));
+    expect(onRemoveLabels).toHaveBeenCalledWith(['bug']);
+  });
+
+  // GAP-05: AssigneeManager integration
+  it('renders AssigneeManager when onAddAssignees, onRemoveAssignees, and collaborators are provided', () => {
+    render(
+      <IssueDetail
+        {...baseProps}
+        onAddAssignees={vi.fn()}
+        onRemoveAssignees={vi.fn()}
+        collaborators={['dev1', 'dev2']}
+      />,
+    );
+    // AssigneeManager renders a section with aria-label "Assignee manager"
+    expect(screen.getByLabelText('Assignee manager')).toBeDefined();
+    // Should show the "Assign" button
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeDefined();
+    // Should show current assignee with remove button
+    expect(screen.getByLabelText('Remove assignee dev1')).toBeDefined();
+  });
+
+  it('renders static assignee badges when onAddAssignees is not provided', () => {
+    render(<IssueDetail {...baseProps} />);
+    // No AssigneeManager section
+    expect(screen.queryByLabelText('Assignee manager')).toBeNull();
+    // Static badge with assignee name still renders
+    expect(screen.getByText('dev1')).toBeDefined();
+  });
+
+  it('AssigneeManager onRemoveAssignee calls onRemoveAssignees with array', () => {
+    const onRemoveAssignees = vi.fn();
+    render(
+      <IssueDetail
+        {...baseProps}
+        onAddAssignees={vi.fn()}
+        onRemoveAssignees={onRemoveAssignees}
+        collaborators={['dev1', 'dev2']}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Remove assignee dev1'));
+    expect(onRemoveAssignees).toHaveBeenCalledWith(['dev1']);
+  });
 });

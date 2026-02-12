@@ -18,6 +18,8 @@ import { EnrichmentPanel } from './EnrichmentPanel';
 import { DependencyList } from './DependencyList';
 import { CommentForm } from './CommentForm';
 import { InlineEditor } from './InlineEditor';
+import { LabelManager } from './LabelManager';
+import { AssigneeManager } from './AssigneeManager';
 import type { IssueDetailProps } from '../types';
 
 export function IssueDetail({
@@ -37,6 +39,12 @@ export function IssueDetail({
   isAIBusy,
   onEditTitle,
   onEditBody,
+  onAddLabels,
+  onRemoveLabels,
+  repoLabels,
+  onAddAssignees,
+  onRemoveAssignees,
+  collaborators,
   onClose,
   onReopen,
   onComment,
@@ -134,7 +142,14 @@ export function IssueDetail({
         </div>
 
         {/* Labels */}
-        {issue.labels.length > 0 && (
+        {onAddLabels && onRemoveLabels && repoLabels ? (
+          <LabelManager
+            currentLabels={issue.labels.map(l => l.name)}
+            repoLabels={repoLabels}
+            onAddLabel={(label) => onAddLabels([label])}
+            onRemoveLabel={(label) => onRemoveLabels([label])}
+          />
+        ) : issue.labels.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {issue.labels.map((label) => (
               <Badge
@@ -150,7 +165,7 @@ export function IssueDetail({
               </Badge>
             ))}
           </div>
-        )}
+        ) : null}
 
         {/* Actions */}
         <div className="flex items-center gap-2">
@@ -293,7 +308,21 @@ export function IssueDetail({
         )}
 
         {/* Assignees */}
-        {issue.assignees.length > 0 && (
+        {onAddAssignees && onRemoveAssignees && collaborators ? (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Assignees</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AssigneeManager
+                currentAssignees={issue.assignees}
+                collaborators={collaborators}
+                onAddAssignee={(login) => onAddAssignees([login])}
+                onRemoveAssignee={(login) => onRemoveAssignees([login])}
+              />
+            </CardContent>
+          </Card>
+        ) : issue.assignees.length > 0 ? (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Assignees</CardTitle>
@@ -309,7 +338,7 @@ export function IssueDetail({
               </div>
             </CardContent>
           </Card>
-        )}
+        ) : null}
 
         {/* Milestone */}
         {issue.milestone && (

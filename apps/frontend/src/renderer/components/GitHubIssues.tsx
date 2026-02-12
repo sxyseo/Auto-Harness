@@ -201,6 +201,20 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     [selectedIssue, mutations],
   );
 
+  // Fetch repo labels & collaborators for mutation UI
+  const [repoLabels, setRepoLabels] = useState<Array<{ name: string; color: string }>>([]);
+  const [collaborators, setCollaborators] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    window.electronAPI.github.getRepoLabels(selectedProject.id).then((res) => {
+      if (res.success && res.data) setRepoLabels(res.data);
+    });
+    window.electronAPI.github.getRepoCollaborators(selectedProject.id).then((res) => {
+      if (res.success && res.data) setCollaborators(res.data);
+    });
+  }, [selectedProject?.id]);
+
   // Compute metrics on mount when enrichment is loaded
   useEffect(() => {
     if (selectedProject?.id && enrichmentLoaded) {
@@ -377,8 +391,10 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
               onComment={handleAddComment}
               onAddLabels={handleAddLabels}
               onRemoveLabels={handleRemoveLabels}
+              repoLabels={repoLabels}
               onAddAssignees={handleAddAssignees}
               onRemoveAssignees={handleRemoveAssignees}
+              collaborators={collaborators}
             />
           ) : (
             <EmptyState message="Select an issue to view details" />

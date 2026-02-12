@@ -48,8 +48,10 @@ export interface IssueDetailProps {
   onEditBody?: (body: string) => Promise<void>;
   onAddLabels?: (labels: string[]) => Promise<void>;
   onRemoveLabels?: (labels: string[]) => Promise<void>;
+  repoLabels?: Array<{ name: string; color: string }>;
   onAddAssignees?: (logins: string[]) => Promise<void>;
   onRemoveAssignees?: (logins: string[]) => Promise<void>;
+  collaborators?: string[];
   onClose?: (comment?: string) => Promise<void>;
   onReopen?: () => Promise<void>;
   onComment?: (body: string) => Promise<void>;
