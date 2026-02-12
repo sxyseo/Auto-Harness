@@ -77,7 +77,7 @@ export function IssueList({
 
   return (
     <ScrollArea className="flex-1" onViewportRef={setViewportElement}>
-      <div className="p-2 space-y-1">
+      <div role="listbox" aria-label={t('issues.listLabel')} className="p-2 space-y-1">
         {issues.map((issue) => {
           const enrichment = enrichments?.[String(issue.number)];
           return (

@@ -24,12 +24,21 @@ export const IssueListItem = memo(function IssueListItem({
 }: IssueListItemProps) {
   return (
     <div
+      role="option"
+      aria-selected={isSelected}
+      tabIndex={0}
       className={`group p-3 rounded-lg cursor-pointer transition-colors ${
         isSelected
           ? 'bg-accent/50 border border-accent'
           : 'hover:bg-muted/50 border border-transparent'
       }`}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
       <div className="flex items-start gap-3">
         {isSelectable && (

@@ -133,3 +133,39 @@ describe('IssueList enrichment integration', () => {
     expect(checkboxes[2].checked).toBe(false); // issue 3
   });
 });
+
+describe('IssueList ARIA listbox', () => {
+  const defaultProps = {
+    issues: [makeIssue(1), makeIssue(2), makeIssue(3)],
+    selectedIssueNumber: null,
+    isLoading: false,
+    error: null,
+    onSelectIssue: vi.fn(),
+    onInvestigate: vi.fn(),
+  };
+
+  it('items container has role="listbox"', () => {
+    render(<IssueList {...defaultProps} />);
+    expect(screen.getByRole('listbox')).toBeDefined();
+  });
+
+  it('listbox has an accessible label', () => {
+    render(<IssueList {...defaultProps} />);
+    const listbox = screen.getByRole('listbox');
+    expect(listbox.getAttribute('aria-label')).toBe('issues.listLabel');
+  });
+
+  it('each issue item has role="option"', () => {
+    render(<IssueList {...defaultProps} />);
+    const options = screen.getAllByRole('option');
+    expect(options.length).toBe(3);
+  });
+
+  it('selected issue has aria-selected=true', () => {
+    render(<IssueList {...defaultProps} selectedIssueNumber={2} />);
+    const options = screen.getAllByRole('option');
+    expect(options[0].getAttribute('aria-selected')).toBe('false');
+    expect(options[1].getAttribute('aria-selected')).toBe('true');
+    expect(options[2].getAttribute('aria-selected')).toBe('false');
+  });
+});

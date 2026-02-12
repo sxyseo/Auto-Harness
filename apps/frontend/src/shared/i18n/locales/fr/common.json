@@ -440,7 +440,8 @@
   "issues": {
     "loadingMore": "Chargement...",
     "scrollForMore": "Défiler pour plus",
-    "allLoaded": "Toutes les issues chargées"
+    "allLoaded": "Toutes les issues chargées",
+    "listLabel": "Issues"
   },
   "enrichment": {
     "states": {

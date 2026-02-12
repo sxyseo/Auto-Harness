@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { IssueListItem } from '../IssueListItem';
 
 vi.mock('react-i18next', () => ({
@@ -52,5 +52,36 @@ describe('IssueListItem compact mode', () => {
   it('still shows issue number in compact mode', () => {
     render(<IssueListItem {...baseProps} compact />);
     expect(screen.getByText('#42')).toBeDefined();
+  });
+});
+
+describe('IssueListItem ARIA', () => {
+  const baseProps = {
+    issue: mockIssue,
+    isSelected: false,
+    onClick: vi.fn(),
+    onInvestigate: vi.fn(),
+  };
+
+  it('has role="option"', () => {
+    render(<IssueListItem {...baseProps} />);
+    expect(screen.getByRole('option')).toBeDefined();
+  });
+
+  it('aria-selected is false when not selected', () => {
+    render(<IssueListItem {...baseProps} isSelected={false} />);
+    expect(screen.getByRole('option').getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('aria-selected is true when selected', () => {
+    render(<IssueListItem {...baseProps} isSelected />);
+    expect(screen.getByRole('option').getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('Enter key triggers onClick', () => {
+    const onClick = vi.fn();
+    render(<IssueListItem {...baseProps} onClick={onClick} />);
+    fireEvent.keyDown(screen.getByRole('option'), { key: 'Enter' });
+    expect(onClick).toHaveBeenCalledOnce();
   });
 });

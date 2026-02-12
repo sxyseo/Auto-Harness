@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 40 / 41 complete
+**Status:** 41 / 41 complete
 
 ---
 
@@ -540,6 +540,27 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Depends on:** None
 - **Commit:** Phase E batch
 
+## TIER 5 — Low Priority
+
+### GAP-25: IssueList ARIA listbox
+- **Status:** `DONE`
+- **Priority:** NICE-TO-HAVE
+- **Scope:** Small
+- **Doc ref:** WCAG 2.1 Listbox pattern
+- **Files modified:** `components/IssueList.tsx`, `components/IssueListItem.tsx`, `en/common.json`, `fr/common.json`
+- **Fix:** Added role="listbox" + aria-label (i18n issues.listLabel) to IssueList container div. Added role="option" + aria-selected + tabIndex={0} + onKeyDown (Enter/Space) to IssueListItem.
+- **Tests:** 4 new IssueList integration tests (listbox role, aria-label, option count, aria-selected). 4 new IssueListItem tests (role=option, aria-selected false/true, Enter key). 18 total.
+- **Test status:** `PASS`
+- **Depends on:** None
+- **Commit:** Phase F batch
+
+### GAP-26: transitions.json retention
+- **Status:** `SKIPPED`
+- **Priority:** NICE-TO-HAVE
+- **Scope:** N/A
+- **Doc ref:** Not in PRD
+- **Reason:** Not specified in any PRD. Transitions are already persisted via appendTransition in enrichment handlers (GAP-30). No additional work needed.
+
 ---
 
 ## Progress Log
@@ -570,6 +591,8 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 | 2026-02-13 | GAP-41 | DONE — Bulk label sync: IPC channel + handler + preload + hook method, 2 new tests | Phase E |
 | 2026-02-13 | GAP-42 | DONE — Color swatches in LabelSyncSettings (7 workflow labels with colors), 2 new tests | Phase E |
 | 2026-02-13 | GAP-43 | DONE — Write/Preview tabs in CommentForm with ReactMarkdown, i18n keys EN+FR, 8 tests | Phase E |
+| 2026-02-13 | GAP-25 | DONE — ARIA listbox on IssueList + role=option + aria-selected + keyboard on IssueListItem, 8 new tests | Phase F |
+| 2026-02-13 | GAP-26 | SKIPPED — Not in PRD, transitions already persisted via GAP-30 | N/A |
 
 ---
 
