@@ -30,6 +30,8 @@ import { registerMutationHandlers } from './mutation-handlers';
 import { registerRepoDataHandlers } from './repo-data-handlers';
 import { registerBulkHandlers } from './bulk-handlers';
 import { registerCreateSpecHandler } from './create-spec-handler';
+import { registerAITriageHandlers } from './ai-triage-handlers';
+import { registerIssueCreateHandler } from './issue-create-handler';
 
 /**
  * Register all GitHub-related IPC handlers
@@ -52,6 +54,8 @@ export function registerGithubHandlers(
   registerRepoDataHandlers(getMainWindow);
   registerBulkHandlers(getMainWindow);
   registerCreateSpecHandler(getMainWindow);
+  registerAITriageHandlers(getMainWindow);
+  registerIssueCreateHandler(getMainWindow);
 }
 
 // Re-export utilities for potential external use

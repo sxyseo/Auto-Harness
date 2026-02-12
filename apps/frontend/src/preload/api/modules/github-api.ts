@@ -14,6 +14,17 @@ import type {
 } from '../../../shared/types';
 import type { EnrichmentFile, IssueEnrichment, WorkflowState, Resolution } from '../../../shared/types/enrichment';
 import type { MutationResult, BulkExecuteParams, BulkOperationProgress, BulkOperationResult } from '../../../shared/types/mutations';
+import type {
+  CreateIssueParams,
+  CreateIssueResult,
+  TriageReviewItem,
+  AIEnrichmentResult,
+  SplitSuggestion,
+  EnrichmentProgress,
+  SplitProgress,
+  ApplyResultsProgress,
+  ProgressiveTrustConfig,
+} from '../../../shared/types/ai-triage';
 import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
 
 /**
@@ -359,6 +370,26 @@ export interface GitHubAPI {
 
   // Spec from Issue
   createSpecFromIssue: (projectId: string, issueNumber: number) => Promise<MutationResult>;
+
+  // AI Triage (Phase 3)
+  runEnrichment: (projectId: string, issueNumber: number) => void;
+  onEnrichmentProgress: (callback: (projectId: string, progress: EnrichmentProgress) => void) => IpcListenerCleanup;
+  onEnrichmentError: (callback: (projectId: string, error: { error: string }) => void) => IpcListenerCleanup;
+  onEnrichmentComplete: (callback: (projectId: string, result: AIEnrichmentResult) => void) => IpcListenerCleanup;
+
+  runSplitSuggestion: (projectId: string, issueNumber: number) => void;
+  onSplitProgress: (callback: (projectId: string, progress: SplitProgress) => void) => IpcListenerCleanup;
+  onSplitError: (callback: (projectId: string, error: { error: string }) => void) => IpcListenerCleanup;
+  onSplitComplete: (callback: (projectId: string, result: SplitSuggestion) => void) => IpcListenerCleanup;
+
+  createIssue: (projectId: string, params: CreateIssueParams) => Promise<CreateIssueResult>;
+
+  applyTriageResults: (projectId: string, items: TriageReviewItem[]) => void;
+  onApplyResultsProgress: (callback: (projectId: string, progress: ApplyResultsProgress) => void) => IpcListenerCleanup;
+  onApplyResultsComplete: (callback: (projectId: string, results: { succeeded: number; failed: number; skipped: number }) => void) => IpcListenerCleanup;
+
+  saveProgressiveTrust: (projectId: string, config: ProgressiveTrustConfig) => Promise<boolean>;
+  getProgressiveTrust: (projectId: string) => Promise<ProgressiveTrustConfig>;
 }
 
 /**
@@ -899,4 +930,47 @@ export const createGitHubAPI = (): GitHubAPI => ({
   // Spec from Issue
   createSpecFromIssue: (projectId: string, issueNumber: number): Promise<MutationResult> =>
     invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_CREATE_SPEC, projectId, issueNumber),
+
+  // AI Triage (Phase 3)
+  runEnrichment: (projectId: string, issueNumber: number): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_TRIAGE_ENRICH, projectId, issueNumber),
+
+  onEnrichmentProgress: (callback: (projectId: string, progress: EnrichmentProgress) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_ENRICH_PROGRESS, callback),
+
+  onEnrichmentError: (callback: (projectId: string, error: { error: string }) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_ENRICH_ERROR, callback),
+
+  onEnrichmentComplete: (callback: (projectId: string, result: AIEnrichmentResult) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_ENRICH_COMPLETE, callback),
+
+  runSplitSuggestion: (projectId: string, issueNumber: number): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_TRIAGE_SPLIT, projectId, issueNumber),
+
+  onSplitProgress: (callback: (projectId: string, progress: SplitProgress) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_SPLIT_PROGRESS, callback),
+
+  onSplitError: (callback: (projectId: string, error: { error: string }) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_SPLIT_ERROR, callback),
+
+  onSplitComplete: (callback: (projectId: string, result: SplitSuggestion) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_SPLIT_COMPLETE, callback),
+
+  createIssue: (projectId: string, params: CreateIssueParams): Promise<CreateIssueResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_CREATE, projectId, params),
+
+  applyTriageResults: (projectId: string, items: TriageReviewItem[]): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_TRIAGE_APPLY_RESULTS, projectId, items),
+
+  onApplyResultsProgress: (callback: (projectId: string, progress: ApplyResultsProgress) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_APPLY_RESULTS_PROGRESS, callback),
+
+  onApplyResultsComplete: (callback: (projectId: string, results: { succeeded: number; failed: number; skipped: number }) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_APPLY_RESULTS_COMPLETE, callback),
+
+  saveProgressiveTrust: (projectId: string, config: ProgressiveTrustConfig): Promise<boolean> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_SAVE_TRUST, projectId, config),
+
+  getProgressiveTrust: (projectId: string): Promise<ProgressiveTrustConfig> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_GET_TRUST, projectId),
 });
