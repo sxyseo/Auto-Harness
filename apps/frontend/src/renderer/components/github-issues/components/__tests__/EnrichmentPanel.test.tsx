@@ -27,7 +27,7 @@ describe('EnrichmentPanel', () => {
         enrichment={null}
         currentState="new"
         completenessScore={0}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 
@@ -50,7 +50,7 @@ describe('EnrichmentPanel', () => {
         enrichment={null}
         currentState="new"
         completenessScore={0}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 
@@ -76,7 +76,7 @@ describe('EnrichmentPanel', () => {
         enrichment={enrichment}
         currentState="triage"
         completenessScore={65}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 
@@ -90,7 +90,7 @@ describe('EnrichmentPanel', () => {
         enrichment={null}
         currentState="new"
         completenessScore={0}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 
@@ -104,7 +104,7 @@ describe('EnrichmentPanel', () => {
         enrichment={enrichment}
         currentState="triage"
         completenessScore={40}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 
@@ -117,7 +117,7 @@ describe('EnrichmentPanel', () => {
         enrichment={null}
         currentState="new"
         completenessScore={0}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 
@@ -130,7 +130,7 @@ describe('EnrichmentPanel', () => {
         enrichment={null}
         currentState="new"
         completenessScore={75}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 
@@ -144,7 +144,7 @@ describe('EnrichmentPanel', () => {
         enrichment={null}
         currentState="new"
         completenessScore={0}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 
@@ -170,12 +170,51 @@ describe('EnrichmentPanel', () => {
         enrichment={enrichment}
         currentState="triage"
         completenessScore={25}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 
     expect(screen.getByText(/Login works/)).toBeDefined();
     expect(screen.getByText(/Tests pass/)).toBeDefined();
+  });
+
+  it('renders CompletenessBreakdown when enrichment data exists', () => {
+    const enrichment = makeEnrichment({
+      enrichment: {
+        problem: 'A problem',
+        goal: 'A goal',
+        scopeIn: ['item'],
+        scopeOut: [],
+        acceptanceCriteria: [],
+        technicalContext: '',
+        risksEdgeCases: [],
+      },
+    });
+
+    render(
+      <EnrichmentPanel
+        enrichment={enrichment}
+        currentState="triage"
+        completenessScore={40}
+        onTransition={vi.fn()}
+      />,
+    );
+
+    // CompletenessBreakdown renders a section with aria-label "Completeness score breakdown"
+    expect(screen.getByLabelText('Completeness score breakdown')).toBeDefined();
+  });
+
+  it('does not render CompletenessBreakdown when no enrichment data', () => {
+    render(
+      <EnrichmentPanel
+        enrichment={null}
+        currentState="new"
+        completenessScore={0}
+        onTransition={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText('Completeness score breakdown')).toBeNull();
   });
 
   it('renders risksEdgeCases section when data is provided', () => {
@@ -196,7 +235,7 @@ describe('EnrichmentPanel', () => {
         enrichment={enrichment}
         currentState="triage"
         completenessScore={50}
-        onTransition={() => {}}
+        onTransition={vi.fn()}
       />,
     );
 

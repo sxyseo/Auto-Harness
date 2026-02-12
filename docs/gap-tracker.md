@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 11 / 41 complete
+**Status:** 12 / 41 complete
 
 ---
 
@@ -108,17 +108,17 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** GAP-06
 
 ### GAP-07: CompletenessBreakdown not used in EnrichmentPanel.tsx
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Small
 - **Doc ref:** Phase 2 PRD > US-9 > AC9.1; Phase 2 PRD Section 4.2
 - **Files to modify:** `renderer/components/github-issues/components/EnrichmentPanel.tsx`
 - **Source component:** `CompletenessBreakdown.tsx` — accepts enrichment, score, onSectionClick?
-- **Fix:** Import CompletenessBreakdown. Add after CompletenessIndicator div (after line 68). Render when enrichmentData exists.
-- **Tests:** Render EnrichmentPanel with enrichment data → CompletenessBreakdown visible
-- **Test status:** `PENDING`
+- **Fix:** Imported CompletenessBreakdown, renders after CompletenessIndicator when enrichmentData exists. Also fixed lint warnings (vi.fn() instead of () => {}).
+- **Tests:** 2 new tests: breakdown visible with enrichment data, hidden without
+- **Test status:** `PASS` (12/12)
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** GAP-07
 
 ### GAP-08: `useDependencies` hook not called in GitHubIssues.tsx
 - **Status:** `PENDING`
@@ -555,6 +555,7 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 | 2026-02-12 | GAP-02+03 | DONE — InlineEditor wired for title (required) and body (multiline) in IssueDetail, 7 new tests, 14 pass | GAP-02+03 |
 | 2026-02-12 | GAP-04+05 | DONE — LabelManager+AssigneeManager wired in IssueDetail, repoLabels/collaborators fetched via IPC, 6 new tests, 20 pass | GAP-04+05 |
 | 2026-02-12 | GAP-06 | DONE — CreateSpecButton wired in IssueDetail with onCreateSpec prop, 3 new tests, 23 pass | GAP-06 |
+| 2026-02-12 | GAP-07 | DONE — CompletenessBreakdown wired in EnrichmentPanel, 2 new tests, 12 pass, lint warnings fixed | GAP-07 |
 
 ---
 

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { WorkflowStateDropdown } from './WorkflowStateDropdown';
 import { CompletenessIndicator } from './CompletenessIndicator';
+import { CompletenessBreakdown } from './CompletenessBreakdown';
 import { Badge } from '../../ui/badge';
 import type { WorkflowState, Resolution, IssueEnrichment } from '../../../../shared/types/enrichment';
 
@@ -67,6 +68,14 @@ export function EnrichmentPanel({
         <h4 className="text-xs font-medium text-muted-foreground mb-1">{t('enrichment.panel.completeness')}</h4>
         <CompletenessIndicator score={completenessScore} />
       </div>
+
+      {/* Completeness breakdown */}
+      {enrichmentData && (
+        <CompletenessBreakdown
+          enrichment={enrichmentData}
+          score={completenessScore}
+        />
+      )}
 
       {/* AI action buttons */}
       {showActionButtons && (
