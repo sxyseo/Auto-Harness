@@ -597,6 +597,40 @@
     "save": "Enregistrer",
     "cancel": "Annuler"
   },
+  "labelSync": {
+    "title": "Synchronisation des labels",
+    "description": "Synchroniser les états du workflow en tant que labels ac: sur GitHub",
+    "settings": "Paramètres de synchronisation des labels",
+    "enable": "Activer",
+    "disable": "Désactiver",
+    "syncing": "Synchronisation...",
+    "lastSynced": "Dernière synchronisation : {{date}}",
+    "disableAndCleanup": "Désactiver et supprimer tous les labels"
+  },
+  "dependencies": {
+    "title": "Dépendances",
+    "loading": "Chargement des dépendances...",
+    "none": "Aucune dépendance",
+    "retry": "Réessayer",
+    "tracks": "Suit",
+    "trackedBy": "Suivi par"
+  },
+  "metrics": {
+    "title": "Métriques de triage",
+    "timeWindow": "Période",
+    "refresh": "Actualiser",
+    "computing": "Calcul en cours...",
+    "stateDistribution": "Distribution des états",
+    "completeness": "Complétude",
+    "completeness_low": "Faible",
+    "completeness_medium": "Moyen",
+    "completeness_high": "Élevé",
+    "completeness_excellent": "Excellent",
+    "transitions": "Transitions",
+    "avgBacklog": "Arriéré moy.",
+    "thisWeek": "Cette semaine",
+    "triageMode": "Mode triage"
+  },
   "usage": {
     "dataUnavailable": "Données d'utilisation non disponibles",
     "dataUnavailableDescription": "Le point de terminaison de surveillance d'utilisation pour ce fournisseur n'est pas disponible ou n'est pas pris en charge.",

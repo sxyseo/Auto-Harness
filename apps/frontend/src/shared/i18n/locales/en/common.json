@@ -597,6 +597,40 @@
     "save": "Save",
     "cancel": "Cancel"
   },
+  "labelSync": {
+    "title": "Label Synchronization",
+    "description": "Sync workflow states as ac: labels on GitHub",
+    "settings": "Label sync settings",
+    "enable": "Enable",
+    "disable": "Disable",
+    "syncing": "Syncing...",
+    "lastSynced": "Last synced: {{date}}",
+    "disableAndCleanup": "Disable and remove all labels"
+  },
+  "dependencies": {
+    "title": "Dependencies",
+    "loading": "Loading dependencies...",
+    "none": "No dependencies",
+    "retry": "Retry",
+    "tracks": "Tracks",
+    "trackedBy": "Tracked by"
+  },
+  "metrics": {
+    "title": "Triage Metrics",
+    "timeWindow": "Time window",
+    "refresh": "Refresh",
+    "computing": "Computing...",
+    "stateDistribution": "State Distribution",
+    "completeness": "Completeness",
+    "completeness_low": "Low",
+    "completeness_medium": "Medium",
+    "completeness_high": "High",
+    "completeness_excellent": "Excellent",
+    "transitions": "Transitions",
+    "avgBacklog": "Avg Backlog",
+    "thisWeek": "This Week",
+    "triageMode": "Triage Mode"
+  },
   "usage": {
     "dataUnavailable": "Usage data unavailable",
     "dataUnavailableDescription": "The usage monitoring endpoint for this provider is not available or not supported.",
