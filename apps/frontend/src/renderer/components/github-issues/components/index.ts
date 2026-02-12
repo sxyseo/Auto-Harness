@@ -37,3 +37,6 @@ export { LabelSyncSettings } from './LabelSyncSettings';
 export { DependencyList } from './DependencyList';
 export { MetricsDashboard } from './MetricsDashboard';
 export { CompletenessBreakdown } from './CompletenessBreakdown';
+
+// Phase 5 — Integration
+export { TriageSidebar } from './TriageSidebar';

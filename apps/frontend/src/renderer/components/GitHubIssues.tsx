@@ -13,6 +13,7 @@ import {
   useAutoFix,
   useBulkOperations,
   useAITriage,
+  useTriageMode,
 } from "./github-issues/hooks";
 import { useAnalyzePreview } from "./github-issues/hooks/useAnalyzePreview";
 import {
@@ -27,6 +28,7 @@ import {
   TriageProgressOverlay,
   IssueSplitDialog,
   EnrichmentCommentPreview,
+  TriageSidebar,
 } from "./github-issues/components";
 import { GitHubSetupModal } from "./GitHubSetupModal";
 import type { GitHubIssue } from "../../shared/types";
@@ -142,6 +144,9 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   // AI Triage
   const aiTriage = useAITriage(selectedProject?.id ?? '');
 
+  // Triage mode (3-panel layout)
+  const { isEnabled: triageModeEnabled, isAvailable: triageModeAvailable, toggle: toggleTriageMode } = useTriageMode();
+
   // Clear selection when filters change
   useEffect(() => {
     setSelectedIssueNumbers(new Set());
@@ -247,6 +252,9 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
         workflowFilter={workflowFilter}
         onWorkflowFilterChange={setWorkflowFilter}
         stateCounts={stateCounts}
+        onToggleTriageMode={toggleTriageMode}
+        isTriageModeEnabled={triageModeEnabled}
+        isTriageModeAvailable={triageModeAvailable}
       />
 
       {/* Bulk Action Bar */}
@@ -261,7 +269,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       {/* Content */}
       <div className="flex-1 flex min-h-0">
         {/* Issue List */}
-        <div className="w-1/2 border-r border-border flex flex-col">
+        <div className={`${triageModeEnabled ? 'w-1/4' : 'w-1/2'} border-r border-border flex flex-col`}>
           <IssueList
             issues={workflowFilteredIssues}
             selectedIssueNumber={selectedIssueNumber}
@@ -279,7 +287,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
         </div>
 
         {/* Issue Detail */}
-        <div className="w-1/2 flex flex-col">
+        <div className={`w-1/2 flex flex-col ${triageModeEnabled ? 'border-r border-border' : ''}`}>
           {selectedIssue ? (
             <IssueDetail
               issue={selectedIssue}
@@ -305,6 +313,24 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
             <EmptyState message="Select an issue to view details" />
           )}
         </div>
+
+        {/* Triage Sidebar (3rd panel) */}
+        {triageModeEnabled && selectedIssue && (
+          <div className="w-1/4 flex flex-col">
+            <TriageSidebar
+              enrichment={enrichments[String(selectedIssue.number)] ?? null}
+              currentState={enrichments[String(selectedIssue.number)]?.triageState ?? 'new'}
+              previousState={enrichments[String(selectedIssue.number)]?.previousState}
+              isAgentLocked={enrichments[String(selectedIssue.number)]?.agentLinks?.some(l => l.status === 'active')}
+              onTransition={handleTransition}
+              completenessScore={enrichments[String(selectedIssue.number)]?.completenessScore ?? 0}
+              onAITriage={() => aiTriage.runEnrichment(selectedIssue.number)}
+              onImproveIssue={() => aiTriage.runEnrichment(selectedIssue.number)}
+              onSplitIssue={() => aiTriage.runSplitSuggestion(selectedIssue.number)}
+              isAIBusy={aiTriage.isTriaging}
+            />
+          </div>
+        )}
       </div>
 
       {/* Investigation Dialog */}
