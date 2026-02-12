@@ -81,8 +81,9 @@ export function ProgressiveTrustSettings({ config: initialConfig, onSave, onCanc
 
       {/* Batch size */}
       <div className="flex items-center gap-3">
-        <label className="text-sm min-w-[120px]">{t('common:progressiveTrust.batchSize')}</label>
+        <label htmlFor="trust-batch-size" className="text-sm min-w-[120px]">{t('common:progressiveTrust.batchSize')}</label>
         <input
+          id="trust-batch-size"
           type="number"
           value={config.batchSize}
           onChange={(e) => setConfig((prev) => ({ ...prev, batchSize: Number.parseInt(e.target.value, 10) || 0 }))}
@@ -94,8 +95,9 @@ export function ProgressiveTrustSettings({ config: initialConfig, onSave, onCanc
 
       {/* Confirm above */}
       <div className="flex items-center gap-3">
-        <label className="text-sm min-w-[120px]">{t('common:progressiveTrust.confirmAbove')}</label>
+        <label htmlFor="trust-confirm-above" className="text-sm min-w-[120px]">{t('common:progressiveTrust.confirmAbove')}</label>
         <input
+          id="trust-confirm-above"
           type="number"
           value={config.confirmAbove}
           onChange={(e) => setConfig((prev) => ({ ...prev, confirmAbove: Number.parseInt(e.target.value, 10) || 0 }))}

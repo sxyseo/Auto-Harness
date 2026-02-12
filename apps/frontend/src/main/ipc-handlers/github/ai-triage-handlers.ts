@@ -105,7 +105,7 @@ export function registerAITriageHandlers(
             return;
           }
 
-          const backendPath = validation.backendPath!;
+          const backendPath = validation.backendPath ?? '';
           const { model, thinkingLevel } = getGitHubIssuesSettings();
 
           const args = buildRunnerArgs(
@@ -141,7 +141,7 @@ export function registerAITriageHandlers(
             return;
           }
 
-          sendComplete(result.data!);
+          sendComplete(result.data as AIEnrichmentResult);
         });
       } catch (error) {
         sendError(error instanceof Error ? error.message : 'Failed to run enrichment');
@@ -182,7 +182,7 @@ export function registerAITriageHandlers(
             return;
           }
 
-          const backendPath = validation.backendPath!;
+          const backendPath = validation.backendPath ?? '';
           const { model, thinkingLevel } = getGitHubIssuesSettings();
 
           const args = buildRunnerArgs(
@@ -218,7 +218,7 @@ export function registerAITriageHandlers(
             return;
           }
 
-          const suggestion = result.data!;
+          const suggestion = result.data as SplitSuggestion;
 
           // Cap sub-issues at MAX_SPLIT_SUB_ISSUES
           if (suggestion.subIssues.length > MAX_SPLIT_SUB_ISSUES) {

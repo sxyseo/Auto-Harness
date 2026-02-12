@@ -59,7 +59,7 @@ export function useAITriage(projectId: string) {
         cleanup();
       }
     };
-  }, [projectId, store]);
+  }, [store]);
 
   const runEnrichment = useCallback(
     (issueNumber: number) => {

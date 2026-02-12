@@ -46,7 +46,7 @@ export function IssueSplitDialog({ suggestion, progress, onConfirm, onCancel }: 
       {/* Sub-issues */}
       <div className="space-y-3">
         {subIssues.map((sub, index) => (
-          <div key={index} className="border border-border/50 rounded p-3 space-y-2">
+          <div key={`sub-${sub.title}-${index}`} className="border border-border/50 rounded p-3 space-y-2">
             <input
               type="text"
               value={sub.title}
