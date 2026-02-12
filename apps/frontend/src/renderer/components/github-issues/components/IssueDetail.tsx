@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ExternalLink, User, Clock, MessageCircle, Sparkles, CheckCircle2, Eye } from 'lucide-react';
+import { ExternalLink, User, Clock, MessageCircle, Sparkles, CheckCircle2, Eye, X, RotateCcw } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
@@ -14,6 +15,8 @@ import {
 import { formatDate } from '../utils';
 import { AutoFixButton } from './AutoFixButton';
 import { EnrichmentPanel } from './EnrichmentPanel';
+import { DependencyList } from './DependencyList';
+import { CommentForm } from './CommentForm';
 import type { IssueDetailProps } from '../types';
 
 export function IssueDetail({
@@ -27,8 +30,21 @@ export function IssueDetail({
   autoFixQueueItem,
   enrichment,
   onTransition,
+  onAITriage,
+  onImproveIssue,
+  onSplitIssue,
+  isAIBusy,
+  onClose,
+  onReopen,
+  onComment,
+  dependencies,
+  isDepsLoading,
+  depsError,
 }: IssueDetailProps) {
   const { t } = useTranslation('common');
+  const [isClosing, setIsClosing] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
+
   // Determine which task ID to use - either already linked or just created
   const taskId = linkedTaskId || (investigationResult?.success ? investigationResult.taskId : undefined);
   const hasLinkedTask = !!taskId;
@@ -36,6 +52,26 @@ export function IssueDetail({
   const handleViewTask = () => {
     if (taskId && onViewTask) {
       onViewTask(taskId);
+    }
+  };
+
+  const handleClose = async () => {
+    if (!onClose) return;
+    setIsClosing(true);
+    try {
+      await onClose();
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!onReopen) return;
+    setIsReopening(true);
+    try {
+      await onReopen();
+    } finally {
+      setIsReopening(false);
     }
   };
 
@@ -125,6 +161,28 @@ export function IssueDetail({
               )}
             </>
           )}
+          {issue.state === 'open' && onClose && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClose}
+              disabled={isClosing}
+            >
+              <X className="h-4 w-4 mr-1" />
+              {t('phase5.closeIssue')}
+            </Button>
+          )}
+          {issue.state === 'closed' && onReopen && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReopen}
+              disabled={isReopening}
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              {t('phase5.reopenIssue')}
+            </Button>
+          )}
         </div>
 
         {/* Task Linked Info */}
@@ -192,6 +250,22 @@ export function IssueDetail({
                 isAgentLocked={enrichment?.agentLinks?.some(l => l.status === 'active')}
                 onTransition={onTransition}
                 completenessScore={enrichment?.completenessScore ?? 0}
+                onAITriage={isAIBusy ? undefined : onAITriage}
+                onImproveIssue={isAIBusy ? undefined : onImproveIssue}
+                onSplitIssue={isAIBusy ? undefined : onSplitIssue}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Dependencies */}
+        {dependencies && (
+          <Card>
+            <CardContent className="pt-4">
+              <DependencyList
+                dependencies={dependencies}
+                isLoading={isDepsLoading ?? false}
+                error={depsError ?? null}
               />
             </CardContent>
           </Card>
@@ -224,6 +298,18 @@ export function IssueDetail({
             </CardHeader>
             <CardContent>
               <Badge variant="outline">{issue.milestone.title}</Badge>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Comment Form */}
+        {onComment && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">{t('phase5.addComment')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CommentForm onSubmit={onComment} />
             </CardContent>
           </Card>
         )}
