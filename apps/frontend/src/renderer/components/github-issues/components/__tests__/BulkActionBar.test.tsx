@@ -11,6 +11,10 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+vi.mock('../../../../../shared/constants/ai-triage', () => ({
+  estimateBatchCost: (count: number) => `~$${(count * 0.0035).toFixed(2)}`,
+}));
+
 describe('BulkActionBar', () => {
   it('not rendered when selectedCount is 0', () => {
     const { container } = render(
@@ -214,5 +218,47 @@ describe('BulkActionBar', () => {
     );
     const triageBtn = screen.getByRole('button', { name: 'aiTriage.triageAllButton' });
     expect(triageBtn).toBeDefined();
+  });
+
+  it('Triage All shows confirmation dialog with cost estimate before executing', () => {
+    const onTriageAll = vi.fn();
+    render(
+      <BulkActionBar
+        selectedCount={3}
+        onBulkAction={vi.fn()}
+        isOperating={false}
+        untriagedCount={5}
+        onTriageAll={onTriageAll}
+      />,
+    );
+    // Click Triage All — should NOT fire immediately
+    fireEvent.click(screen.getByRole('button', { name: 'aiTriage.triageAllButton' }));
+    expect(onTriageAll).not.toHaveBeenCalled();
+    // Confirmation dialog should appear with cost estimate text
+    expect(screen.getByRole('alert')).toBeDefined();
+    expect(screen.getByText('aiTriage.confirmTriage')).toBeDefined();
+    // Confirm fires onTriageAll
+    fireEvent.click(screen.getByText('bulk.confirm'));
+    expect(onTriageAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('Triage All confirmation can be cancelled', () => {
+    const onTriageAll = vi.fn();
+    render(
+      <BulkActionBar
+        selectedCount={3}
+        onBulkAction={vi.fn()}
+        isOperating={false}
+        untriagedCount={5}
+        onTriageAll={onTriageAll}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'aiTriage.triageAllButton' }));
+    expect(screen.getByRole('alert')).toBeDefined();
+    // Cancel
+    fireEvent.click(screen.getByText('bulk.cancel'));
+    expect(onTriageAll).not.toHaveBeenCalled();
+    // Button should be back
+    expect(screen.getByRole('button', { name: 'aiTriage.triageAllButton' })).toBeDefined();
   });
 });

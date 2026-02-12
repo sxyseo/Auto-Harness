@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 26 / 41 complete
+**Status:** 27 / 41 complete
 
 ---
 
@@ -417,16 +417,16 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** pending
 
 ### GAP-34: No batch triage confirmation dialog or cost estimate
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** SHOULD-FIX
 - **Scope:** Medium
 - **Doc ref:** Phase 3 PRD > US-2 > AC2.2; NFR 3.2
-- **Files to modify:** `renderer/components/github-issues/components/BulkActionBar.tsx`
-- **Fix:** Add confirmation state. Import estimateBatchCost. Show dialog with count + estimated cost before triaging. Only call onTriageAll after confirm.
-- **Tests:** Click Triage All → confirm dialog with cost; confirm → action; cancel → no action
-- **Test status:** `PENDING`
+- **Files modified:** `BulkActionBar.tsx`, `BulkActionBar.test.tsx`, `en/common.json`, `fr/common.json`
+- **Fix:** Added `pendingTriageAll` state. Clicking Triage All shows inline confirmation (role=alert) with issue count + estimated cost via `estimateBatchCost()`. Confirm fires `onTriageAll`, cancel reverts to button. i18n key: aiTriage.confirmTriage (EN+FR).
+- **Tests:** 2 new tests: confirm fires action with cost shown, cancel reverts. 16 total.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** pending
 
 ### GAP-35: No undo batch mechanism
 - **Status:** `PENDING`

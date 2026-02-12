@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BulkActionType, BulkOperationProgress } from '../../../../shared/types/mutations';
+import { estimateBatchCost } from '../../../../shared/constants/ai-triage';
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -35,6 +36,7 @@ export function BulkActionBar({
 }: BulkActionBarProps) {
   const { t } = useTranslation('common');
   const [pendingAction, setPendingAction] = useState<BulkActionType | null>(null);
+  const [pendingTriageAll, setPendingTriageAll] = useState(false);
 
   if (selectedCount === 0) {
     return null;
@@ -119,18 +121,40 @@ export function BulkActionBar({
       )}
 
       {onTriageAll && untriagedCount != null && untriagedCount > 0 && (
-        <button
-          type="button"
-          className="ml-2 px-2.5 py-1 text-xs rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isOperating}
-          onClick={onTriageAll}
-          aria-label={t('aiTriage.triageAllButton')}
-        >
-          {t('aiTriage.triageAllButton')}
-          <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
-            {untriagedCount}
-          </span>
-        </button>
+        pendingTriageAll ? (
+          <div className="flex items-center gap-2 ml-2" role="alert">
+            <span className="text-xs text-foreground">
+              {t('aiTriage.confirmTriage', { count: untriagedCount, cost: estimateBatchCost(untriagedCount, 'sonnet') })}
+            </span>
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs rounded-md border border-destructive bg-destructive/10 text-destructive hover:bg-destructive/20"
+              onClick={() => { onTriageAll(); setPendingTriageAll(false); }}
+            >
+              {t('bulk.confirm')}
+            </button>
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs rounded-md border border-border bg-card hover:bg-accent"
+              onClick={() => setPendingTriageAll(false)}
+            >
+              {t('bulk.cancel')}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="ml-2 px-2.5 py-1 text-xs rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isOperating}
+            onClick={() => setPendingTriageAll(true)}
+            aria-label={t('aiTriage.triageAllButton')}
+          >
+            {t('aiTriage.triageAllButton')}
+            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
+              {untriagedCount}
+            </span>
+          </button>
+        )
       )}
 
       {isOperating && progress && (

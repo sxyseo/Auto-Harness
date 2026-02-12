@@ -565,7 +565,8 @@
     "splitButton": "Diviser l'issue",
     "triageAllButton": "Trier tous les non triés",
     "retry": "Réessayer",
-    "closeAsDuplicate": "Fermer comme doublon"
+    "closeAsDuplicate": "Fermer comme doublon",
+    "confirmTriage": "Trier {{count}} issues ? Coût estimé : {{cost}}"
   },
   "batchReview": {
     "title": "Revue de triage par lots",

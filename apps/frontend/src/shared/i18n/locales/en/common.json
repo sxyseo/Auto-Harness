@@ -565,7 +565,8 @@
     "splitButton": "Split Issue",
     "triageAllButton": "Triage All Untriaged",
     "retry": "Retry",
-    "closeAsDuplicate": "Close as Duplicate"
+    "closeAsDuplicate": "Close as Duplicate",
+    "confirmTriage": "Triage {{count}} issues? Estimated cost: {{cost}}"
   },
   "batchReview": {
     "title": "Batch Triage Review",
