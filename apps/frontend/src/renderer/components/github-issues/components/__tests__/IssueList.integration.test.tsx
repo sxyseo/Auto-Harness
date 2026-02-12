@@ -63,15 +63,15 @@ describe('IssueList enrichment integration', () => {
       '2': makeEnrichment(2, 'ready', 80),
     };
     render(<IssueList {...defaultProps} enrichments={enrichments} />);
-    // Issue 1 should show 'triage' badge, Issue 2 'ready'
-    expect(screen.getByText('Triage')).toBeDefined();
-    expect(screen.getByText('Ready')).toBeDefined();
+    // Issue 1 should show 'triage' badge, Issue 2 'ready' (via i18n keys)
+    expect(screen.getByText('enrichment.states.triage')).toBeDefined();
+    expect(screen.getByText('enrichment.states.ready')).toBeDefined();
   });
 
   it('defaults to new state when no enrichment exists', () => {
     render(<IssueList {...defaultProps} enrichments={{}} />);
-    // All 3 issues should show 'New' badge
-    const newBadges = screen.getAllByText('New');
+    // All 3 issues should show 'New' badge (via i18n key)
+    const newBadges = screen.getAllByText('enrichment.states.new');
     expect(newBadges.length).toBe(3);
   });
 
