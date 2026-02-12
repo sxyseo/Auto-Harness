@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 27 / 41 complete
+**Status:** 28 / 41 complete
 
 ---
 
@@ -441,16 +441,16 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** —
 
 ### GAP-36: Trust level UI (Crawl/Walk/Run) not displayed
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** SHOULD-FIX
 - **Scope:** Medium
 - **Doc ref:** Phase 3 PRD > US-4 > AC4.10, AC4.11
-- **Files to modify:** `renderer/components/github-issues/components/ProgressiveTrustSettings.tsx`
-- **Fix:** Import TrustLevel/TRUST_LEVEL_LABELS. Add radio group for Crawl/Walk/Run above category rows. Changing level toggles category enabled states. Show warning for "Fully Automated".
-- **Tests:** Select Crawl → all disabled; Walk → some enabled; Run → all enabled + warning
-- **Test status:** `PENDING`
+- **Files modified:** `ProgressiveTrustSettings.tsx`, `ProgressiveTrustSettings.test.tsx`, `en/common.json`, `fr/common.json`
+- **Fix:** Added trust level radio group (Crawl/Walk/Run) above category rows. `deriveTrustLevel()` infers level from config. `setTrustLevel()` applies presets: Crawl=all disabled, Walk=labels+duplicate, Run=all enabled. Warning (role=alert) shown for Run. i18n keys: trustLevel, crawl, walk, run, runWarning (EN+FR).
+- **Tests:** 5 new tests: radio group renders, default crawl, run enables all + warning, crawl disables all, walk enables labels+duplicate. 12 total.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** pending
 
 ### GAP-37: No error/retry UI for failed AI triage
 - **Status:** `DONE`

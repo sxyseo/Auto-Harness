@@ -602,7 +602,12 @@
     "batchSize": "Taille du lot",
     "confirmAbove": "Confirmer au-dessus de",
     "save": "Enregistrer",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "trustLevel": "Niveau de confiance",
+    "crawl": "Suggestions uniquement",
+    "walk": "Auto-application au-dessus du seuil",
+    "run": "Entièrement automatisé",
+    "runWarning": "Tous les résultats de triage seront appliqués automatiquement sans révision."
   },
   "labelSync": {
     "title": "Synchronisation des labels",

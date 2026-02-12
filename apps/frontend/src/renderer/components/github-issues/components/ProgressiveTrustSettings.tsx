@@ -6,9 +6,26 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProgressiveTrustConfig } from '../../../../shared/types/ai-triage';
 import { THRESHOLD_MIN, THRESHOLD_MAX, THRESHOLD_STEP } from '../../../../shared/constants/ai-triage';
+import type { TrustLevel } from '../../../../shared/constants/ai-triage';
 
 const CATEGORIES = ['type', 'priority', 'labels', 'duplicate'] as const;
 type Category = (typeof CATEGORIES)[number];
+
+const TRUST_LEVELS: TrustLevel[] = ['crawl', 'walk', 'run'];
+
+const TRUST_LEVEL_PRESETS: Record<TrustLevel, Record<Category, boolean>> = {
+  crawl: { type: false, priority: false, labels: false, duplicate: false },
+  walk: { type: false, priority: false, labels: true, duplicate: true },
+  run: { type: true, priority: true, labels: true, duplicate: true },
+};
+
+function deriveTrustLevel(config: ProgressiveTrustConfig): TrustLevel {
+  const allEnabled = CATEGORIES.every((c) => config.autoApply[c].enabled);
+  const noneEnabled = CATEGORIES.every((c) => !config.autoApply[c].enabled);
+  if (allEnabled) return 'run';
+  if (noneEnabled) return 'crawl';
+  return 'walk';
+}
 
 interface ProgressiveTrustSettingsProps {
   config: ProgressiveTrustConfig;
@@ -35,6 +52,21 @@ export function ProgressiveTrustSettings({ config: initialConfig, onSave, onCanc
     }));
   };
 
+  const setTrustLevel = (level: TrustLevel) => {
+    const preset = TRUST_LEVEL_PRESETS[level];
+    setConfig((prev) => ({
+      ...prev,
+      autoApply: {
+        type: { ...prev.autoApply.type, enabled: preset.type },
+        priority: { ...prev.autoApply.priority, enabled: preset.priority },
+        labels: { ...prev.autoApply.labels, enabled: preset.labels },
+        duplicate: { ...prev.autoApply.duplicate, enabled: preset.duplicate },
+      },
+    }));
+  };
+
+  const currentLevel = deriveTrustLevel(config);
+
   const setThreshold = (category: Category, threshold: number) => {
     setConfig((prev) => ({
       ...prev,
@@ -50,6 +82,30 @@ export function ProgressiveTrustSettings({ config: initialConfig, onSave, onCanc
 
   return (
     <section className="space-y-4" aria-label={t('common:progressiveTrust.title')}>
+      {/* Trust level radio group */}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-foreground">{t('common:progressiveTrust.trustLevel')}</legend>
+        <div className="flex gap-4">
+          {TRUST_LEVELS.map((level) => (
+            <label key={level} className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
+                name="trust-level"
+                value={level}
+                checked={currentLevel === level}
+                onChange={() => setTrustLevel(level)}
+              />
+              <span className="text-sm">{t(`common:progressiveTrust.${level}`)}</span>
+            </label>
+          ))}
+        </div>
+        {currentLevel === 'run' && (
+          <p role="alert" className="text-xs text-destructive">
+            {t('common:progressiveTrust.runWarning')}
+          </p>
+        )}
+      </fieldset>
+
       {/* Category rows */}
       {CATEGORIES.map((category) => (
         <div key={category} className="flex items-center gap-3">

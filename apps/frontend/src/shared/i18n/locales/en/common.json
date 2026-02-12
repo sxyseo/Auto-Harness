@@ -602,7 +602,12 @@
     "batchSize": "Batch size",
     "confirmAbove": "Confirm above",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "trustLevel": "Trust Level",
+    "crawl": "Suggestions Only",
+    "walk": "Auto-Apply Above Threshold",
+    "run": "Fully Automated",
+    "runWarning": "All triage results will be applied automatically without review."
   },
   "labelSync": {
     "title": "Label Synchronization",
