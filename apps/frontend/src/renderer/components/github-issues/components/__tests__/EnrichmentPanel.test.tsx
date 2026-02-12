@@ -7,6 +7,12 @@ import { EnrichmentPanel } from '../EnrichmentPanel';
 import { createDefaultEnrichment } from '../../../../../shared/types/enrichment';
 import type { IssueEnrichment } from '../../../../../shared/types/enrichment';
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
 function makeEnrichment(overrides?: Partial<IssueEnrichment>): IssueEnrichment {
   return {
     ...createDefaultEnrichment(1),
@@ -15,7 +21,7 @@ function makeEnrichment(overrides?: Partial<IssueEnrichment>): IssueEnrichment {
 }
 
 describe('EnrichmentPanel', () => {
-  it('renders all 6 enrichment section headers', () => {
+  it('renders all 6 enrichment section headers via i18n keys', () => {
     render(
       <EnrichmentPanel
         enrichment={null}
@@ -25,19 +31,19 @@ describe('EnrichmentPanel', () => {
       />,
     );
 
-    for (const label of [
-      'Problem Statement',
-      'Goal',
-      'In Scope',
-      'Out of Scope',
-      'Acceptance Criteria',
-      'Technical Context',
+    for (const key of [
+      'enrichment.panel.problemStatement',
+      'enrichment.panel.goal',
+      'enrichment.panel.inScope',
+      'enrichment.panel.outOfScope',
+      'enrichment.panel.acceptanceCriteria',
+      'enrichment.panel.technicalContext',
     ]) {
-      expect(screen.getByText(label)).toBeDefined();
+      expect(screen.getByText(key)).toBeDefined();
     }
   });
 
-  it('shows "Not yet enriched" placeholder for empty sections', () => {
+  it('shows i18n "notYetEnriched" placeholder for empty sections', () => {
     render(
       <EnrichmentPanel
         enrichment={null}
@@ -47,7 +53,7 @@ describe('EnrichmentPanel', () => {
       />,
     );
 
-    const placeholders = screen.getAllByText('Not yet enriched');
+    const placeholders = screen.getAllByText('enrichment.panel.notYetEnriched');
     expect(placeholders.length).toBe(6);
   });
 
@@ -87,7 +93,7 @@ describe('EnrichmentPanel', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Change workflow state' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'enrichment.dropdown.changeState' })).toBeDefined();
   });
 
   it('renders priority when set', () => {
@@ -104,7 +110,7 @@ describe('EnrichmentPanel', () => {
     expect(screen.getByText('high')).toBeDefined();
   });
 
-  it('renders "No priority" when not set', () => {
+  it('renders i18n "noPriority" when not set', () => {
     render(
       <EnrichmentPanel
         enrichment={null}
@@ -114,10 +120,10 @@ describe('EnrichmentPanel', () => {
       />,
     );
 
-    expect(screen.getByText('No priority')).toBeDefined();
+    expect(screen.getByText('enrichment.panel.noPriority')).toBeDefined();
   });
 
-  it('renders completeness score', () => {
+  it('renders completeness score with i18n label', () => {
     render(
       <EnrichmentPanel
         enrichment={null}
@@ -128,7 +134,7 @@ describe('EnrichmentPanel', () => {
     );
 
     expect(screen.getByText('75%')).toBeDefined();
-    expect(screen.getByText('Completeness')).toBeDefined();
+    expect(screen.getByText('enrichment.panel.completeness')).toBeDefined();
   });
 
   it('has aria-live="polite" for state change area', () => {

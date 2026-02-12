@@ -27,8 +27,8 @@ describe('TriageSidebar', () => {
 
   it('renders EnrichmentPanel with props', () => {
     render(<TriageSidebar {...baseProps} completenessScore={75} />);
-    // EnrichmentPanel renders completeness section
-    expect(screen.getByText('Completeness')).toBeDefined();
+    // EnrichmentPanel renders completeness section via i18n
+    expect(screen.getByText('enrichment.panel.completeness')).toBeDefined();
   });
 
   it('renders DependencyList when dependencies provided', () => {

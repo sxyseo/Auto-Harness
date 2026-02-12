@@ -1,14 +1,17 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { WorkflowStateBadge } from '../WorkflowStateBadge';
-import {
-  WORKFLOW_STATE_COLORS,
-  WORKFLOW_STATE_LABELS,
-} from '../../../../../shared/constants/enrichment';
+import { WORKFLOW_STATE_COLORS } from '../../../../../shared/constants/enrichment';
 import type { WorkflowState } from '../../../../../shared/types/enrichment';
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
 
 const ALL_STATES: WorkflowState[] = [
   'new',
@@ -22,9 +25,9 @@ const ALL_STATES: WorkflowState[] = [
 
 describe('WorkflowStateBadge', () => {
   for (const state of ALL_STATES) {
-    it(`renders label for "${state}"`, () => {
+    it(`renders i18n label for "${state}"`, () => {
       render(<WorkflowStateBadge state={state} />);
-      expect(screen.getByText(WORKFLOW_STATE_LABELS[state])).toBeDefined();
+      expect(screen.getByText(`enrichment.states.${state}`)).toBeDefined();
     });
 
     it(`applies correct color classes for "${state}"`, () => {
@@ -42,10 +45,10 @@ describe('WorkflowStateBadge', () => {
     expect(screen.getByRole('status')).toBeDefined();
   });
 
-  it('has aria-label matching state name', () => {
+  it('has aria-label using i18n key', () => {
     render(<WorkflowStateBadge state="in_progress" />);
     const badge = screen.getByRole('status');
-    expect(badge.getAttribute('aria-label')).toBe('In Progress');
+    expect(badge.getAttribute('aria-label')).toBe('enrichment.states.in_progress');
   });
 
   it('parent container has aria-live="polite"', () => {

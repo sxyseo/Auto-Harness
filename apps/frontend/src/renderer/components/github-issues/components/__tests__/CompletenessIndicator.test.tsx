@@ -1,9 +1,20 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CompletenessIndicator } from '../CompletenessIndicator';
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, params?: Record<string, unknown>) => {
+      if (key === 'enrichment.completeness.label' && params?.score !== undefined) {
+        return `enrichment.completeness.label::${params.score}`;
+      }
+      return key;
+    },
+  }),
+}));
 
 describe('CompletenessIndicator', () => {
   it('renders "0%" for score 0', () => {
@@ -21,25 +32,25 @@ describe('CompletenessIndicator', () => {
     expect(screen.getByText('65%')).toBeDefined();
   });
 
-  it('renders "Not assessed" for null score', () => {
+  it('renders i18n key for null score', () => {
     render(<CompletenessIndicator score={null} />);
-    expect(screen.getByText('Not assessed')).toBeDefined();
+    expect(screen.getByText('enrichment.completeness.notAssessed')).toBeDefined();
   });
 
-  it('renders "Not assessed" for undefined score', () => {
+  it('renders i18n key for undefined score', () => {
     render(<CompletenessIndicator score={undefined} />);
-    expect(screen.getByText('Not assessed')).toBeDefined();
+    expect(screen.getByText('enrichment.completeness.notAssessed')).toBeDefined();
   });
 
-  it('has aria-label "Completeness: N percent" for numeric score', () => {
+  it('has i18n aria-label for numeric score', () => {
     const { container } = render(<CompletenessIndicator score={42} />);
-    const el = container.querySelector('[aria-label="Completeness: 42 percent"]');
+    const el = container.querySelector('[aria-label="enrichment.completeness.label::42"]');
     expect(el).not.toBeNull();
   });
 
-  it('has aria-label "Not assessed" for null score', () => {
+  it('has i18n aria-label for null score', () => {
     const { container } = render(<CompletenessIndicator score={null} />);
-    const el = container.querySelector('[aria-label="Not assessed"]');
+    const el = container.querySelector('[aria-label="enrichment.completeness.notAssessed"]');
     expect(el).not.toBeNull();
   });
 

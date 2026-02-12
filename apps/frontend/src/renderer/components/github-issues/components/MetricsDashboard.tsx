@@ -1,10 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { TriageMetrics, MetricsTimeWindow } from '../../../../shared/types/metrics';
 import { formatDuration } from '../../../../shared/types/metrics';
-import {
-  WORKFLOW_STATE_COLORS,
-  WORKFLOW_STATE_LABELS,
-} from '../../../../shared/constants/enrichment';
+import { WORKFLOW_STATE_COLORS } from '../../../../shared/constants/enrichment';
 import type { WorkflowState } from '../../../../shared/types/enrichment';
 
 interface MetricsDashboardProps {
@@ -95,7 +92,7 @@ export function MetricsDashboard({
                   width: `${pct}%`,
                   backgroundColor: WORKFLOW_STATE_COLORS[state],
                 }}
-                title={`${WORKFLOW_STATE_LABELS[state]}: ${count}`}
+                title={`${t(`enrichment.states.${state}`)}: ${count}`}
               />
             );
           })}
@@ -110,7 +107,7 @@ export function MetricsDashboard({
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: WORKFLOW_STATE_COLORS[state] }}
                 />
-                <span className="text-muted-foreground">{WORKFLOW_STATE_LABELS[state]}</span>
+                <span className="text-muted-foreground">{t(`enrichment.states.${state}`)}</span>
                 <span className="text-foreground font-medium">{count}</span>
               </div>
             );

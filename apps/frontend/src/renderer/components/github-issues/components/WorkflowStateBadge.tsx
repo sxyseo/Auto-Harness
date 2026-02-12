@@ -1,8 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { Badge } from '../../ui/badge';
-import {
-  WORKFLOW_STATE_COLORS,
-  WORKFLOW_STATE_LABELS,
-} from '../../../../shared/constants/enrichment';
+import { WORKFLOW_STATE_COLORS } from '../../../../shared/constants/enrichment';
 import type { WorkflowState } from '../../../../shared/types/enrichment';
 
 interface WorkflowStateBadgeProps {
@@ -10,8 +8,9 @@ interface WorkflowStateBadgeProps {
 }
 
 export function WorkflowStateBadge({ state }: WorkflowStateBadgeProps) {
+  const { t } = useTranslation('common');
   const colors = WORKFLOW_STATE_COLORS[state];
-  const label = WORKFLOW_STATE_LABELS[state];
+  const label = t(`enrichment.states.${state}`);
 
   return (
     <div aria-live="polite">

@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 0 / 41 complete
+**Status:** 1 / 41 complete
 
 ---
 
@@ -252,21 +252,22 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** —
 
 ### GAP-18: Hardcoded English in 5 components instead of i18n
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX (CLAUDE.md critical rule)
 - **Scope:** Medium
 - **Doc ref:** Phase 1 PRD > Section 11 DoD; CLAUDE.md Critical Rules
-- **Files to modify:**
-  1. `components/WorkflowStateBadge.tsx` — use t('enrichment.states.X') instead of WORKFLOW_STATE_LABELS
-  2. `components/WorkflowFilter.tsx` — use t() for "All states", "Workflow state"
-  3. `components/WorkflowStateDropdown.tsx` — use t() for "Move to", resolutions, "Unblock →"
-  4. `components/CompletenessIndicator.tsx` — use t() for "Not assessed"
-  5. `components/EnrichmentPanel.tsx` — use t() for section labels, "No priority", "Not yet enriched"
-- **Fix:** Add useTranslation import to each, replace hardcoded strings with i18n keys (keys already exist in en/fr common.json)
-- **Tests:** Verify each component renders i18n keys (existing tests use mock t() that returns key)
-- **Test status:** `PENDING`
+- **Files modified:**
+  1. `components/WorkflowStateBadge.tsx` — replaced WORKFLOW_STATE_LABELS with t('enrichment.states.X')
+  2. `components/WorkflowFilter.tsx` — replaced "All states", "Workflow state", selected count with t() calls
+  3. `components/WorkflowStateDropdown.tsx` — replaced "Move to", resolutions, "Unblock →" with t() calls
+  4. `components/CompletenessIndicator.tsx` — replaced "Not assessed", completeness label with t() calls
+  5. `components/EnrichmentPanel.tsx` — replaced section labels, "No priority", "Not yet enriched" with t() calls
+  6. `components/MetricsDashboard.tsx` — (bonus) replaced WORKFLOW_STATE_LABELS with t() calls
+- **Fix:** Added useTranslation('common') import to each, replaced all hardcoded English with i18n keys
+- **Tests:** All 7 test files updated (5 component tests + TriageSidebar + IssueDetail integration) — 75 tests pass
+- **Test status:** `PASS` (61 component tests + 14 MetricsDashboard tests)
 - **Depends on:** None (i18n keys already exist)
-- **Commit:** —
+- **Commit:** GAP-18
 
 ### GAP-19: Keyboard shortcuts Ctrl+1/2/3 for triage panels
 - **Status:** `PENDING`
@@ -546,7 +547,7 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 
 | Date | Gap ID | Action | Commit |
 |------|--------|--------|--------|
-| — | — | — | — |
+| 2026-02-12 | GAP-18 | DONE — i18n in 6 components (5 + MetricsDashboard), 7 test files updated, 75 tests pass | GAP-18 |
 
 ---
 

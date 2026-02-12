@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Filter } from 'lucide-react';
 import { Button } from '../../ui/button';
 import {
@@ -8,10 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../ui/dropdown-menu';
-import {
-  WORKFLOW_STATE_COLORS,
-  WORKFLOW_STATE_LABELS,
-} from '../../../../shared/constants/enrichment';
+import { WORKFLOW_STATE_COLORS } from '../../../../shared/constants/enrichment';
 import type { WorkflowState } from '../../../../shared/types/enrichment';
 
 const ALL_STATES: WorkflowState[] = [
@@ -31,6 +29,7 @@ interface WorkflowFilterProps {
 }
 
 export function WorkflowFilter({ selectedStates, onChange, stateCounts }: WorkflowFilterProps) {
+  const { t } = useTranslation('common');
   const isAll = selectedStates.length === 0;
 
   function handleToggle(state: WorkflowState) {
@@ -52,17 +51,17 @@ export function WorkflowFilter({ selectedStates, onChange, stateCounts }: Workfl
           variant="outline"
           size="sm"
           className="h-8 text-xs gap-1.5"
-          aria-label="Filter by workflow state"
+          aria-label={t('enrichment.filter.filterByState')}
         >
           <Filter className="h-3.5 w-3.5" />
-          {isAll ? 'All states' : `${selectedStates.length} selected`}
+          {isAll ? t('enrichment.filter.allStates') : t('enrichment.filter.selectedCount', { count: selectedStates.length })}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuLabel>Workflow state</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('enrichment.filter.workflowState')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuCheckboxItem checked={isAll} onCheckedChange={handleClear}>
-          All
+          {t('enrichment.filter.allStates')}
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         {ALL_STATES.map((state) => {
@@ -75,7 +74,7 @@ export function WorkflowFilter({ selectedStates, onChange, stateCounts }: Workfl
               onCheckedChange={() => handleToggle(state)}
             >
               <span className={`inline-block w-2 h-2 rounded-full mr-2 ${colors.bg}`} />
-              {WORKFLOW_STATE_LABELS[state]}
+              {t(`enrichment.states.${state}`)}
               {count !== undefined && (
                 <span className="ml-auto text-xs text-muted-foreground">{count}</span>
               )}

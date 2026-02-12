@@ -1,12 +1,17 @@
+import { useTranslation } from 'react-i18next';
+
 interface CompletenessIndicatorProps {
   score: number | null | undefined;
   compact?: boolean;
 }
 
 export function CompletenessIndicator({ score, compact }: CompletenessIndicatorProps) {
+  const { t } = useTranslation('common');
   const hasScore = score !== null && score !== undefined;
-  const displayText = hasScore ? `${score}%` : 'Not assessed';
-  const ariaLabel = hasScore ? `Completeness: ${score} percent` : 'Not assessed';
+  const displayText = hasScore ? `${score}%` : t('enrichment.completeness.notAssessed');
+  const ariaLabel = hasScore
+    ? t('enrichment.completeness.label', { score })
+    : t('enrichment.completeness.notAssessed');
 
   if (compact) {
     return (

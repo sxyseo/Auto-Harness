@@ -16,13 +16,13 @@ interface EnrichmentPanelProps {
   onSplitIssue?: () => void;
 }
 
-const ENRICHMENT_SECTIONS = [
-  { key: 'problem', label: 'Problem Statement' },
-  { key: 'goal', label: 'Goal' },
-  { key: 'scopeIn', label: 'In Scope' },
-  { key: 'scopeOut', label: 'Out of Scope' },
-  { key: 'acceptanceCriteria', label: 'Acceptance Criteria' },
-  { key: 'technicalContext', label: 'Technical Context' },
+const ENRICHMENT_SECTION_KEYS = [
+  { key: 'problem', i18nKey: 'enrichment.panel.problemStatement' },
+  { key: 'goal', i18nKey: 'enrichment.panel.goal' },
+  { key: 'scopeIn', i18nKey: 'enrichment.panel.inScope' },
+  { key: 'scopeOut', i18nKey: 'enrichment.panel.outOfScope' },
+  { key: 'acceptanceCriteria', i18nKey: 'enrichment.panel.acceptanceCriteria' },
+  { key: 'technicalContext', i18nKey: 'enrichment.panel.technicalContext' },
 ] as const;
 
 export function EnrichmentPanel({
@@ -57,13 +57,13 @@ export function EnrichmentPanel({
             {priority}
           </Badge>
         ) : (
-          <span className="text-xs text-muted-foreground">No priority</span>
+          <span className="text-xs text-muted-foreground">{t('enrichment.panel.noPriority')}</span>
         )}
       </div>
 
       {/* Completeness score */}
       <div>
-        <h4 className="text-xs font-medium text-muted-foreground mb-1">Completeness</h4>
+        <h4 className="text-xs font-medium text-muted-foreground mb-1">{t('enrichment.panel.completeness')}</h4>
         <CompletenessIndicator score={completenessScore} />
       </div>
 
@@ -102,19 +102,19 @@ export function EnrichmentPanel({
 
       {/* Enrichment sections */}
       <div className="space-y-3">
-        {ENRICHMENT_SECTIONS.map(({ key, label }) => {
+        {ENRICHMENT_SECTION_KEYS.map(({ key, i18nKey }) => {
           const value = enrichmentData?.[key];
           const hasContent = Array.isArray(value) ? value.length > 0 : !!value?.trim();
 
           return (
             <div key={key}>
-              <h4 className="text-xs font-medium text-muted-foreground mb-1">{label}</h4>
+              <h4 className="text-xs font-medium text-muted-foreground mb-1">{t(i18nKey)}</h4>
               {hasContent ? (
                 <p className="text-sm text-foreground whitespace-pre-wrap">
                   {Array.isArray(value) ? value.join('\n') : value}
                 </p>
               ) : (
-                <p className="text-sm text-muted-foreground italic">Not yet enriched</p>
+                <p className="text-sm text-muted-foreground italic">{t('enrichment.panel.notYetEnriched')}</p>
               )}
             </div>
           );
