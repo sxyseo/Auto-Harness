@@ -101,8 +101,19 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   // Enrichment state
   const enrichments = useEnrichmentStore((s) => s.enrichments);
   const enrichmentLoaded = useEnrichmentStore((s) => s.isLoaded);
-  const stateCounts = useEnrichmentStore((s) => s.getStateCounts());
   const [workflowFilter, setWorkflowFilter] = useState<WorkflowState[]>([]);
+
+  // Compute state counts from enrichments (must be derived via useMemo, not
+  // via a store selector that returns a new object — that causes infinite loops).
+  const stateCounts = useMemo(() => {
+    const counts: Record<WorkflowState, number> = {
+      new: 0, triage: 0, ready: 0, in_progress: 0, review: 0, done: 0, blocked: 0,
+    };
+    for (const e of Object.values(enrichments)) {
+      counts[e.triageState]++;
+    }
+    return counts;
+  }, [enrichments]);
 
   // Apply workflow filter to issues
   const workflowFilteredIssues = useMemo(() => {
