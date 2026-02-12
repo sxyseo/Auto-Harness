@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 17 / 41 complete
+**Status:** 18 / 41 complete
 
 ---
 
@@ -317,16 +317,16 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** pending
 
 ### GAP-23: No confirmation dialog before bulk actions
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** SHOULD-FIX
 - **Scope:** Small-Medium
 - **Doc ref:** Phase 2 PRD > US-7 > AC7.5
 - **Files to modify:** `renderer/components/github-issues/components/BulkActionBar.tsx`
-- **Fix:** Add confirmation state. On action click, show confirm dialog with count. Only execute after confirm. Add i18n key for confirm message.
-- **Tests:** Click bulk action → confirm dialog shown; confirm → action fires; cancel → no action
-- **Test status:** `PENDING`
+- **Fix:** Added pendingAction state. Clicking action button shows inline confirm prompt (role=alert) with confirm/cancel. i18n keys: bulk.confirmMessage, bulk.confirm, bulk.cancel (EN+FR).
+- **Tests:** 3 new tests: confirm fires action, cancel reverts, dialog has role=alert. Updated existing test. 14 total.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** pending
 
 ### GAP-24: role="region" + aria-label missing on triage panels
 - **Status:** `DONE`

@@ -34,7 +34,25 @@ describe('BulkActionBar', () => {
     expect(screen.getByText('5 selected')).toBeDefined();
   });
 
-  it('Close button fires onBulkAction with "close"', () => {
+  it('Close button shows confirmation, confirm fires onBulkAction', () => {
+    const onBulkAction = vi.fn();
+    render(
+      <BulkActionBar
+        selectedCount={3}
+        onBulkAction={onBulkAction}
+        isOperating={false}
+      />,
+    );
+    // Click Close — should show confirm prompt, NOT fire immediately
+    fireEvent.click(screen.getByText('Close'));
+    expect(onBulkAction).not.toHaveBeenCalled();
+    expect(screen.getByText('bulk.confirmMessage')).toBeDefined();
+    // Click Confirm — should fire onBulkAction
+    fireEvent.click(screen.getByText('bulk.confirm'));
+    expect(onBulkAction).toHaveBeenCalledWith('close');
+  });
+
+  it('Cancel in confirmation reverts to action buttons', () => {
     const onBulkAction = vi.fn();
     render(
       <BulkActionBar
@@ -44,7 +62,24 @@ describe('BulkActionBar', () => {
       />,
     );
     fireEvent.click(screen.getByText('Close'));
-    expect(onBulkAction).toHaveBeenCalledWith('close');
+    expect(screen.getByText('bulk.confirmMessage')).toBeDefined();
+    // Click Cancel
+    fireEvent.click(screen.getByText('bulk.cancel'));
+    expect(onBulkAction).not.toHaveBeenCalled();
+    // Action buttons should be back
+    expect(screen.getByText('Close')).toBeDefined();
+  });
+
+  it('confirmation dialog has role=alert', () => {
+    render(
+      <BulkActionBar
+        selectedCount={2}
+        onBulkAction={vi.fn()}
+        isOperating={false}
+      />,
+    );
+    fireEvent.click(screen.getByText('Close'));
+    expect(screen.getByRole('alert')).toBeDefined();
   });
 
   it('has role="toolbar"', () => {

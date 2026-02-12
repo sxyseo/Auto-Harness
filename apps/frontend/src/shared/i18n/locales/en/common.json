@@ -524,7 +524,10 @@
     "complete": "{{succeeded}} succeeded, {{failed}} failed",
     "retryFailed": "Retry {{count}} failed",
     "dismiss": "Dismiss",
-    "actions": "Bulk actions"
+    "actions": "Bulk actions",
+    "confirmMessage": "{{action}} {{count}} issues?",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
   },
   "spec": {
     "createFromIssue": "Create Spec",

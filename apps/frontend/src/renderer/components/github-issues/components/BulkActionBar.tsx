@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BulkActionType, BulkOperationProgress } from '../../../../shared/types/mutations';
 
@@ -33,9 +34,22 @@ export function BulkActionBar({
   onDeselectAll,
 }: BulkActionBarProps) {
   const { t } = useTranslation('common');
+  const [pendingAction, setPendingAction] = useState<BulkActionType | null>(null);
+
   if (selectedCount === 0) {
     return null;
   }
+
+  const handleConfirm = () => {
+    if (pendingAction) {
+      onBulkAction(pendingAction);
+      setPendingAction(null);
+    }
+  };
+
+  const handleCancel = () => {
+    setPendingAction(null);
+  };
 
   return (
     <div
@@ -68,19 +82,41 @@ export function BulkActionBar({
         </button>
       )}
 
-      <div className="flex items-center gap-1.5 ml-2">
-        {BULK_ACTIONS.map(({ action, label }) => (
+      {pendingAction ? (
+        <div className="flex items-center gap-2 ml-2" role="alert">
+          <span className="text-xs text-foreground">
+            {t('bulk.confirmMessage', { action: pendingAction, count: selectedCount })}
+          </span>
           <button
-            key={action}
             type="button"
-            className="px-2.5 py-1 text-xs rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isOperating}
-            onClick={() => onBulkAction(action)}
+            className="px-2.5 py-1 text-xs rounded-md border border-destructive bg-destructive/10 text-destructive hover:bg-destructive/20"
+            onClick={handleConfirm}
           >
-            {label}
+            {t('bulk.confirm')}
           </button>
-        ))}
-      </div>
+          <button
+            type="button"
+            className="px-2.5 py-1 text-xs rounded-md border border-border bg-card hover:bg-accent"
+            onClick={handleCancel}
+          >
+            {t('bulk.cancel')}
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 ml-2">
+          {BULK_ACTIONS.map(({ action, label }) => (
+            <button
+              key={action}
+              type="button"
+              className="px-2.5 py-1 text-xs rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isOperating}
+              onClick={() => setPendingAction(action)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {onTriageAll && untriagedCount != null && untriagedCount > 0 && (
         <button

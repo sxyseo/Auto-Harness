@@ -524,7 +524,10 @@
     "complete": "{{succeeded}} réussis, {{failed}} échoués",
     "retryFailed": "Réessayer {{count}} échoués",
     "dismiss": "Fermer",
-    "actions": "Actions groupées"
+    "actions": "Actions groupées",
+    "confirmMessage": "{{action}} {{count}} issues ?",
+    "confirm": "Confirmer",
+    "cancel": "Annuler"
   },
   "spec": {
     "createFromIssue": "Créer une spec",
