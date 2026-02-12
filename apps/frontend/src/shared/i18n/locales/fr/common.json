@@ -910,6 +910,11 @@
       "conflictTooltip": "Cette PR a des conflits de fusion qui doivent être résolus"
     }
   },
+  "panels": {
+    "issueList": "Liste des issues",
+    "issueDetail": "Détail de l'issue",
+    "triageSidebar": "Panneau de triage"
+  },
   "phase5": {
     "triageMode": "Mode triage",
     "triageModeTooltip": "Basculer la disposition à 3 panneaux",

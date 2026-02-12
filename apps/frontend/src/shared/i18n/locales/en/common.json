@@ -910,6 +910,11 @@
       "conflictTooltip": "This PR has merge conflicts that need to be resolved"
     }
   },
+  "panels": {
+    "issueList": "Issue list",
+    "issueDetail": "Issue detail",
+    "triageSidebar": "Triage sidebar"
+  },
   "phase5": {
     "triageMode": "Triage Mode",
     "triageModeTooltip": "Toggle 3-panel triage layout",

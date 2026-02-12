@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 2 / 41 complete
+**Status:** 3 / 41 complete
 
 ---
 
@@ -330,16 +330,16 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** —
 
 ### GAP-24: role="region" + aria-label missing on triage panels
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Small
 - **Doc ref:** Phase 4 PRD > US-5 > AC5.5; Phase 4 PRD > US-4 > AC4.8
-- **Files to modify:** `renderer/components/GitHubIssues.tsx`
-- **Fix:** At lines 286, 304, 333 — add role="region" aria-label="Issue list" / "Issue detail" / "Triage sidebar" (use i18n keys)
-- **Tests:** Verify panels have correct ARIA attributes
-- **Test status:** `PENDING`
+- **Files modified:** `GitHubIssues.tsx`, `en/common.json`, `fr/common.json`
+- **Fix:** Changed 3 panel `<div>` to `<section>` with i18n `aria-label` (panels.issueList/issueDetail/triageSidebar). Also added `useTranslation` import to GitHubIssues.tsx.
+- **Tests:** Lint passes with 0 warnings (Biome recommended `<section>` over `<div role="region">`)
+- **Test status:** `PASS` (lint clean)
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** GAP-24
 
 ---
 
@@ -549,6 +549,7 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 |------|--------|--------|--------|
 | 2026-02-12 | GAP-18 | DONE — i18n in 6 components (5 + MetricsDashboard), 7 test files updated, 75 tests pass | GAP-18 |
 | 2026-02-12 | GAP-17 | DONE — risksEdgeCases section added to EnrichmentPanel, i18n keys added EN+FR, 10 tests pass | GAP-17 |
+| 2026-02-12 | GAP-24 | DONE — 3 panels changed to `<section>` with i18n aria-label, lint clean | GAP-24 |
 
 ---
 

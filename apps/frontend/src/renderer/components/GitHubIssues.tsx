@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useProjectStore } from "../stores/project-store";
 import { useTaskStore } from "../stores/task-store";
 import {
@@ -36,6 +37,7 @@ import type { GitHubIssuesProps } from "./github-issues/types";
 import type { WorkflowState, Resolution } from "../../shared/types/enrichment";
 
 export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesProps) {
+  const { t } = useTranslation("common");
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -283,7 +285,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       {/* Content */}
       <div className="flex-1 flex min-h-0">
         {/* Issue List */}
-        <div className={`${triageModeEnabled ? 'w-1/4' : 'w-1/2'} border-r border-border flex flex-col`}>
+        <section className={`${triageModeEnabled ? 'w-1/4' : 'w-1/2'} border-r border-border flex flex-col`} aria-label={t('panels.issueList')}>
           <IssueList
             issues={workflowFilteredIssues}
             selectedIssueNumber={selectedIssueNumber}
@@ -298,10 +300,10 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
             selectedIssueNumbers={selectedIssueNumbers}
             onToggleSelect={handleToggleSelect}
           />
-        </div>
+        </section>
 
         {/* Issue Detail */}
-        <div className={`w-1/2 flex flex-col ${triageModeEnabled ? 'border-r border-border' : ''}`}>
+        <section className={`w-1/2 flex flex-col ${triageModeEnabled ? 'border-r border-border' : ''}`} aria-label={t('panels.issueDetail')}>
           {selectedIssue ? (
             <IssueDetail
               issue={selectedIssue}
@@ -326,11 +328,11 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
           ) : (
             <EmptyState message="Select an issue to view details" />
           )}
-        </div>
+        </section>
 
         {/* Triage Sidebar (3rd panel) */}
         {triageModeEnabled && selectedIssue && (
-          <div className="w-1/4 flex flex-col">
+          <section className="w-1/4 flex flex-col" aria-label={t('panels.triageSidebar')}>
             <TriageSidebar
               enrichment={enrichments[String(selectedIssue.number)] ?? null}
               currentState={enrichments[String(selectedIssue.number)]?.triageState ?? 'new'}
@@ -348,7 +350,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
               onTimeWindowChange={setMetricsTimeWindow}
               onRefreshMetrics={computeMetrics}
             />
-          </div>
+          </section>
         )}
       </div>
 
