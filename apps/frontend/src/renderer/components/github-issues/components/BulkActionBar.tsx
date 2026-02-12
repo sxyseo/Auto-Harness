@@ -8,6 +8,8 @@ interface BulkActionBarProps {
   progress?: BulkOperationProgress | null;
   untriagedCount?: number;
   onTriageAll?: () => void;
+  onSelectAll?: () => void;
+  onDeselectAll?: () => void;
 }
 
 const BULK_ACTIONS: Array<{ action: BulkActionType; label: string }> = [
@@ -27,6 +29,8 @@ export function BulkActionBar({
   progress,
   untriagedCount,
   onTriageAll,
+  onSelectAll,
+  onDeselectAll,
 }: BulkActionBarProps) {
   const { t } = useTranslation('common');
   if (selectedCount === 0) {
@@ -42,6 +46,27 @@ export function BulkActionBar({
       <span className="text-sm font-medium text-foreground">
         {selectedCount} selected
       </span>
+
+      {onSelectAll && (
+        <button
+          type="button"
+          className="px-2 py-1 text-xs text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isOperating}
+          onClick={onSelectAll}
+        >
+          {t('phase5.selectAll')}
+        </button>
+      )}
+      {onDeselectAll && (
+        <button
+          type="button"
+          className="px-2 py-1 text-xs text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isOperating}
+          onClick={onDeselectAll}
+        >
+          {t('phase5.deselectAll')}
+        </button>
+      )}
 
       <div className="flex items-center gap-1.5 ml-2">
         {BULK_ACTIONS.map(({ action, label }) => (

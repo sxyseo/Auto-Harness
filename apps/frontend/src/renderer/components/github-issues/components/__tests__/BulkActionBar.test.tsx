@@ -106,6 +106,67 @@ describe('BulkActionBar', () => {
     expect(screen.getByText('Processing 2/5...')).toBeDefined();
   });
 
+  it('renders Select All button when onSelectAll provided', () => {
+    const onSelectAll = vi.fn();
+    render(
+      <BulkActionBar
+        selectedCount={2}
+        onBulkAction={vi.fn()}
+        isOperating={false}
+        onSelectAll={onSelectAll}
+      />,
+    );
+    const btn = screen.getByText('phase5.selectAll');
+    expect(btn).toBeDefined();
+    fireEvent.click(btn);
+    expect(onSelectAll).toHaveBeenCalled();
+  });
+
+  it('renders Deselect All button when onDeselectAll provided', () => {
+    const onDeselectAll = vi.fn();
+    render(
+      <BulkActionBar
+        selectedCount={2}
+        onBulkAction={vi.fn()}
+        isOperating={false}
+        onDeselectAll={onDeselectAll}
+      />,
+    );
+    const btn = screen.getByText('phase5.deselectAll');
+    expect(btn).toBeDefined();
+    fireEvent.click(btn);
+    expect(onDeselectAll).toHaveBeenCalled();
+  });
+
+  it('does not render Select All / Deselect All when callbacks not provided', () => {
+    render(
+      <BulkActionBar
+        selectedCount={2}
+        onBulkAction={vi.fn()}
+        isOperating={false}
+      />,
+    );
+    expect(screen.queryByText('phase5.selectAll')).toBeNull();
+    expect(screen.queryByText('phase5.deselectAll')).toBeNull();
+  });
+
+  it('Select All and Deselect All disabled when isOperating', () => {
+    render(
+      <BulkActionBar
+        selectedCount={2}
+        onBulkAction={vi.fn()}
+        isOperating={true}
+        onSelectAll={vi.fn()}
+        onDeselectAll={vi.fn()}
+        progress={{ action: 'close', totalItems: 2, processedItems: 1 }}
+      />,
+    );
+    const selectAllBtn = screen.getByText('phase5.selectAll');
+    const deselectAllBtn = screen.getByText('phase5.deselectAll');
+    expect(selectAllBtn.hasAttribute('disabled')).toBe(true);
+    expect(deselectAllBtn.hasAttribute('disabled')).toBe(true);
+  });
+
   it('Triage All button has aria-label', () => {
     render(
       <BulkActionBar

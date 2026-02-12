@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 14 / 41 complete
+**Status:** 15 / 41 complete
 
 ---
 
@@ -198,16 +198,16 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** GAP-13
 
 ### GAP-14: Select All / Deselect All missing from UI
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Small
 - **Doc ref:** Phase 2 PRD > US-7 > AC7.2; Phase 5 PRD > US-5 > AC-5.7
 - **Files to modify:** `renderer/components/GitHubIssues.tsx`, `renderer/components/github-issues/components/BulkActionBar.tsx`
 - **Fix:** Re-add handleSelectAll/handleDeselectAll in GitHubIssues.tsx. Pass to BulkActionBar. Add Select All / Deselect All buttons in BulkActionBar.
 - **Tests:** Click Select All → all visible issues selected; Deselect All → none selected
-- **Test status:** `PENDING`
+- **Test status:** `PASS` (4 new tests, 12 total)
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** pending
 
 ### GAP-15: `useLabelSync` hook not wired anywhere
 - **Status:** `PENDING`

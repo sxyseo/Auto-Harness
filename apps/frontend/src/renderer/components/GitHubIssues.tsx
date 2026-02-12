@@ -148,6 +148,14 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     [executeBulk, selectedIssueNumbers],
   );
 
+  const handleSelectAll = useCallback(() => {
+    setSelectedIssueNumbers(new Set(workflowFilteredIssues.map((i) => i.number)));
+  }, [workflowFilteredIssues]);
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedIssueNumbers(new Set());
+  }, []);
+
   // AI Triage
   const aiTriage = useAITriage(selectedProject?.id ?? '');
 
@@ -343,6 +351,8 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
           selectedCount={selectedIssueNumbers.size}
           onBulkAction={handleBulkAction}
           isOperating={isBulkOperating}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={handleDeselectAll}
         />
       )}
 
