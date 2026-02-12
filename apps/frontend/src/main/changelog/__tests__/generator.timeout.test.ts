@@ -48,7 +48,7 @@ vi.mock('../../platform', () => ({
 vi.mock('../../rate-limit-detector', () => ({
   detectRateLimit: vi.fn(() => ({ isRateLimited: false })),
   createSDKRateLimitInfo: vi.fn(),
-  getBestAvailableProfileEnv: vi.fn(() => ({
+  getBestAvailableProfileEnv: vi.fn(() => Promise.resolve({
     env: {},
     wasSwapped: false,
     profileName: 'default'

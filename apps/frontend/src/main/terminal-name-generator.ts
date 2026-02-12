@@ -140,7 +140,7 @@ export class TerminalNameGenerator extends EventEmitter {
     });
 
     // Use centralized function that automatically handles rate limits and capacity
-    const profileResult = getBestAvailableProfileEnv();
+    const profileResult = await getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
 
     if (profileResult.wasSwapped) {

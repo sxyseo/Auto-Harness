@@ -35,7 +35,7 @@ export async function getRunnerEnv(
   const apiProfileEnv = await getAPIProfileEnv();
   const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
   // Get best available Claude profile environment (automatically handles rate limits)
-  const profileResult = getBestAvailableProfileEnv();
+  const profileResult = await getBestAvailableProfileEnv();
   const profileEnv = profileResult.env;
 
   // Fetch fresh GitHub token from gh CLI (no caching to reflect account changes)

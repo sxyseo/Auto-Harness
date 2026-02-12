@@ -21,7 +21,7 @@ vi.mock('../../../../python-env-manager', () => ({
 }));
 
 vi.mock('../../../../rate-limit-detector', () => ({
-  getBestAvailableProfileEnv: () => mockGetBestAvailableProfileEnv(),
+  getBestAvailableProfileEnv: () => Promise.resolve(mockGetBestAvailableProfileEnv()),
 }));
 
 // Mock getGitHubTokenForSubprocess to avoid calling gh CLI in tests

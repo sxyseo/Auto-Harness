@@ -51,7 +51,7 @@ export class VersionSuggester {
     const script = this.createAnalysisScript(prompt);
 
     // Build environment
-    const spawnEnv = this.buildSpawnEnvironment();
+    const spawnEnv = await this.buildSpawnEnvironment();
 
     return new Promise((resolve, _reject) => {
       // Parse Python command to handle space-separated commands like "py -3"
@@ -225,7 +225,7 @@ except Exception as e:
   /**
    * Build spawn environment with proper PATH and auth settings
    */
-  private buildSpawnEnvironment(): Record<string, string> {
+  private async buildSpawnEnvironment(): Promise<Record<string, string>> {
     const homeDir = os.homedir();
 
     // Use getAugmentedEnv() to ensure common tool paths are available
@@ -233,7 +233,7 @@ except Exception as e:
     const augmentedEnv = getAugmentedEnv();
 
     // Get best available Claude profile environment (automatically handles rate limits)
-    const profileResult = getBestAvailableProfileEnv();
+    const profileResult = await getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
 
     const spawnEnv: Record<string, string> = {

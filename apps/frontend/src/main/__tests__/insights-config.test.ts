@@ -14,7 +14,7 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('../rate-limit-detector', () => ({
-  getBestAvailableProfileEnv: () => ({
+  getBestAvailableProfileEnv: () => Promise.resolve({
     env: { CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token' },
     profileId: 'default',
     profileName: 'Default',

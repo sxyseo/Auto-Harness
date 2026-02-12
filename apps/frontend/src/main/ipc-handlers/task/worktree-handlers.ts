@@ -2038,7 +2038,7 @@ export function registerWorktreeHandlers(
         debug('Working directory:', sourcePath);
 
         // Get profile environment with OAuth token for AI merge resolution
-        const profileResult = getBestAvailableProfileEnv();
+        const profileResult = await getBestAvailableProfileEnv();
         const profileEnv = profileResult.env;
         debug('Profile env for merge:', {
           hasOAuthToken: !!profileEnv.CLAUDE_CODE_OAUTH_TOKEN,
@@ -2620,7 +2620,7 @@ export function registerWorktreeHandlers(
         console.warn('[IPC] Running merge preview:', pythonPath, args.join(' '));
 
         // Get profile environment for consistency
-        const previewProfileResult = getBestAvailableProfileEnv();
+        const previewProfileResult = await getBestAvailableProfileEnv();
         const previewProfileEnv = previewProfileResult.env;
         // Get Python environment for bundled packages
         const previewPythonEnv = pythonEnvManagerSingleton.getPythonEnv();
@@ -3258,7 +3258,7 @@ export function registerWorktreeHandlers(
         debug('Working directory:', sourcePath);
 
         // Get profile environment with OAuth token
-        const profileResult = getBestAvailableProfileEnv();
+        const profileResult = await getBestAvailableProfileEnv();
         const profileEnv = profileResult.env;
 
         return new Promise((resolve) => {

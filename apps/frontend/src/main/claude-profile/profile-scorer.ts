@@ -40,7 +40,7 @@ interface ScoredProfile {
 /**
  * Check if a profile is available for use based on all criteria
  */
-function checkProfileAvailability(
+export function checkProfileAvailability(
   profile: ClaudeProfile,
   settings: ClaudeAutoSwitchSettings
 ): { available: boolean; reason?: string } {

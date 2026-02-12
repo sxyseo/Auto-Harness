@@ -110,7 +110,7 @@ export class InsightsConfig {
   async getProcessEnv(): Promise<Record<string, string>> {
     const autoBuildEnv = this.loadAutoBuildEnv();
     // Get best available Claude profile environment (automatically handles rate limits)
-    const profileResult = getBestAvailableProfileEnv();
+    const profileResult = await getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
     const apiProfileEnv = await getAPIProfileEnv();
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);

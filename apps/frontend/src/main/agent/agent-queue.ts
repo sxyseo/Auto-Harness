@@ -352,7 +352,7 @@ export class AgentQueueManager {
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
     // Get best available Claude profile environment (automatically handles rate limits)
-    const profileResult = getBestAvailableProfileEnv();
+    const profileResult = await getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
 
     // Get active API profile environment variables
@@ -685,7 +685,7 @@ export class AgentQueueManager {
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
     // Get best available Claude profile environment (automatically handles rate limits)
-    const profileResult = getBestAvailableProfileEnv();
+    const profileResult = await getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
 
     // Get active API profile environment variables

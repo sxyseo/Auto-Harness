@@ -20,10 +20,8 @@ import type {
   ClaudeProfileSettings,
   ClaudeUsageData,
   ClaudeRateLimitEvent,
-  ClaudeAutoSwitchSettings,
-  APIProfile
+  ClaudeAutoSwitchSettings
 } from '../shared/types';
-import type { UnifiedAccount } from '../shared/types/unified-account';
 
 // Module imports
 import { encryptToken, decryptToken } from './claude-profile/token-encryption';
@@ -43,10 +41,9 @@ import {
   getBestAvailableProfile,
   shouldProactivelySwitch as shouldProactivelySwitchImpl,
   getProfilesSortedByAvailability as getProfilesSortedByAvailabilityImpl,
-  getBestAvailableUnifiedAccount
+  checkProfileAvailability
 } from './claude-profile/profile-scorer';
 import { getCredentialsFromKeychain, normalizeWindowsPath, updateProfileSubscriptionMetadata } from './claude-profile/credential-utils';
-import { loadProfilesFile } from './services/profile/profile-manager';
 import {
   CLAUDE_PROFILES_DIR,
   generateProfileId as generateProfileIdImpl,
@@ -56,6 +53,16 @@ import {
   expandHomePath,
   getEmailFromConfigDir
 } from './claude-profile/profile-utils';
+
+/**
+ * Unified swap target representing either an OAuth or API profile
+ */
+export interface UnifiedSwapTarget {
+  id: string;
+  name: string;
+  type: 'oauth' | 'api';
+  priorityIndex: number;
+}
 
 /**
  * Manages Claude Code profiles for multi-account support.
@@ -671,54 +678,79 @@ export class ClaudeProfileManager {
   }
 
   /**
-   * Load API profiles from profiles.json with error handling
-   * Shared helper to avoid duplication across methods
-   */
-  private async loadProfilesFileSafe(): Promise<{ profiles: APIProfile[]; activeProfileId?: string }> {
-    try {
-      const file = await loadProfilesFile();
-      return { profiles: file.profiles, activeProfileId: file.activeProfileId ?? undefined };
-    } catch (error) {
-      console.error('[ClaudeProfileManager] Failed to load profiles file:', error);
-      return { profiles: [] };
-    }
-  }
-
-  /**
-   * Load API profiles from profiles.json
-   * Used by the unified account selection to consider API profiles as fallback
-   */
-  async loadAPIProfiles(): Promise<APIProfile[]> {
-    const { profiles } = await this.loadProfilesFileSafe();
-    return profiles;
-  }
-
-  /**
-   * Get the best available unified account from both OAuth and API profiles
-   * This enables cross-type account switching when OAuth profiles are exhausted
+   * Get the best available account across both OAuth and API profiles.
+   * Considers user priority order, availability (auth, rate limits, thresholds).
    *
-   * @param excludeAccountId - Unified account ID to exclude (e.g., 'oauth-profile1')
-   * @returns The best available UnifiedAccount, or null if none available
+   * @param excludeProfileId - Profile ID to exclude (usually the current one)
+   * @param additionalExclusions - Additional profile IDs to exclude (e.g., auth-failed)
+   * @returns Best available account or null if none found
    */
-  async getBestAvailableUnifiedAccount(excludeAccountId?: string): Promise<UnifiedAccount | null> {
-    const settings = this.getAutoSwitchSettings();
+  async getBestAvailableUnifiedAccount(
+    excludeProfileId?: string,
+    additionalExclusions: string[] = []
+  ): Promise<UnifiedSwapTarget | null> {
+    const excludeIds = new Set([
+      ...(excludeProfileId ? [excludeProfileId] : []),
+      ...additionalExclusions
+    ]);
     const priorityOrder = this.getAccountPriorityOrder();
-    const activeOAuthId = this.data.activeProfileId;
+    const settings = this.getAutoSwitchSettings();
+    const unifiedAccounts: UnifiedSwapTarget[] = [];
 
-    // Load API profiles and active API profile ID from profiles.json
-    const { profiles: apiProfiles, activeProfileId: activeAPIId } = await this.loadProfilesFileSafe();
+    // Add OAuth profiles (filtered by availability)
+    const oauthProfiles = this.getProfilesSortedByAvailability();
+    for (const profile of oauthProfiles) {
+      if (excludeIds.has(profile.id)) continue;
+      const availability = checkProfileAvailability(profile, settings);
+      if (!availability.available) continue;
+      const unifiedId = `oauth-${profile.id}`;
+      const priorityIndex = priorityOrder.indexOf(unifiedId);
+      unifiedAccounts.push({
+        id: profile.id,
+        name: profile.name,
+        type: 'oauth',
+        priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+      });
+    }
 
-    return getBestAvailableUnifiedAccount(
-      this.data.profiles,
-      apiProfiles,
-      settings,
-      {
-        excludeAccountId,
-        priorityOrder,
-        activeOAuthId,
-        activeAPIId
+    // Add API profiles (always considered available if they have an apiKey)
+    try {
+      const { loadProfilesFile } = await import('./services/profile/profile-manager');
+      const profilesFile = await loadProfilesFile();
+      for (const apiProfile of profilesFile.profiles) {
+        if (excludeIds.has(apiProfile.id) || !apiProfile.apiKey) continue;
+        const unifiedId = `api-${apiProfile.id}`;
+        const priorityIndex = priorityOrder.indexOf(unifiedId);
+        unifiedAccounts.push({
+          id: apiProfile.id,
+          name: apiProfile.name,
+          type: 'api',
+          priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+        });
       }
-    );
+    } catch (error) {
+      if (process.env.DEBUG === 'true') {
+        console.warn('[ClaudeProfileManager] Failed to load API profiles for unified selection:', error);
+      }
+    }
+
+    if (unifiedAccounts.length === 0) {
+      return null;
+    }
+
+    // Sort by priority order (lower index = higher priority)
+    // If no priority order set, OAuth profiles come first (already sorted by availability)
+    unifiedAccounts.sort((a, b) => {
+      if (a.priorityIndex !== Infinity || b.priorityIndex !== Infinity) {
+        return a.priorityIndex - b.priorityIndex;
+      }
+      if (a.type !== b.type) {
+        return a.type === 'oauth' ? -1 : 1;
+      }
+      return 0;
+    });
+
+    return unifiedAccounts[0];
   }
 
   /**

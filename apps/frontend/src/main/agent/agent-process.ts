@@ -172,11 +172,11 @@ export class AgentProcessManager {
     return env;
   }
 
-  private setupProcessEnvironment(
+  private async setupProcessEnvironment(
     extraEnv: Record<string, string>
-  ): NodeJS.ProcessEnv {
+  ): Promise<NodeJS.ProcessEnv> {
     // Get best available Claude profile environment (automatically handles rate limits)
-    const profileResult = getBestAvailableProfileEnv();
+    const profileResult = await getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
     // Use getAugmentedEnv() to ensure common tool paths (dotnet, homebrew, etc.)
     // are available even when app is launched from Finder/Dock
@@ -219,11 +219,11 @@ export class AgentProcessManager {
     } as NodeJS.ProcessEnv;
   }
 
-  private handleProcessFailure(
+  private async handleProcessFailure(
     taskId: string,
     allOutput: string,
     processType: ProcessType
-  ): boolean {
+  ): Promise<boolean> {
     console.log('[AgentProcess] Checking for rate limit in output (last 500 chars):', allOutput.slice(-500));
 
     const rateLimitDetection = detectRateLimit(allOutput);
@@ -236,7 +236,7 @@ export class AgentProcessManager {
     });
 
     if (rateLimitDetection.isRateLimited) {
-      const wasHandled = this.handleRateLimitWithAutoSwap(
+      const wasHandled = await this.handleRateLimitWithAutoSwap(
         taskId,
         rateLimitDetection,
         processType
@@ -253,11 +253,11 @@ export class AgentProcessManager {
     return this.handleAuthFailure(taskId, allOutput);
   }
 
-  private handleRateLimitWithAutoSwap(
+  private async handleRateLimitWithAutoSwap(
     taskId: string,
     rateLimitDetection: ReturnType<typeof detectRateLimit>,
     processType: ProcessType
-  ): boolean {
+  ): Promise<boolean> {
     const profileManager = getClaudeProfileManager();
     const autoSwitchSettings = profileManager.getAutoSwitchSettings();
 
@@ -273,14 +273,15 @@ export class AgentProcessManager {
     }
 
     const currentProfileId = rateLimitDetection.profileId;
-    const bestProfile = profileManager.getBestAvailableProfile(currentProfileId);
+    const bestAccount = await profileManager.getBestAvailableUnifiedAccount(currentProfileId);
 
-    console.log('[AgentProcess] Best available profile:', bestProfile ? {
-      id: bestProfile.id,
-      name: bestProfile.name
+    console.log('[AgentProcess] Best available account:', bestAccount ? {
+      id: bestAccount.id,
+      name: bestAccount.name,
+      type: bestAccount.type
     } : 'NONE');
 
-    if (!bestProfile) {
+    if (!bestAccount) {
       // Single account case: let backend handle with intelligent pause
       // Don't show manual modal - backend will pause intelligently and resume when ready
       console.log('[AgentProcess] No alternative profile - backend will handle with intelligent pause');
@@ -289,24 +290,29 @@ export class AgentProcessManager {
       return false;
     }
 
-    console.log('[AgentProcess] AUTO-SWAP: Switching from', currentProfileId, 'to', bestProfile.id);
-    profileManager.setActiveProfile(bestProfile.id);
+    console.log('[AgentProcess] AUTO-SWAP: Switching from', currentProfileId, 'to', bestAccount.id, '(type:', bestAccount.type + ')');
+    if (bestAccount.type === 'oauth') {
+      profileManager.setActiveProfile(bestAccount.id);
+    } else {
+      const { setActiveAPIProfile } = await import('../services/profile/profile-manager');
+      await setActiveAPIProfile(bestAccount.id);
+    }
 
     const source = processType === 'spec-creation' ? 'roadmap' : 'task';
     const rateLimitInfo = createSDKRateLimitInfo(source, rateLimitDetection, { taskId });
     rateLimitInfo.wasAutoSwapped = true;
-    rateLimitInfo.swappedToProfile = { id: bestProfile.id, name: bestProfile.name };
+    rateLimitInfo.swappedToProfile = { id: bestAccount.id, name: bestAccount.name };
     rateLimitInfo.swapReason = 'reactive';
 
     console.log('[AgentProcess] Emitting sdk-rate-limit event (auto-swapped):', rateLimitInfo);
     this.emitter.emit('sdk-rate-limit', rateLimitInfo);
 
     console.log('[AgentProcess] Emitting auto-swap-restart-task event for task:', taskId);
-    this.emitter.emit('auto-swap-restart-task', taskId, bestProfile.id);
+    this.emitter.emit('auto-swap-restart-task', taskId, bestAccount.id);
     return true;
   }
 
-  private handleAuthFailure(taskId: string, allOutput: string): boolean {
+  private async handleAuthFailure(taskId: string, allOutput: string): Promise<boolean> {
     console.log('[AgentProcess] No rate limit detected - checking for auth failure');
     const authFailureDetection = detectAuthFailure(allOutput);
 
@@ -318,7 +324,7 @@ export class AgentProcessManager {
     console.log('[AgentProcess] Auth failure detected:', authFailureDetection);
 
     // Try auto-swap if enabled
-    const wasHandled = this.handleAuthFailureWithAutoSwap(taskId, authFailureDetection);
+    const wasHandled = await this.handleAuthFailureWithAutoSwap(taskId, authFailureDetection);
 
     if (!wasHandled) {
       // Fall back to UI notification
@@ -336,12 +342,12 @@ export class AgentProcessManager {
   /**
    * Attempt to auto-swap to another profile on authentication failure.
    * Only works when autoSwitchOnAuthFailure is enabled and an alternative
-   * authenticated profile is available.
+   * authenticated profile is available. Considers both OAuth and API profiles.
    */
-  private handleAuthFailureWithAutoSwap(
+  private async handleAuthFailureWithAutoSwap(
     taskId: string,
     authFailureDetection: ReturnType<typeof detectAuthFailure>
-  ): boolean {
+  ): Promise<boolean> {
     const profileManager = getClaudeProfileManager();
     const autoSwitchSettings = profileManager.getAutoSwitchSettings();
 
@@ -357,22 +363,35 @@ export class AgentProcessManager {
     }
 
     const currentProfileId = authFailureDetection.profileId;
-    const bestProfile = profileManager.getBestAvailableProfile(currentProfileId);
+    const bestAccount = await profileManager.getBestAvailableUnifiedAccount(currentProfileId);
 
-    console.log('[AgentProcess] Best available profile for auth failure swap:', bestProfile ? {
-      id: bestProfile.id,
-      name: bestProfile.name,
-      isAuthenticated: bestProfile.isAuthenticated
+    console.log('[AgentProcess] Best available account for auth failure swap:', bestAccount ? {
+      id: bestAccount.id,
+      name: bestAccount.name,
+      type: bestAccount.type
     } : 'NONE');
 
-    // Verify the best profile is actually authenticated
-    if (!bestProfile || !bestProfile.isAuthenticated) {
-      console.log('[AgentProcess] No authenticated alternative profile - falling back to UI');
+    if (!bestAccount) {
+      console.log('[AgentProcess] No alternative account available - falling back to UI');
       return false;
     }
 
-    console.log('[AgentProcess] AUTH-FAILURE AUTO-SWAP:', currentProfileId, '->', bestProfile.id);
-    profileManager.setActiveProfile(bestProfile.id);
+    // For OAuth results, verify authentication (API profiles validated by having apiKey)
+    if (bestAccount.type === 'oauth') {
+      const oauthProfile = profileManager.getProfile(bestAccount.id);
+      if (!oauthProfile?.isAuthenticated && !profileManager.isProfileAuthenticated(oauthProfile!)) {
+        console.log('[AgentProcess] OAuth profile not authenticated - falling back to UI');
+        return false;
+      }
+    }
+
+    console.log('[AgentProcess] AUTH-FAILURE AUTO-SWAP:', currentProfileId, '->', bestAccount.id, '(type:', bestAccount.type + ')');
+    if (bestAccount.type === 'oauth') {
+      profileManager.setActiveProfile(bestAccount.id);
+    } else {
+      const { setActiveAPIProfile } = await import('../services/profile/profile-manager');
+      await setActiveAPIProfile(bestAccount.id);
+    }
 
     // Emit auth-failure event with swap metadata for UI notification
     this.emitter.emit('auth-failure', taskId, {
@@ -381,12 +400,12 @@ export class AgentProcessManager {
       message: authFailureDetection.message,
       originalError: authFailureDetection.originalError,
       wasAutoSwapped: true,
-      swappedToProfile: { id: bestProfile.id, name: bestProfile.name }
+      swappedToProfile: { id: bestAccount.id, name: bestAccount.name }
     });
 
     // Reuse existing restart event
     console.log('[AgentProcess] Emitting auto-swap-restart-task event for auth failure:', taskId);
-    this.emitter.emit('auto-swap-restart-task', taskId, bestProfile.id);
+    this.emitter.emit('auto-swap-restart-task', taskId, bestAccount.id);
     return true;
   }
 
@@ -598,7 +617,7 @@ export class AgentProcessManager {
       spawnId
     });
 
-    const env = this.setupProcessEnvironment(extraEnv);
+    const env = await this.setupProcessEnvironment(extraEnv);
 
     // Get Python environment (PYTHONPATH for bundled packages, etc.)
     const pythonEnv = pythonEnvManager.getPythonEnv();
@@ -798,7 +817,7 @@ export class AgentProcessManager {
       stderrBuffer = processBufferedOutput(stderrBuffer, data.toString('utf-8'));
     });
 
-    childProcess.on('exit', (code: number | null) => {
+    childProcess.on('exit', async (code: number | null) => {
       if (stdoutBuffer.trim()) {
         this.emitter.emit('log', taskId, stdoutBuffer + '\n', projectId);
         processLog(stdoutBuffer);
@@ -817,7 +836,7 @@ export class AgentProcessManager {
 
       if (code !== 0) {
         console.log('[AgentProcess] Process failed with code:', code, 'for task:', taskId);
-        const wasHandled = this.handleProcessFailure(taskId, allOutput, processType);
+        const wasHandled = await this.handleProcessFailure(taskId, allOutput, processType);
 
         if (wasHandled) {
           this.emitter.emit('exit', taskId, code, processType, projectId);

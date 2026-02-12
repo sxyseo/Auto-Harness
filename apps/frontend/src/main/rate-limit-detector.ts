@@ -472,8 +472,29 @@ export interface BestProfileEnvResult {
  *
  * @returns Object containing env vars and metadata about which profile was selected
  */
-export function getBestAvailableProfileEnv(): BestProfileEnvResult {
+export async function getBestAvailableProfileEnv(): Promise<BestProfileEnvResult> {
   const profileManager = getClaudeProfileManager();
+
+  // Check if an API profile is currently active - if so, don't run OAuth swap logic
+  try {
+    const { loadProfilesFile } = await import('./services/profile/profile-manager');
+    const profilesFile = await loadProfilesFile();
+    if (profilesFile.activeProfileId) {
+      const activeAPI = profilesFile.profiles.find(p => p.id === profilesFile.activeProfileId);
+      if (activeAPI?.apiKey) {
+        // API profile is active - return no-swap result
+        // Actual API env vars will be applied by getAPIProfileEnv() in spawnProcess
+        const activeOAuthEnv = profileManager.getActiveProfileEnv();
+        return {
+          env: ensureCleanProfileEnv(activeOAuthEnv),
+          profileId: activeAPI.id,
+          profileName: activeAPI.name,
+          wasSwapped: false
+        };
+      }
+    }
+  } catch { /* fall through to OAuth logic */ }
+
   const activeProfile = profileManager.getActiveProfile();
 
   // Check for explicit rate limit (from previous API errors)
@@ -503,41 +524,45 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
       });
     }
 
-    // Try to find a better profile
-    const bestProfile = profileManager.getBestAvailableProfile(activeProfile.id);
+    // Use unified selection to find best account (OAuth or API)
+    const bestAccount = await profileManager.getBestAvailableUnifiedAccount(activeProfile.id);
 
-    if (bestProfile) {
+    if (bestAccount) {
       if (process.env.DEBUG === 'true') {
-        console.warn('[RateLimitDetector] Using alternative profile:', {
+        console.warn('[RateLimitDetector] Using alternative account:', {
           originalProfile: activeProfile.name,
-          alternativeProfile: bestProfile.name,
+          alternativeAccount: bestAccount.name,
+          type: bestAccount.type,
           reason: swapReason
         });
       }
 
       // Persist the swap by updating the active profile
-      // This ensures the UI reflects which account is actually being used
-      profileManager.setActiveProfile(bestProfile.id);
+      if (bestAccount.type === 'oauth') {
+        profileManager.setActiveProfile(bestAccount.id);
+      } else {
+        try {
+          const { setActiveAPIProfile } = await import('./services/profile/profile-manager');
+          await setActiveAPIProfile(bestAccount.id);
+        } catch (error) {
+          console.error('[RateLimitDetector] Failed to set active API profile:', error);
+        }
+      }
+
       console.warn('[RateLimitDetector] Switched active profile:', {
         from: activeProfile.name,
-        to: bestProfile.name,
+        to: bestAccount.name,
+        type: bestAccount.type,
         reason: swapReason
       });
 
       // Trigger a usage refresh so the UI shows the new active profile
-      // This updates the UsageIndicator in the header
-      // We use fire-and-forget pattern to avoid making this function async
       try {
         const usageMonitor = getUsageMonitor();
-        // Force refresh all profiles usage data, which will emit 'all-profiles-usage-updated' event
-        // The UI components listen for this and will update automatically
         usageMonitor.getAllProfilesUsage(true).then((allProfilesUsage) => {
           if (allProfilesUsage) {
-            // Find the new active profile in allProfiles and emit its usage
-            // This ensures UsageIndicator.usage state also updates to show the new active account
             const newActiveProfile = allProfilesUsage.allProfiles.find(p => p.isActive);
             if (newActiveProfile) {
-              // Construct a ClaudeUsageSnapshot for the new active profile
               const newActiveUsage = {
                 profileId: newActiveProfile.profileId,
                 profileName: newActiveProfile.profileName,
@@ -551,23 +576,25 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
               };
               usageMonitor.emit('usage-updated', newActiveUsage);
             }
-            // Also emit all-profiles-usage-updated for the other profiles list
             usageMonitor.emit('all-profiles-usage-updated', allProfilesUsage);
           }
         }).catch((err) => {
           console.warn('[RateLimitDetector] Failed to refresh usage after swap:', err);
         });
       } catch (err) {
-        // Usage monitor may not be initialized yet, that's OK
         console.warn('[RateLimitDetector] Could not trigger usage refresh:', err);
       }
 
-      const profileEnv = profileManager.getProfileEnv(bestProfile.id);
+      // For OAuth, get specific profile env; for API, use current OAuth env
+      // (API env vars will be applied by getAPIProfileEnv() in spawnProcess)
+      const profileEnv = bestAccount.type === 'oauth'
+        ? profileManager.getProfileEnv(bestAccount.id)
+        : profileManager.getActiveProfileEnv();
 
       return {
         env: ensureCleanProfileEnv(profileEnv),
-        profileId: bestProfile.id,
-        profileName: bestProfile.name,
+        profileId: bestAccount.id,
+        profileName: bestAccount.name,
         wasSwapped: true,
         swapReason,
         originalProfile: {

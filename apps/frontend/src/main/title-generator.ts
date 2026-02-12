@@ -163,7 +163,7 @@ export class TitleGenerator extends EventEmitter {
     let profileEnv: Record<string, string> = {};
     if (!isApiProfileActive) {
       // Use centralized function that automatically handles rate limits and capacity
-      const profileResult = getBestAvailableProfileEnv();
+      const profileResult = await getBestAvailableProfileEnv();
       profileEnv = profileResult.env;
 
       if (profileResult.wasSwapped) {

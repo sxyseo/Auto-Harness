@@ -84,7 +84,7 @@ vi.mock('../services/profile', () => ({
 }));
 
 vi.mock('../rate-limit-detector', () => ({
-  getBestAvailableProfileEnv: vi.fn(() => ({
+  getBestAvailableProfileEnv: vi.fn(() => Promise.resolve({
     env: {},
     profileId: 'default',
     profileName: 'Default',
@@ -292,7 +292,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
 
       // Set OAuth token via getProfileEnv (existing flow)
-      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockResolvedValue({
         env: { CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-123' },
         profileId: 'default',
         profileName: 'Default',
@@ -327,7 +327,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
 
       // Set OAuth token
-      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockResolvedValue({
         env: { CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-456' },
         profileId: 'default',
         profileName: 'Default',
@@ -354,7 +354,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
 
       // OAuth mode
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
-      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockResolvedValue({
         env: { CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-789' },
         profileId: 'default',
         profileName: 'Default',
@@ -512,7 +512,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_BASE_URL: 'https://api-profile.com'
       };
 
-      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockResolvedValue({
         env: profileEnv,
         profileId: 'default',
         profileName: 'Default',

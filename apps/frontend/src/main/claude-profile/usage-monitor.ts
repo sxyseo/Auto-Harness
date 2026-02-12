@@ -219,6 +219,10 @@ export class UsageMonitor extends EventEmitter {
   // These profiles have permanent auth failures that require manual re-auth
   private needsReauthProfiles: Set<string> = new Set();
 
+  // Swap cooldown to prevent rapid back-and-forth swapping
+  private static SWAP_COOLDOWN_MS = 60_000; // 1 minute
+  private lastSwapTimestamp = 0;
+
   // Cache for all profiles' usage data
   // Map<profileId, { usage: ProfileUsageSummary, fetchedAt: number }>
   private allProfilesUsageCache: Map<string, { usage: ProfileUsageSummary; fetchedAt: number }> = new Map();
@@ -922,8 +926,8 @@ export class UsageMonitor extends EventEmitter {
         this.emit('all-profiles-usage-updated', allProfilesUsage);
       }
 
-      // Step 4: Check thresholds and perform proactive swap (OAuth profiles only)
-      if (!isAPIProfile) {
+      // Step 4: Check thresholds and perform proactive swap (both OAuth and API profiles)
+      {
         const profileManager = getClaudeProfileManager();
         const settings = profileManager.getAutoSwitchSettings();
 
@@ -960,8 +964,6 @@ export class UsageMonitor extends EventEmitter {
             weekPercent: usage.weeklyPercent
           });
         }
-      } else {
-        this.debugLog('[UsageMonitor:TRACE] Skipping proactive swap for API profile (only supported for OAuth profiles)');
       }
     } catch (error) {
       // Step 5: Handle auth failures
@@ -1167,9 +1169,8 @@ export class UsageMonitor extends EventEmitter {
 
     const settings = profileManager.getAutoSwitchSettings();
 
-    // Proactive swap is only supported for OAuth profiles, not API profiles
-    if (isAPIProfile || !settings.enabled || !settings.proactiveSwapEnabled) {
-      this.debugLog('[UsageMonitor] Auth failure detected but proactive swap is disabled or using API profile, skipping swap');
+    if (!settings.enabled || !settings.proactiveSwapEnabled) {
+      this.debugLog('[UsageMonitor] Auth failure detected but proactive swap is disabled, skipping swap');
       return;
     }
 
@@ -1869,60 +1870,23 @@ export class UsageMonitor extends EventEmitter {
     limitType: 'session' | 'weekly',
     additionalExclusions: string[] = []
   ): Promise<void> {
+    // Cooldown check to prevent rapid back-and-forth swapping
+    const now = Date.now();
+    if (now - this.lastSwapTimestamp < UsageMonitor.SWAP_COOLDOWN_MS) {
+      this.debugLog('[UsageMonitor] Swap cooldown active, skipping');
+      return;
+    }
+
     const profileManager = getClaudeProfileManager();
-    const excludeIds = new Set([currentProfileId, ...additionalExclusions]);
 
-    // Get priority order for unified account system
-    const priorityOrder = profileManager.getAccountPriorityOrder();
+    // Use shared unified account selection
+    const bestAccount = await profileManager.getBestAvailableUnifiedAccount(
+      currentProfileId,
+      additionalExclusions
+    );
 
-    // Build unified list of available accounts
-    type UnifiedSwapTarget = {
-      id: string;
-      unifiedId: string;  // oauth-{id} or api-{id}
-      name: string;
-      type: 'oauth' | 'api';
-      priorityIndex: number;
-    };
-
-    const unifiedAccounts: UnifiedSwapTarget[] = [];
-
-    // Add OAuth profiles (sorted by availability)
-    const oauthProfiles = profileManager.getProfilesSortedByAvailability();
-    for (const profile of oauthProfiles) {
-      if (!excludeIds.has(profile.id)) {
-        const unifiedId = `oauth-${profile.id}`;
-        const priorityIndex = priorityOrder.indexOf(unifiedId);
-        unifiedAccounts.push({
-          id: profile.id,
-          unifiedId,
-          name: profile.name,
-          type: 'oauth',
-          priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
-        });
-      }
-    }
-
-    // Add API profiles (always considered available since they have unlimited usage)
-    try {
-      const profilesFile = await loadProfilesFile();
-      for (const apiProfile of profilesFile.profiles) {
-        if (!excludeIds.has(apiProfile.id) && apiProfile.apiKey) {
-          const unifiedId = `api-${apiProfile.id}`;
-          const priorityIndex = priorityOrder.indexOf(unifiedId);
-          unifiedAccounts.push({
-            id: apiProfile.id,
-            unifiedId,
-            name: apiProfile.name,
-            type: 'api',
-            priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
-          });
-        }
-      }
-    } catch (error) {
-      this.debugLog('[UsageMonitor] Failed to load API profiles for swap:', error);
-    }
-
-    if (unifiedAccounts.length === 0) {
+    if (!bestAccount) {
+      const excludeIds = new Set([currentProfileId, ...additionalExclusions]);
       this.debugLog('[UsageMonitor] No alternative profile for proactive swap (excluded:', Array.from(excludeIds));
       this.emit('proactive-swap-failed', {
         reason: additionalExclusions.length > 0 ? 'all_alternatives_failed_auth' : 'no_alternative',
@@ -1931,23 +1895,6 @@ export class UsageMonitor extends EventEmitter {
       });
       return;
     }
-
-    // Sort by priority order (lower index = higher priority)
-    // If no priority order is set, OAuth profiles come first (they were already sorted by availability)
-    unifiedAccounts.sort((a, b) => {
-      // If both have priority indices, use them
-      if (a.priorityIndex !== Infinity || b.priorityIndex !== Infinity) {
-        return a.priorityIndex - b.priorityIndex;
-      }
-      // Otherwise, prefer OAuth profiles (which are sorted by availability)
-      if (a.type !== b.type) {
-        return a.type === 'oauth' ? -1 : 1;
-      }
-      return 0;
-    });
-
-    // Use the best available from unified accounts
-    const bestAccount = unifiedAccounts[0];
 
     this.debugLog('[UsageMonitor] Proactive swap:', {
       from: currentProfileId,
@@ -1977,6 +1924,9 @@ export class UsageMonitor extends EventEmitter {
         return;
       }
     }
+
+    // Record swap timestamp for cooldown
+    this.lastSwapTimestamp = Date.now();
 
     // Get the "from" profile name
     let fromProfileName: string | undefined;

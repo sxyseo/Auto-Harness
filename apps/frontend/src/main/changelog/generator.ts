@@ -141,7 +141,7 @@ export class ChangelogGenerator extends EventEmitter {
     this.debug('Spawning Python process...');
 
     // Build environment with explicit critical variables
-    const spawnEnv = this.buildSpawnEnvironment();
+    const spawnEnv = await this.buildSpawnEnvironment();
 
     // Parse Python command to handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.pythonPath);
@@ -286,7 +286,7 @@ export class ChangelogGenerator extends EventEmitter {
   /**
    * Build spawn environment with proper PATH and auth settings
    */
-  private buildSpawnEnvironment(): Record<string, string> {
+  private async buildSpawnEnvironment(): Promise<Record<string, string>> {
     const homeDir = os.homedir();
 
     // Use getAugmentedEnv() to ensure common tool paths are available
@@ -294,7 +294,7 @@ export class ChangelogGenerator extends EventEmitter {
     const augmentedEnv = getAugmentedEnv();
 
     // Get best available Claude profile environment (automatically handles rate limits)
-    const profileResult = getBestAvailableProfileEnv();
+    const profileResult = await getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
     this.debug('Active profile environment', {
       hasOAuthToken: !!profileEnv.CLAUDE_CODE_OAUTH_TOKEN,
