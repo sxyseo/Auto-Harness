@@ -17,6 +17,7 @@ import { AutoFixButton } from './AutoFixButton';
 import { EnrichmentPanel } from './EnrichmentPanel';
 import { DependencyList } from './DependencyList';
 import { CommentForm } from './CommentForm';
+import { InlineEditor } from './InlineEditor';
 import type { IssueDetailProps } from '../types';
 
 export function IssueDetail({
@@ -34,6 +35,8 @@ export function IssueDetail({
   onImproveIssue,
   onSplitIssue,
   isAIBusy,
+  onEditTitle,
+  onEditBody,
   onClose,
   onReopen,
   onComment,
@@ -96,9 +99,20 @@ export function IssueDetail({
               </a>
             </Button>
           </div>
-          <h2 className="text-lg font-semibold text-foreground">
-            {issue.title}
-          </h2>
+          {onEditTitle ? (
+            <h2 className="text-lg font-semibold text-foreground">
+              <InlineEditor
+                value={issue.title}
+                onSave={onEditTitle}
+                ariaLabel={t('mutations.editTitle')}
+                required
+              />
+            </h2>
+          ) : (
+            <h2 className="text-lg font-semibold text-foreground">
+              {issue.title}
+            </h2>
+          )}
         </div>
 
         {/* Meta */}
@@ -224,7 +238,14 @@ export function IssueDetail({
             <CardTitle className="text-sm">Description</CardTitle>
           </CardHeader>
           <CardContent>
-            {issue.body ? (
+            {onEditBody ? (
+              <InlineEditor
+                value={issue.body ?? ''}
+                onSave={onEditBody}
+                ariaLabel={t('mutations.editBody')}
+                multiline
+              />
+            ) : issue.body ? (
               <div className="prose prose-sm dark:prose-invert max-w-none">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{issue.body}</ReactMarkdown>
               </div>

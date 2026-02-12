@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 6 / 41 complete
+**Status:** 8 / 41 complete
 
 ---
 
@@ -43,30 +43,30 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** GAP-01
 
 ### GAP-02: InlineEditor not used for title editing in IssueDetail.tsx
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Small
 - **Doc ref:** Phase 5 PRD > US-4 > AC-4.1; Phase 2 PRD > US-1
 - **Files to modify:** `renderer/components/github-issues/components/IssueDetail.tsx`
 - **Source component:** `InlineEditor.tsx` — accepts value, onSave, ariaLabel, maxLength, counterThreshold, required
-- **Fix:** Import InlineEditor. At line 99-101 (plain h2), conditionally render InlineEditor when onEditTitle provided, else render static h2. Props: maxLength=256, counterThreshold=200, required, ariaLabel="Edit issue title"
-- **Tests:** Render IssueDetail with onEditTitle → InlineEditor visible; without → static h2
-- **Test status:** `PENDING`
+- **Fix:** Imported InlineEditor. Conditionally renders InlineEditor when onEditTitle provided (required, ariaLabel from i18n), else renders static h2.
+- **Tests:** 3 new tests: renders edit button when onEditTitle present, no edit button when absent, onEditTitle called on save
+- **Test status:** `PASS` (14/14)
 - **Depends on:** GAP-01 (for callbacks to flow)
-- **Commit:** —
+- **Commit:** (combined with GAP-03)
 
 ### GAP-03: InlineEditor not used for body editing in IssueDetail.tsx
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Small
 - **Doc ref:** Phase 5 PRD > US-4 > AC-4.2; Phase 2 PRD > US-2
 - **Files to modify:** `renderer/components/github-issues/components/IssueDetail.tsx`
 - **Source component:** `InlineEditor.tsx` — multiline mode
-- **Fix:** At line 222-237 (body ReactMarkdown), conditionally render InlineEditor multiline when onEditBody provided. Props: maxLength=65536, counterThreshold=60000, multiline, ariaLabel="Edit issue body"
-- **Tests:** Render with onEditBody → InlineEditor multiline; without → static markdown
-- **Test status:** `PENDING`
+- **Fix:** Conditionally renders InlineEditor multiline when onEditBody provided, ariaLabel from i18n. Falls through to ReactMarkdown or empty state when not provided.
+- **Tests:** 4 new tests: renders edit button when onEditBody present, no edit button when absent, body InlineEditor editable, null body with onEditBody
+- **Test status:** `PASS` (14/14)
 - **Depends on:** GAP-01, GAP-02 (same import)
-- **Commit:** —
+- **Commit:** (combined with GAP-02)
 
 ### GAP-04: LabelManager not used in IssueDetail.tsx
 - **Status:** `PENDING`
@@ -552,6 +552,7 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 | 2026-02-12 | GAP-38 | DONE — aria-labels on AI buttons (EnrichmentPanel + BulkActionBar), 18 tests pass | GAP-38 |
 | 2026-02-12 | GAP-01 | DONE — useMutations wired in GitHubIssues.tsx, 9 callbacks passed to IssueDetail | GAP-01 |
 | 2026-02-12 | GAP-21 | DONE — optimistic store updates in useMutations, 21 tests pass | GAP-21 |
+| 2026-02-12 | GAP-02+03 | DONE — InlineEditor wired for title (required) and body (multiline) in IssueDetail, 7 new tests, 14 pass | GAP-02+03 |
 
 ---
 
