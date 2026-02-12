@@ -20,6 +20,7 @@ import { CommentForm } from './CommentForm';
 import { InlineEditor } from './InlineEditor';
 import { LabelManager } from './LabelManager';
 import { AssigneeManager } from './AssigneeManager';
+import { CreateSpecButton } from './CreateSpecButton';
 import type { IssueDetailProps } from '../types';
 
 export function IssueDetail({
@@ -45,6 +46,7 @@ export function IssueDetail({
   onAddAssignees,
   onRemoveAssignees,
   collaborators,
+  onCreateSpec,
   onClose,
   onReopen,
   onComment,
@@ -213,6 +215,17 @@ export function IssueDetail({
             </Button>
           )}
         </div>
+
+        {/* Create Spec */}
+        {onCreateSpec && (
+          <CreateSpecButton
+            issueNumber={issue.number}
+            issueClosed={issue.state === 'closed'}
+            hasActiveAgent={!!enrichment?.agentLinks?.some(l => l.status === 'active')}
+            hasEnrichment={!!enrichment?.enrichment}
+            onCreateSpec={onCreateSpec}
+          />
+        )}
 
         {/* Task Linked Info */}
         {hasLinkedTask && (

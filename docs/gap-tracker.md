@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 10 / 41 complete
+**Status:** 11 / 41 complete
 
 ---
 
@@ -95,17 +95,17 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** (combined with GAP-04)
 
 ### GAP-06: CreateSpecButton not used in IssueDetail.tsx
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Medium
 - **Doc ref:** Phase 2 PRD > US-8 > AC8.1; Phase 2 PRD Section 4.2
-- **Files to modify:** `renderer/components/github-issues/components/IssueDetail.tsx`
+- **Files to modify:** `renderer/components/github-issues/components/IssueDetail.tsx`, `types/index.ts`
 - **Source component:** `CreateSpecButton.tsx` — accepts issueNumber, issueClosed, hasActiveAgent, activeSpecNumber, hasEnrichment, onCreateSpec
-- **Fix:** Import CreateSpecButton. Add inside actions div (after Investigate button, ~line 163). Wire props from enrichment data.
-- **Tests:** Render with onCreateSpec → button visible; check disabled when hasActiveAgent
-- **Test status:** `PENDING`
+- **Fix:** Added onCreateSpec to IssueDetailProps, imported CreateSpecButton, conditionally renders after actions when onCreateSpec provided, derives hasActiveAgent and hasEnrichment from enrichment data
+- **Tests:** 3 new tests: button visible with onCreateSpec, hidden without, disabled when agent active
+- **Test status:** `PASS` (23/23)
 - **Depends on:** None (standalone component)
-- **Commit:** —
+- **Commit:** GAP-06
 
 ### GAP-07: CompletenessBreakdown not used in EnrichmentPanel.tsx
 - **Status:** `PENDING`
@@ -554,6 +554,7 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 | 2026-02-12 | GAP-21 | DONE — optimistic store updates in useMutations, 21 tests pass | GAP-21 |
 | 2026-02-12 | GAP-02+03 | DONE — InlineEditor wired for title (required) and body (multiline) in IssueDetail, 7 new tests, 14 pass | GAP-02+03 |
 | 2026-02-12 | GAP-04+05 | DONE — LabelManager+AssigneeManager wired in IssueDetail, repoLabels/collaborators fetched via IPC, 6 new tests, 20 pass | GAP-04+05 |
+| 2026-02-12 | GAP-06 | DONE — CreateSpecButton wired in IssueDetail with onCreateSpec prop, 3 new tests, 23 pass | GAP-06 |
 
 ---
 

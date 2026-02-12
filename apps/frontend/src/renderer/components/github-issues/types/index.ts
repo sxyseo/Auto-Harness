@@ -52,6 +52,7 @@ export interface IssueDetailProps {
   onAddAssignees?: (logins: string[]) => Promise<void>;
   onRemoveAssignees?: (logins: string[]) => Promise<void>;
   collaborators?: string[];
+  onCreateSpec?: () => Promise<{ specNumber: string } | null>;
   onClose?: (comment?: string) => Promise<void>;
   onReopen?: () => Promise<void>;
   onComment?: (body: string) => Promise<void>;
