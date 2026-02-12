@@ -37,7 +37,7 @@ export function LabelManager({
   }
 
   return (
-    <div className="space-y-2" aria-label="Label manager">
+    <section className="space-y-2" aria-label="Label manager">
       {/* Current labels */}
       <div className="flex flex-wrap gap-1.5">
         {currentLabels.map((label) => {
@@ -90,11 +90,11 @@ export function LabelManager({
             className="w-full px-2 py-1 text-xs border-b border-border bg-transparent focus:outline-none"
             aria-label="Filter labels"
           />
-          <ul role="listbox" aria-label="Available labels">
+          <div role="listbox" aria-label="Available labels">
             {filteredLabels.map((label) => {
               const isApplied = currentLabels.includes(label.name);
               return (
-                <li key={label.name} role="option" aria-selected={isApplied}>
+                <div key={label.name} role="option" tabIndex={0} aria-selected={isApplied}>
                   <button
                     type="button"
                     className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"
@@ -111,17 +111,17 @@ export function LabelManager({
                     <span className="flex-1">{label.name}</span>
                     {isApplied && <Check className="h-3 w-3 text-primary" />}
                   </button>
-                </li>
+                </div>
               );
             })}
             {filteredLabels.length === 0 && (
-              <li className="px-2 py-1.5 text-xs text-muted-foreground">
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">
                 No matching labels
-              </li>
+              </div>
             )}
-          </ul>
+          </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

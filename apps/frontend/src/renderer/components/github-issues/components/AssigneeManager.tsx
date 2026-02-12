@@ -32,7 +32,7 @@ export function AssigneeManager({
   }
 
   return (
-    <div className="space-y-2" aria-label="Assignee manager">
+    <section className="space-y-2" aria-label="Assignee manager">
       {/* Current assignees */}
       <div className="flex flex-wrap gap-1.5">
         {currentAssignees.map((assignee) => (
@@ -86,11 +86,11 @@ export function AssigneeManager({
             className="w-full px-2 py-1 text-xs border-b border-border bg-transparent focus:outline-none"
             aria-label="Search collaborators"
           />
-          <ul role="listbox" aria-label="Available collaborators">
+          <div role="listbox" aria-label="Available collaborators">
             {filteredCollaborators.map((login) => {
               const isAssigned = assignedLogins.has(login);
               return (
-                <li key={login} role="option" aria-selected={isAssigned}>
+                <div key={login} role="option" tabIndex={0} aria-selected={isAssigned}>
                   <button
                     type="button"
                     className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"
@@ -103,17 +103,17 @@ export function AssigneeManager({
                     <span className="flex-1">{login}</span>
                     {isAssigned && <Check className="h-3 w-3 text-primary" />}
                   </button>
-                </li>
+                </div>
               );
             })}
             {filteredCollaborators.length === 0 && (
-              <li className="px-2 py-1.5 text-xs text-muted-foreground">
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">
                 No matching collaborators
-              </li>
+              </div>
             )}
-          </ul>
+          </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -13,7 +13,7 @@ export function CreateSpecButton({
   issueNumber,
   issueClosed,
   hasActiveAgent,
-  activeSpecNumber,
+  activeSpecNumber: _activeSpecNumber,
   hasEnrichment,
   onCreateSpec,
 }: CreateSpecButtonProps) {
@@ -41,7 +41,7 @@ export function CreateSpecButton({
   }
 
   return (
-    <div aria-label="Create spec from issue" className="space-y-2">
+    <section aria-label="Create spec from issue" className="space-y-2">
       {/* Main button */}
       <button
         type="button"
@@ -121,6 +121,6 @@ export function CreateSpecButton({
           {error}
         </p>
       )}
-    </div>
+    </section>
   );
 }

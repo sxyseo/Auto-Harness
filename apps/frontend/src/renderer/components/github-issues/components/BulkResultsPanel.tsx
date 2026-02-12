@@ -16,7 +16,7 @@ export function BulkResultsPanel({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div
+    <section
       aria-label="Bulk operation results"
       className="rounded-md border border-border bg-card p-3 space-y-2"
     >
@@ -84,6 +84,6 @@ export function BulkResultsPanel({
           Dismiss
         </button>
       </div>
-    </div>
+    </section>
   );
 }

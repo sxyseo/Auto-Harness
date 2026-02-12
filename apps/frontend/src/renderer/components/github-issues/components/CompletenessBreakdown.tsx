@@ -37,7 +37,7 @@ export function CompletenessBreakdown({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div aria-label="Completeness score breakdown" className="space-y-2">
+    <section aria-label="Completeness score breakdown" className="space-y-2">
       {/* Header / toggle */}
       <button
         type="button"
@@ -90,6 +90,6 @@ export function CompletenessBreakdown({
           })}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

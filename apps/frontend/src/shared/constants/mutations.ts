@@ -30,7 +30,7 @@ export const BULK_MAX_BATCH_SIZE = 50;
 // ============================================
 
 /** Valid GitHub label characters: word chars, spaces, hyphens, dots, colons, slashes */
-export const LABEL_PATTERN = /^[\w\s\-.:\/]+$/;
+export const LABEL_PATTERN = /^[\w\s\-.:/]+$/;
 
 /** Valid GitHub username pattern: alphanumeric + single hyphens, 1-39 chars */
 export const GITHUB_LOGIN_PATTERN = /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/;
