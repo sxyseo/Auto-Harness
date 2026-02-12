@@ -564,7 +564,8 @@
     "improveButton": "Improve Issue",
     "splitButton": "Split Issue",
     "triageAllButton": "Triage All Untriaged",
-    "retry": "Retry"
+    "retry": "Retry",
+    "closeAsDuplicate": "Close as Duplicate"
   },
   "batchReview": {
     "title": "Batch Triage Review",

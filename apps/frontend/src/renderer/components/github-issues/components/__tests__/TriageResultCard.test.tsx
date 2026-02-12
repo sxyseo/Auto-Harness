@@ -94,4 +94,52 @@ describe('TriageResultCard', () => {
     render(<TriageResultCard item={createItem({ status: 'accepted' })} onAccept={vi.fn()} onReject={vi.fn()} />);
     expect(screen.queryByRole('button', { name: /accept/i })).toBeNull();
   });
+
+  it('makes duplicate issue number clickable when onNavigateToIssue provided', () => {
+    const onNavigate = vi.fn();
+    const item = createItem();
+    item.result.isDuplicate = true;
+    item.result.duplicateOf = 10;
+    render(
+      <TriageResultCard item={item} onAccept={vi.fn()} onReject={vi.fn()} onNavigateToIssue={onNavigate} />,
+    );
+    const link = screen.getByRole('button', { name: '#10' });
+    expect(link).toBeDefined();
+    fireEvent.click(link);
+    expect(onNavigate).toHaveBeenCalledWith(10);
+  });
+
+  it('renders duplicate number as static text when onNavigateToIssue absent', () => {
+    const item = createItem();
+    item.result.isDuplicate = true;
+    item.result.duplicateOf = 10;
+    render(<TriageResultCard item={item} onAccept={vi.fn()} onReject={vi.fn()} />);
+    // Should have #10 text but not as a button
+    expect(screen.getByText(/#10/)).toBeDefined();
+    expect(screen.queryByRole('button', { name: '#10' })).toBeNull();
+  });
+
+  it('shows Close as Duplicate button when onCloseAsDuplicate provided and pending', () => {
+    const onClose = vi.fn();
+    const item = createItem();
+    item.result.isDuplicate = true;
+    item.result.duplicateOf = 10;
+    render(
+      <TriageResultCard item={item} onAccept={vi.fn()} onReject={vi.fn()} onCloseAsDuplicate={onClose} />,
+    );
+    const btn = screen.getByRole('button', { name: 'common:aiTriage.closeAsDuplicate' });
+    expect(btn).toBeDefined();
+    fireEvent.click(btn);
+    expect(onClose).toHaveBeenCalledWith(42, 10);
+  });
+
+  it('hides Close as Duplicate for already-accepted items', () => {
+    const item = createItem({ status: 'accepted' });
+    item.result.isDuplicate = true;
+    item.result.duplicateOf = 10;
+    render(
+      <TriageResultCard item={item} onAccept={vi.fn()} onReject={vi.fn()} onCloseAsDuplicate={vi.fn()} />,
+    );
+    expect(screen.queryByRole('button', { name: 'common:aiTriage.closeAsDuplicate' })).toBeNull();
+  });
 });

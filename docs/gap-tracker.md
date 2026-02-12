@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 25 / 41 complete
+**Status:** 26 / 41 complete
 
 ---
 
@@ -405,16 +405,16 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 - **Commit:** pending
 
 ### GAP-33: Duplicate detection display-only
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** SHOULD-FIX
 - **Scope:** Medium
 - **Doc ref:** Phase 3 PRD > US-7 > AC7.2, AC7.3
-- **Files to modify:** `renderer/components/github-issues/components/TriageResultCard.tsx`
-- **Fix:** Make #{duplicateOf} a clickable button with onNavigateToIssue prop. Add "Close as Duplicate" button with onCloseAsDuplicate prop.
-- **Tests:** Click duplicate link → onNavigateToIssue called; Close as Duplicate → onCloseAsDuplicate called
-- **Test status:** `PENDING`
+- **Files modified:** `TriageResultCard.tsx`, `TriageResultCard.test.tsx`, `en/common.json`, `fr/common.json`
+- **Fix:** Added `onNavigateToIssue` and `onCloseAsDuplicate` props. Duplicate number rendered as clickable button (text-primary hover:underline) when onNavigateToIssue provided, else static span. "Close as Duplicate" button shown when onCloseAsDuplicate provided and item is pending. i18n key: aiTriage.closeAsDuplicate (EN+FR).
+- **Tests:** 5 new tests: clickable duplicate navigates, static when absent, close-as-duplicate fires callback, hidden when accepted. 13 total.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** pending
 
 ### GAP-34: No batch triage confirmation dialog or cost estimate
 - **Status:** `PENDING`

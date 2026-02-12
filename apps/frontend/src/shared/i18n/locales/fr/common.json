@@ -564,7 +564,8 @@
     "improveButton": "Améliorer l'issue",
     "splitButton": "Diviser l'issue",
     "triageAllButton": "Trier tous les non triés",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "closeAsDuplicate": "Fermer comme doublon"
   },
   "batchReview": {
     "title": "Revue de triage par lots",

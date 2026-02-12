@@ -16,9 +16,11 @@ interface TriageResultCardProps {
   item: TriageReviewItem;
   onAccept: (issueNumber: number) => void;
   onReject: (issueNumber: number) => void;
+  onNavigateToIssue?: (issueNumber: number) => void;
+  onCloseAsDuplicate?: (issueNumber: number, duplicateOf: number) => void;
 }
 
-export function TriageResultCard({ item, onAccept, onReject }: TriageResultCardProps) {
+export function TriageResultCard({ item, onAccept, onReject, onNavigateToIssue, onCloseAsDuplicate }: TriageResultCardProps) {
   const { t } = useTranslation(['common']);
   const { result } = item;
   const level = getConfidenceLevel(result.confidence);
@@ -58,11 +60,37 @@ export function TriageResultCard({ item, onAccept, onReject }: TriageResultCardP
       </div>
 
       {/* Duplicate */}
-      {result.isDuplicate && result.duplicateOf && (
-        <div className="text-xs text-foreground/50">
-          {t('common:aiTriage.duplicateOf')} <span className="font-medium">#{result.duplicateOf}</span>
-        </div>
-      )}
+      {result.isDuplicate && result.duplicateOf && (() => {
+        const dupOf = result.duplicateOf;
+        return (
+          <div className="flex items-center gap-2 text-xs text-foreground/50">
+            <span>
+              {t('common:aiTriage.duplicateOf')}{' '}
+              {onNavigateToIssue ? (
+                <button
+                  type="button"
+                  className="font-medium text-primary hover:underline cursor-pointer"
+                  onClick={() => onNavigateToIssue(dupOf)}
+                >
+                  #{dupOf}
+                </button>
+              ) : (
+                <span className="font-medium">#{dupOf}</span>
+              )}
+            </span>
+            {onCloseAsDuplicate && isPending && (
+              <button
+                type="button"
+                className="text-xs px-2 py-0.5 rounded border border-border bg-card hover:bg-accent"
+                aria-label={t('common:aiTriage.closeAsDuplicate')}
+                onClick={() => onCloseAsDuplicate(item.issueNumber, dupOf)}
+              >
+                {t('common:aiTriage.closeAsDuplicate')}
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Status / Actions */}
       {item.status === 'accepted' && (
