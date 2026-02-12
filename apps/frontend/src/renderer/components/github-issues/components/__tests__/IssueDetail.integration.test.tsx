@@ -17,7 +17,7 @@ vi.mock('react-markdown', () => ({
 }));
 
 vi.mock('remark-gfm', () => ({
-  default: () => {},
+  default: () => { /* noop plugin stub */ },
 }));
 
 const baseIssue: GitHubIssue = {

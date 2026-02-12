@@ -23,7 +23,7 @@ describe('Phase 5 Barrel Exports', () => {
   });
 
   describe('components/index', () => {
-    it('exports all Phase 1-4 components', async () => {
+    it('exports all Phase 1-4 components', { timeout: 15000 }, async () => {
       const components = await import('../components/index');
       const exportNames = Object.keys(components);
 

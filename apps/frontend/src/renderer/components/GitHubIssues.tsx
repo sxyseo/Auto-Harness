@@ -28,7 +28,6 @@ import {
   BulkActionBar,
   TriageProgressOverlay,
   IssueSplitDialog,
-  EnrichmentCommentPreview,
   TriageSidebar,
 } from "./github-issues/components";
 import { GitHubSetupModal } from "./GitHubSetupModal";
@@ -115,7 +114,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   }, [filteredIssues, workflowFilter, enrichments]);
 
   // Bulk operations
-  const { executeBulk, retryFailed, isOperating: isBulkOperating } = useBulkOperations(selectedProject?.id ?? '');
+  const { executeBulk, isOperating: isBulkOperating } = useBulkOperations(selectedProject?.id ?? '');
   const [selectedIssueNumbers, setSelectedIssueNumbers] = useState<Set<number>>(new Set());
 
   const handleToggleSelect = useCallback((issueNumber: number) => {
@@ -125,14 +124,6 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       else next.add(issueNumber);
       return next;
     });
-  }, []);
-
-  const handleSelectAll = useCallback(() => {
-    setSelectedIssueNumbers(new Set(workflowFilteredIssues.map(i => i.number)));
-  }, [workflowFilteredIssues]);
-
-  const handleDeselectAll = useCallback(() => {
-    setSelectedIssueNumbers(new Set());
   }, []);
 
   const handleBulkAction = useCallback(
@@ -158,7 +149,8 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     }
   }, [selectedProject?.id, enrichmentLoaded, computeMetrics]);
 
-  // Clear selection when filters change
+  // Clear selection when filters change — deps are intentional triggers, not consumed values
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on filter/search change
   useEffect(() => {
     setSelectedIssueNumbers(new Set());
   }, [workflowFilter, filterState, searchQuery]);

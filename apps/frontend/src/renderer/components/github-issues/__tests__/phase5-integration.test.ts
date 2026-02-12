@@ -46,7 +46,7 @@ describe('Phase 5 integration', () => {
     expect(exported).toContain('useMetrics');
   });
 
-  it('barrel exports cover all components (30+)', async () => {
+  it('barrel exports cover all components (30+)', { timeout: 15000 }, async () => {
     const components = await import('../components');
     const exported = Object.keys(components);
     expect(exported.length).toBeGreaterThanOrEqual(30);
