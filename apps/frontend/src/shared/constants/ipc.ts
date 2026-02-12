@@ -443,6 +443,22 @@ export const IPC_CHANNELS = {
   GITHUB_TRIAGE_COMPLETE: 'github:triage:complete',
   GITHUB_TRIAGE_ERROR: 'github:triage:error',
 
+  // AI Triage (Phase 3)
+  GITHUB_TRIAGE_ENRICH: 'github:triage:enrich',
+  GITHUB_TRIAGE_ENRICH_PROGRESS: 'github:triage:enrich:progress',
+  GITHUB_TRIAGE_ENRICH_ERROR: 'github:triage:enrich:error',
+  GITHUB_TRIAGE_ENRICH_COMPLETE: 'github:triage:enrich:complete',
+  GITHUB_TRIAGE_SPLIT: 'github:triage:split',
+  GITHUB_TRIAGE_SPLIT_PROGRESS: 'github:triage:split:progress',
+  GITHUB_TRIAGE_SPLIT_ERROR: 'github:triage:split:error',
+  GITHUB_TRIAGE_SPLIT_COMPLETE: 'github:triage:split:complete',
+  GITHUB_ISSUE_CREATE: 'github:issue:create',
+  GITHUB_TRIAGE_APPLY_RESULTS: 'github:triage:applyResults',
+  GITHUB_TRIAGE_APPLY_RESULTS_PROGRESS: 'github:triage:applyResults:progress',
+  GITHUB_TRIAGE_APPLY_RESULTS_COMPLETE: 'github:triage:applyResults:complete',
+  GITHUB_TRIAGE_SAVE_TRUST: 'github:triage:saveTrust',
+  GITHUB_TRIAGE_GET_TRUST: 'github:triage:getTrust',
+
   // GitHub Enrichment operations
   GITHUB_ENRICHMENT_GET_ALL: 'github:enrichment:getAll',
   GITHUB_ENRICHMENT_GET: 'github:enrichment:get',
