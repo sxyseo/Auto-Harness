@@ -1,0 +1,269 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { useAITriageStore } from '../ai-triage-store';
+import type { TriageReviewItem, ProgressiveTrustConfig } from '../../../../shared/types/ai-triage';
+
+function makeReviewItem(
+  overrides: Partial<TriageReviewItem> & { issueNumber: number },
+): TriageReviewItem {
+  return {
+    issueTitle: `Issue #${overrides.issueNumber}`,
+    status: 'pending',
+    result: {
+      category: 'bug',
+      confidence: 0.8,
+      labelsToAdd: [],
+      labelsToRemove: [],
+      isDuplicate: false,
+      isSpam: false,
+      isFeatureCreep: false,
+      suggestedBreakdown: [],
+      priority: 'medium',
+      triagedAt: '2026-01-01T00:00:00Z',
+    },
+    ...overrides,
+  };
+}
+
+function makeTrustConfig(
+  overrides?: Partial<ProgressiveTrustConfig>,
+): ProgressiveTrustConfig {
+  return {
+    autoApply: {
+      type: { enabled: false, threshold: 0.9 },
+      priority: { enabled: false, threshold: 0.9 },
+      labels: { enabled: false, threshold: 0.9 },
+      duplicate: { enabled: false, threshold: 0.9 },
+    },
+    batchSize: 50,
+    confirmAbove: 10,
+    ...overrides,
+  };
+}
+
+describe('useAITriageStore', () => {
+  beforeEach(() => {
+    useAITriageStore.setState({
+      isTriaging: false,
+      triageProgress: null,
+      reviewItems: [],
+      enrichmentProgress: null,
+      splitSuggestion: null,
+      splitProgress: null,
+    });
+  });
+
+  describe('autoApplyByTrust', () => {
+    it('auto-applies items above labels threshold when labels enabled', () => {
+      useAITriageStore.getState().addReviewItems([
+        makeReviewItem({
+          issueNumber: 1,
+          result: {
+            category: 'bug',
+            confidence: 0.95,
+            labelsToAdd: ['bug'],
+            labelsToRemove: [],
+            isDuplicate: false,
+            isSpam: false,
+            isFeatureCreep: false,
+            suggestedBreakdown: [],
+            priority: 'high',
+            triagedAt: '2026-01-01T00:00:00Z',
+          },
+        }),
+      ]);
+
+      const config = makeTrustConfig({
+        autoApply: {
+          type: { enabled: false, threshold: 0.9 },
+          priority: { enabled: false, threshold: 0.9 },
+          labels: { enabled: true, threshold: 0.9 },
+          duplicate: { enabled: false, threshold: 0.9 },
+        },
+      });
+
+      useAITriageStore.getState().autoApplyByTrust(config);
+
+      expect(useAITriageStore.getState().reviewItems[0].status).toBe('auto-applied');
+    });
+
+    it('leaves items below threshold as pending', () => {
+      useAITriageStore.getState().addReviewItems([
+        makeReviewItem({
+          issueNumber: 1,
+          result: {
+            category: 'bug',
+            confidence: 0.7,
+            labelsToAdd: ['bug'],
+            labelsToRemove: [],
+            isDuplicate: false,
+            isSpam: false,
+            isFeatureCreep: false,
+            suggestedBreakdown: [],
+            priority: 'medium',
+            triagedAt: '2026-01-01T00:00:00Z',
+          },
+        }),
+      ]);
+
+      const config = makeTrustConfig({
+        autoApply: {
+          type: { enabled: false, threshold: 0.9 },
+          priority: { enabled: false, threshold: 0.9 },
+          labels: { enabled: true, threshold: 0.9 },
+          duplicate: { enabled: false, threshold: 0.9 },
+        },
+      });
+
+      useAITriageStore.getState().autoApplyByTrust(config);
+
+      expect(useAITriageStore.getState().reviewItems[0].status).toBe('pending');
+    });
+
+    it('auto-applies duplicate items above threshold when duplicate enabled', () => {
+      useAITriageStore.getState().addReviewItems([
+        makeReviewItem({
+          issueNumber: 2,
+          result: {
+            category: 'bug',
+            confidence: 0.95,
+            labelsToAdd: [],
+            labelsToRemove: [],
+            isDuplicate: true,
+            duplicateOf: 1,
+            isSpam: false,
+            isFeatureCreep: false,
+            suggestedBreakdown: [],
+            priority: 'medium',
+            triagedAt: '2026-01-01T00:00:00Z',
+          },
+        }),
+      ]);
+
+      const config = makeTrustConfig({
+        autoApply: {
+          type: { enabled: false, threshold: 0.9 },
+          priority: { enabled: false, threshold: 0.9 },
+          labels: { enabled: false, threshold: 0.9 },
+          duplicate: { enabled: true, threshold: 0.9 },
+        },
+      });
+
+      useAITriageStore.getState().autoApplyByTrust(config);
+
+      expect(useAITriageStore.getState().reviewItems[0].status).toBe('auto-applied');
+    });
+
+    it('skips disabled categories even when confidence is high', () => {
+      useAITriageStore.getState().addReviewItems([
+        makeReviewItem({
+          issueNumber: 1,
+          result: {
+            category: 'bug',
+            confidence: 0.99,
+            labelsToAdd: ['bug'],
+            labelsToRemove: [],
+            isDuplicate: false,
+            isSpam: false,
+            isFeatureCreep: false,
+            suggestedBreakdown: [],
+            priority: 'high',
+            triagedAt: '2026-01-01T00:00:00Z',
+          },
+        }),
+      ]);
+
+      // All categories disabled
+      const config = makeTrustConfig();
+
+      useAITriageStore.getState().autoApplyByTrust(config);
+
+      expect(useAITriageStore.getState().reviewItems[0].status).toBe('pending');
+    });
+
+    it('does not touch already-accepted or rejected items', () => {
+      useAITriageStore.getState().addReviewItems([
+        makeReviewItem({
+          issueNumber: 1,
+          status: 'accepted',
+          result: {
+            category: 'bug',
+            confidence: 0.95,
+            labelsToAdd: ['bug'],
+            labelsToRemove: [],
+            isDuplicate: false,
+            isSpam: false,
+            isFeatureCreep: false,
+            suggestedBreakdown: [],
+            priority: 'high',
+            triagedAt: '2026-01-01T00:00:00Z',
+          },
+        }),
+        makeReviewItem({
+          issueNumber: 2,
+          status: 'rejected',
+          result: {
+            category: 'bug',
+            confidence: 0.95,
+            labelsToAdd: ['bug'],
+            labelsToRemove: [],
+            isDuplicate: false,
+            isSpam: false,
+            isFeatureCreep: false,
+            suggestedBreakdown: [],
+            priority: 'high',
+            triagedAt: '2026-01-01T00:00:00Z',
+          },
+        }),
+      ]);
+
+      const config = makeTrustConfig({
+        autoApply: {
+          type: { enabled: false, threshold: 0.9 },
+          priority: { enabled: false, threshold: 0.9 },
+          labels: { enabled: true, threshold: 0.9 },
+          duplicate: { enabled: false, threshold: 0.9 },
+        },
+      });
+
+      useAITriageStore.getState().autoApplyByTrust(config);
+
+      const items = useAITriageStore.getState().reviewItems;
+      expect(items[0].status).toBe('accepted');
+      expect(items[1].status).toBe('rejected');
+    });
+
+    it('labels category requires labelsToAdd to be non-empty', () => {
+      useAITriageStore.getState().addReviewItems([
+        makeReviewItem({
+          issueNumber: 1,
+          result: {
+            category: 'bug',
+            confidence: 0.95,
+            labelsToAdd: [], // empty — no labels to apply
+            labelsToRemove: [],
+            isDuplicate: false,
+            isSpam: false,
+            isFeatureCreep: false,
+            suggestedBreakdown: [],
+            priority: 'high',
+            triagedAt: '2026-01-01T00:00:00Z',
+          },
+        }),
+      ]);
+
+      const config = makeTrustConfig({
+        autoApply: {
+          type: { enabled: false, threshold: 0.9 },
+          priority: { enabled: false, threshold: 0.9 },
+          labels: { enabled: true, threshold: 0.9 },
+          duplicate: { enabled: false, threshold: 0.9 },
+        },
+      });
+
+      useAITriageStore.getState().autoApplyByTrust(config);
+
+      // Should remain pending since no labels to add
+      expect(useAITriageStore.getState().reviewItems[0].status).toBe('pending');
+    });
+  });
+});

@@ -11,6 +11,7 @@ import type {
   EnrichmentProgress,
   SplitSuggestion,
   SplitProgress,
+  ProgressiveTrustConfig,
 } from '../../../shared/types/ai-triage';
 
 // Re-use the enrichment progress type for triage progress display
@@ -47,6 +48,7 @@ interface AITriageState {
   clearSplitSuggestion: () => void;
   setSplitProgress: (progress: SplitProgress) => void;
   clearSplitProgress: () => void;
+  autoApplyByTrust: (config: ProgressiveTrustConfig) => void;
 }
 
 export const useAITriageStore = create<AITriageState>((set, get) => ({
@@ -102,4 +104,20 @@ export const useAITriageStore = create<AITriageState>((set, get) => ({
   clearSplitSuggestion: () => set({ splitSuggestion: null }),
   setSplitProgress: (progress) => set({ splitProgress: progress }),
   clearSplitProgress: () => set({ splitProgress: null }),
+
+  autoApplyByTrust: (config) =>
+    set((state) => ({
+      reviewItems: state.reviewItems.map((item) => {
+        if (item.status !== 'pending') return item;
+        const conf = item.result.confidence;
+        // Check each enabled trust category
+        if (config.autoApply.labels.enabled && conf >= config.autoApply.labels.threshold && item.result.labelsToAdd.length > 0) {
+          return { ...item, status: 'auto-applied' as const };
+        }
+        if (config.autoApply.duplicate.enabled && conf >= config.autoApply.duplicate.threshold && item.result.isDuplicate) {
+          return { ...item, status: 'auto-applied' as const };
+        }
+        return item;
+      }),
+    })),
 }));

@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-12
 **Total Gaps:** 41 confirmed (from triple-verified audit)
-**Status:** 23 / 41 complete
+**Status:** 24 / 41 complete
 
 ---
 
@@ -345,16 +345,16 @@ Each gap has: ID, description, status, files to modify, doc reference, test stat
 ## TIER 3 — Phase 3 AI Gaps
 
 ### GAP-28: Progressive trust auto-apply logic not implemented
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** MUST-FIX
 - **Scope:** Medium
 - **Doc ref:** Phase 3 PRD > US-4 > AC4.6
-- **Files to modify:** `renderer/components/github-issues/hooks/useAITriage.ts`
-- **Fix:** After batch triage results arrive, fetch trust config, iterate results, auto-mark items where confidence >= threshold and category enabled as status: 'auto-applied'.
-- **Tests:** Batch triage with trust config → high-confidence items auto-marked
-- **Test status:** `PENDING`
+- **Files modified:** `stores/github/ai-triage-store.ts`, `hooks/useAITriage.ts`, `stores/github/__tests__/ai-triage-store.test.ts`, `hooks/__tests__/useAITriage.test.ts`
+- **Fix:** Added `autoApplyByTrust(config)` to store — iterates pending items, marks as 'auto-applied' if confidence >= threshold for enabled categories (labels requires non-empty labelsToAdd, duplicate requires isDuplicate). Added `applyProgressiveTrust()` callback in useAITriage hook — fetches config via `getProgressiveTrust` IPC, calls store method.
+- **Tests:** 6 store tests (above threshold, below threshold, duplicate, disabled categories, already accepted/rejected, empty labels). 1 hook test (fetches config + auto-applies). 17 total.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** pending
 
 ### GAP-29: No enrichment persistence to local files after AI triage
 - **Status:** `DONE`

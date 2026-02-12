@@ -193,6 +193,15 @@ export function useAITriage(projectId: string) {
     [store],
   );
 
+  const applyProgressiveTrust = useCallback(async () => {
+    try {
+      const config = await window.electronAPI.github.getProgressiveTrust(projectId);
+      store.autoApplyByTrust(config);
+    } catch {
+      // Trust config not available — skip auto-apply silently
+    }
+  }, [projectId, store]);
+
   return {
     // Actions
     runEnrichment,
@@ -201,6 +210,7 @@ export function useAITriage(projectId: string) {
     applyTriageResults,
     acceptResult,
     rejectResult,
+    applyProgressiveTrust,
 
     // State
     isTriaging: store.isTriaging,

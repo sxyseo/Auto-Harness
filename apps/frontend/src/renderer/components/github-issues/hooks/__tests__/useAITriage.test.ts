@@ -300,4 +300,66 @@ describe('useAITriage', () => {
     const { result } = renderHook(() => useAITriage('proj-1'));
     expect(result.current.isTriaging).toBe(true);
   });
+
+  it('applyProgressiveTrust fetches config and auto-applies high-confidence items', async () => {
+    mockGitHub.getProgressiveTrust.mockResolvedValue({
+      autoApply: {
+        type: { enabled: false, threshold: 0.9 },
+        priority: { enabled: false, threshold: 0.9 },
+        labels: { enabled: true, threshold: 0.85 },
+        duplicate: { enabled: false, threshold: 0.9 },
+      },
+      batchSize: 50,
+      confirmAbove: 10,
+    });
+
+    useAITriageStore.getState().addReviewItems([
+      {
+        issueNumber: 1,
+        issueTitle: 'High confidence bug',
+        result: {
+          category: 'bug',
+          confidence: 0.95,
+          labelsToAdd: ['bug'],
+          labelsToRemove: [],
+          isDuplicate: false,
+          isSpam: false,
+          isFeatureCreep: false,
+          suggestedBreakdown: [],
+          priority: 'high',
+          triagedAt: '2026-01-01T00:00:00Z',
+        },
+        status: 'pending',
+      },
+      {
+        issueNumber: 2,
+        issueTitle: 'Low confidence feature',
+        result: {
+          category: 'feature',
+          confidence: 0.6,
+          labelsToAdd: ['feature'],
+          labelsToRemove: [],
+          isDuplicate: false,
+          isSpam: false,
+          isFeatureCreep: false,
+          suggestedBreakdown: [],
+          priority: 'low',
+          triagedAt: '2026-01-01T00:00:00Z',
+        },
+        status: 'pending',
+      },
+    ]);
+
+    const { result } = renderHook(() => useAITriage('proj-1'));
+
+    await act(async () => {
+      await result.current.applyProgressiveTrust();
+    });
+
+    expect(mockGitHub.getProgressiveTrust).toHaveBeenCalledWith('proj-1');
+
+    const items = useAITriageStore.getState().reviewItems;
+    expect(items[0].status).toBe('auto-applied');
+    expect(items[1].status).toBe('pending');
+  });
 });
