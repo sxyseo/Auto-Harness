@@ -1034,7 +1034,8 @@
       "reInvestigate": "Ré-investiguer",
       "investigateSelected": "Investiguer la sélection",
       "investigateAllMatching": "Investiguer tout ce qui correspond",
-      "cancelAll": "Tout annuler"
+      "cancelAll": "Tout annuler",
+      "bulkInvestigateConfirm": "Lancer l'investigation pour {{count}} issues sélectionnées ?"
     },
     "panel": {
       "findings": "Résultats",

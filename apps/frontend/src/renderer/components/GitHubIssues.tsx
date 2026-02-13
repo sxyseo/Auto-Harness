@@ -386,6 +386,14 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     }
   }, [selectedProject?.id]);
 
+  // Bulk investigate: queue all selected issues for investigation
+  const handleBulkInvestigate = useCallback(() => {
+    if (!selectedProject?.id) return;
+    for (const issueNumber of selectedIssueNumbers) {
+      startIssueInvestigation(selectedProject.id, issueNumber);
+    }
+  }, [selectedProject?.id, selectedIssueNumbers]);
+
   const handleCancelInvestigation = useCallback(() => {
     if (selectedProject?.id && selectedIssue) {
       cancelIssueInvestigation(selectedProject.id, selectedIssue.number);
@@ -471,6 +479,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
           selectedCount={selectedIssueNumbers.size}
           onBulkAction={handleBulkAction}
           isOperating={isBulkOperating}
+          onInvestigateSelected={handleBulkInvestigate}
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
         />

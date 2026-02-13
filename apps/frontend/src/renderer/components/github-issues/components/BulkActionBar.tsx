@@ -10,6 +10,7 @@ interface BulkActionBarProps {
   progress?: BulkOperationProgress | null;
   untriagedCount?: number;
   onTriageAll?: () => void;
+  onInvestigateSelected?: () => void;
   onSelectAll?: () => void;
   onDeselectAll?: () => void;
 }
@@ -31,12 +32,14 @@ export function BulkActionBar({
   progress,
   untriagedCount,
   onTriageAll,
+  onInvestigateSelected,
   onSelectAll,
   onDeselectAll,
 }: BulkActionBarProps) {
   const { t } = useTranslation('common');
   const [pendingAction, setPendingAction] = useState<BulkActionType | null>(null);
   const [pendingTriageAll, setPendingTriageAll] = useState(false);
+  const [pendingInvestigate, setPendingInvestigate] = useState(false);
 
   if (selectedCount === 0) {
     return null;
@@ -152,6 +155,43 @@ export function BulkActionBar({
             {t('aiTriage.triageAllButton')}
             <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
               {untriagedCount}
+            </span>
+          </button>
+        )
+      )}
+
+      {onInvestigateSelected && (
+        pendingInvestigate ? (
+          <div className="flex items-center gap-2 ml-2" role="alert">
+            <span className="text-xs text-foreground">
+              {t('investigation.button.bulkInvestigateConfirm', { count: selectedCount })}
+            </span>
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs rounded-md border border-destructive bg-destructive/10 text-destructive hover:bg-destructive/20"
+              onClick={() => { onInvestigateSelected(); setPendingInvestigate(false); }}
+            >
+              {t('bulk.confirm')}
+            </button>
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs rounded-md border border-border bg-card hover:bg-accent"
+              onClick={() => setPendingInvestigate(false)}
+            >
+              {t('bulk.cancel')}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="ml-2 px-2.5 py-1 text-xs rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isOperating}
+            onClick={() => setPendingInvestigate(true)}
+            aria-label={t('investigation.button.investigateSelected')}
+          >
+            {t('investigation.button.investigateSelected')}
+            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
+              {selectedCount}
             </span>
           </button>
         )

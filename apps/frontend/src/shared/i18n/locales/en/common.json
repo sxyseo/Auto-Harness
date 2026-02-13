@@ -1034,7 +1034,8 @@
       "reInvestigate": "Re-Investigate",
       "investigateSelected": "Investigate Selected",
       "investigateAllMatching": "Investigate All Matching",
-      "cancelAll": "Cancel All"
+      "cancelAll": "Cancel All",
+      "bulkInvestigateConfirm": "Start investigation for {{count}} selected issues?"
     },
     "panel": {
       "findings": "Findings",
