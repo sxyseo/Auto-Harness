@@ -196,6 +196,31 @@ export function useAITriage(projectId: string) {
     [store],
   );
 
+  const undoLastBatchWithGitHub = useCallback(async () => {
+    // Collect labels that were applied to GitHub issues
+    const appliedItems = store.reviewItems.filter(
+      (item) => item.status === 'accepted' || item.status === 'auto-applied',
+    );
+
+    // Remove applied labels from GitHub (best-effort, don't block on failures)
+    for (const item of appliedItems) {
+      if (item.result.labelsToAdd.length > 0) {
+        try {
+          await window.electronAPI.github.removeIssueLabels(
+            projectId,
+            item.issueNumber,
+            item.result.labelsToAdd,
+          );
+        } catch {
+          // Continue on error — label may have been manually removed
+        }
+      }
+    }
+
+    // Restore local state
+    store.undoLastBatch();
+  }, [projectId, store]);
+
   const applyProgressiveTrust = useCallback(async () => {
     try {
       const config = await window.electronAPI.github.getProgressiveTrust(projectId);
@@ -214,6 +239,7 @@ export function useAITriage(projectId: string) {
     acceptResult,
     rejectResult,
     applyProgressiveTrust,
+    undoLastBatchWithGitHub,
 
     // State
     isTriaging: store.isTriaging,

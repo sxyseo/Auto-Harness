@@ -534,7 +534,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
           onAcceptAll={() => { useAITriageStore.getState().acceptAllRemaining(); }}
           onDismiss={() => { useAITriageStore.getState().dismissReview(); }}
           onApply={() => { useAITriageStore.getState().snapshotBeforeApply(); aiTriage.applyTriageResults(); }}
-          onUndo={lastBatchSnapshot ? () => { useAITriageStore.getState().undoLastBatch(); } : undefined}
+          onUndo={lastBatchSnapshot ? () => { aiTriage.undoLastBatchWithGitHub(); } : undefined}
         />
       )}
 

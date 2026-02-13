@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-13
 **Total Gaps:** 46 confirmed (from 9-agent triple-verified audit)
-**Status:** 13 / 17 complete
+**Status:** 14 / 17 complete
 
 ---
 
@@ -216,18 +216,17 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 - **Commit:** VGAP-13
 
 ### VGAP-14: Undo batch only reverts local state, not GitHub labels (Phase 3 GAP-4)
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** NICE-TO-HAVE
 - **Scope:** Large
 - **Verified by:** Phase3 agent + Verifier-1 (CONFIRMED)
 - **Doc ref:** Phase 3 PRD > US-4 > AC4.9; Phase 3 audit > GAP-4
-- **Files to modify:** `renderer/stores/github/ai-triage-store.ts`, `renderer/components/github-issues/hooks/useAITriage.ts`
-- **Problem:** `undoLastBatch` (line 132-136) only reverts `reviewItems` to snapshot. Does NOT call IPC to remove labels that were already applied to GitHub issues.
-- **Fix:** Store `lastBatchApplied: Array<{ issueNumber: number; labelsAdded: string[]; labelsRemoved: string[] }>` in store. Undo iterates and calls removeLabels/addLabels mutations to reverse changes.
-- **Tests:** Test undo calls correct IPC remove/add label calls
-- **Test status:** —
+- **Files modified:** `renderer/components/github-issues/hooks/useAITriage.ts`, `renderer/components/GitHubIssues.tsx`, `hooks/__tests__/useAITriage.test.ts`
+- **Fix:** Added `undoLastBatchWithGitHub()` to useAITriage hook. Before restoring local snapshot, iterates accepted/auto-applied items and calls `removeIssueLabels()` for each item's `labelsToAdd` (best-effort, continues on failure). GitHubIssues.tsx now calls this instead of store-only `undoLastBatch`.
+- **Tests:** New test verifies removeIssueLabels called for accepted items, NOT called for rejected items, and local state restored to pending. 14 tests pass.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** VGAP-14
 
 ### VGAP-15: No enrichment comment duplicate detection (Phase 3 GAP-5)
 - **Status:** `PENDING`
@@ -281,7 +280,7 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 | 2 | i18n Hardcoded Strings | 5 | 5 | 0 |
 | 3 | Accessibility Keyboard | 2 | 2 | 0 |
 | 4 | IPC Consistency | 3 | 3 | 0 |
-| 5 | Phase 3 Audit Gaps | 5 | 1 | 4 |
-| **Total** | | **17** | **13** | **4** |
+| 5 | Phase 3 Audit Gaps | 5 | 2 | 3 |
+| **Total** | | **17** | **14** | **3** |
 
 Note: VGAP-03 through VGAP-07 contain 28+ individual hardcoded strings grouped by component file. The 17 gap count represents work units (one per component/file), not individual string count.

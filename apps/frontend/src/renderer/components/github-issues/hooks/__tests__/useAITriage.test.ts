@@ -26,6 +26,7 @@ const mockGitHub = {
   transitionWorkflowState: vi.fn(),
   addIssueComment: vi.fn(),
   saveEnrichment: vi.fn(),
+  removeIssueLabels: vi.fn().mockResolvedValue({ success: true }),
 };
 
 beforeEach(() => {
@@ -384,6 +385,75 @@ describe('useAITriage', () => {
 
     const items = useAITriageStore.getState().reviewItems;
     expect(items[0].status).toBe('auto-applied');
+    expect(items[1].status).toBe('pending');
+  });
+
+  it('undoLastBatchWithGitHub removes applied labels from GitHub and restores snapshot', async () => {
+    useAITriageStore.getState().addReviewItems([
+      {
+        issueNumber: 10,
+        issueTitle: 'Accepted bug',
+        result: {
+          category: 'bug',
+          confidence: 0.9,
+          labelsToAdd: ['bug', 'priority:high'],
+          labelsToRemove: [],
+          isDuplicate: false,
+          isSpam: false,
+          isFeatureCreep: false,
+          suggestedBreakdown: [],
+          priority: 'high',
+          triagedAt: '2026-01-01T00:00:00Z',
+        },
+        status: 'pending',
+      },
+      {
+        issueNumber: 11,
+        issueTitle: 'Rejected feature',
+        result: {
+          category: 'feature',
+          confidence: 0.5,
+          labelsToAdd: ['feature'],
+          labelsToRemove: [],
+          isDuplicate: false,
+          isSpam: false,
+          isFeatureCreep: false,
+          suggestedBreakdown: [],
+          priority: 'low',
+          triagedAt: '2026-01-01T00:00:00Z',
+        },
+        status: 'pending',
+      },
+    ]);
+
+    // Snapshot and accept issue 10, reject issue 11
+    useAITriageStore.getState().snapshotBeforeApply();
+    useAITriageStore.getState().acceptReviewItem(10);
+    useAITriageStore.getState().rejectReviewItem(11);
+
+    const { result } = renderHook(() => useAITriage('proj-1'));
+
+    await act(async () => {
+      await result.current.undoLastBatchWithGitHub();
+    });
+
+    // Should have called removeIssueLabels for the accepted item
+    expect(mockGitHub.removeIssueLabels).toHaveBeenCalledWith(
+      'proj-1',
+      10,
+      ['bug', 'priority:high'],
+    );
+
+    // Should NOT have called removeIssueLabels for the rejected item
+    expect(mockGitHub.removeIssueLabels).not.toHaveBeenCalledWith(
+      'proj-1',
+      11,
+      expect.anything(),
+    );
+
+    // Local state should be restored to pending
+    const items = useAITriageStore.getState().reviewItems;
+    expect(items[0].status).toBe('pending');
     expect(items[1].status).toBe('pending');
   });
 });
