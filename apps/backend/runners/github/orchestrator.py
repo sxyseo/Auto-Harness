@@ -1627,6 +1627,116 @@ class GitHubOrchestrator:
             )
             raise
 
+    async def start_investigation(
+        self,
+        issue_number: int,
+        issue_title: str,
+        issue_body: str,
+        issue_labels: list[str] | None = None,
+        issue_comments: list[str] | None = None,
+    ):
+        """
+        Start an AI investigation on a GitHub issue (typed API).
+
+        This is a higher-level wrapper around investigate_issue() that accepts
+        pre-fetched issue data and returns a typed InvestigationReport.
+
+        Args:
+            issue_number: The GitHub issue number
+            issue_title: The issue title
+            issue_body: The issue body text
+            issue_labels: Optional list of label names
+            issue_comments: Optional list of comment bodies
+
+        Returns:
+            InvestigationReport from the investigation
+        """
+        from datetime import datetime, timezone
+
+        try:
+            from .services.investigation_models import InvestigationReport
+            from .services.investigation_persistence import (
+                load_investigation_report,
+                save_investigation_state,
+            )
+            from .services.issue_investigation_orchestrator import (
+                IssueInvestigationOrchestrator,
+            )
+        except (ImportError, ValueError, SystemError):
+            from services.investigation_models import InvestigationReport
+            from services.investigation_persistence import (
+                load_investigation_report,
+                save_investigation_state,
+            )
+            from services.issue_investigation_orchestrator import (
+                IssueInvestigationOrchestrator,
+            )
+
+        # Save initial state
+        save_investigation_state(
+            self.project_dir,
+            issue_number,
+            {
+                "issue_number": issue_number,
+                "status": "investigating",
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "model_used": self.config.model or "sonnet",
+            },
+        )
+
+        try:
+            orchestrator = IssueInvestigationOrchestrator(
+                project_dir=self.project_dir,
+                github_dir=self.github_dir,
+                config=self.config,
+                progress_callback=self.progress_callback,
+            )
+
+            report = await orchestrator.investigate(
+                issue_number=issue_number,
+                issue_title=issue_title,
+                issue_body=issue_body,
+                issue_labels=issue_labels or [],
+                issue_comments=issue_comments or [],
+                project_root=self.project_dir,
+            )
+
+            # Update state to findings_ready
+            save_investigation_state(
+                self.project_dir,
+                issue_number,
+                {
+                    "issue_number": issue_number,
+                    "status": "findings_ready",
+                    "started_at": datetime.now(timezone.utc).isoformat(),
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "model_used": self.config.model or "sonnet",
+                },
+            )
+
+            return report
+
+        except Exception as e:
+            # Update state to failed
+            save_investigation_state(
+                self.project_dir,
+                issue_number,
+                {
+                    "issue_number": issue_number,
+                    "status": "failed",
+                    "started_at": datetime.now(timezone.utc).isoformat(),
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "error": str(e),
+                    "model_used": self.config.model or "sonnet",
+                },
+            )
+
+            safe_print(
+                f"[Investigation] start_investigation failed for issue #{issue_number}: {e}",
+                flush=True,
+            )
+            raise
+
     # =========================================================================
     # ENRICHMENT WORKFLOW
     # =========================================================================

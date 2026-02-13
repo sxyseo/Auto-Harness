@@ -992,6 +992,12 @@ class GitHubRunnerConfig:
         True  # Use SDK subagent parallel orchestrator (default)
     )
 
+    # Investigation settings
+    investigation_auto_post: bool = False
+    investigation_auto_close: bool = False
+    investigation_max_parallel: int = 3
+    investigation_pipeline_mode: str = "full"
+
     # Model settings
     # Note: Default uses shorthand "sonnet" which gets resolved via resolve_model_id()
     # to respect environment variable overrides (e.g., ANTHROPIC_DEFAULT_SONNET_MODEL)
