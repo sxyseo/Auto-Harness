@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-13
 **Total Gaps:** 46 confirmed (from 9-agent triple-verified audit)
-**Status:** 12 / 17 complete
+**Status:** 13 / 17 complete
 
 ---
 
@@ -203,18 +203,17 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 ## TIER 5 — Phase 3 Audit Gaps (Low severity, not addressed from original audit)
 
 ### VGAP-13: No validation caching for Python runner check (Phase 3 GAP-3)
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** NICE-TO-HAVE
 - **Scope:** Medium
 - **Verified by:** Phase3 agent + Verifier-1 (CONFIRMED)
 - **Doc ref:** Phase 3 audit > GAP-3
-- **Files to modify:** `renderer/stores/github/ai-triage-store.ts`, `renderer/components/github-issues/hooks/useAITriage.ts`
-- **Problem:** Every render triggers `validateGitHubModule()` IPC call. No caching with TTL.
-- **Fix:** Add `lastValidation: { valid: boolean; checkedAt: number } | null` to ai-triage-store. In useAITriage, check cache (5-minute TTL) before calling validation.
-- **Tests:** Test cache hit/miss behavior, TTL expiry
-- **Test status:** —
+- **Files modified:** `main/ipc-handlers/github/utils/subprocess-runner.ts`
+- **Fix:** Added module-level validation cache with 5-minute TTL in `validateGitHubModule()`. Cache is per-project-path and auto-invalidates on TTL expiry or project switch. All callers (ai-triage-handlers, autofix-handlers, pr-handlers, triage-handlers) benefit automatically.
+- **Tests:** 3868 pass, lint clean. Existing mocked handler tests unaffected.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** VGAP-13
 
 ### VGAP-14: Undo batch only reverts local state, not GitHub labels (Phase 3 GAP-4)
 - **Status:** `PENDING`
@@ -282,7 +281,7 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 | 2 | i18n Hardcoded Strings | 5 | 5 | 0 |
 | 3 | Accessibility Keyboard | 2 | 2 | 0 |
 | 4 | IPC Consistency | 3 | 3 | 0 |
-| 5 | Phase 3 Audit Gaps | 5 | 0 | 5 |
-| **Total** | | **17** | **12** | **5** |
+| 5 | Phase 3 Audit Gaps | 5 | 1 | 4 |
+| **Total** | | **17** | **13** | **4** |
 
 Note: VGAP-03 through VGAP-07 contain 28+ individual hardcoded strings grouped by component file. The 17 gap count represents work units (one per component/file), not individual string count.
