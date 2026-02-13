@@ -585,22 +585,30 @@ Report findings with specific file paths, line numbers, and code evidence.
         Returns:
             Tuple of (all_findings, agents_invoked)
         """
-        # Create coroutines for all specialists
-        coroutines = [
-            self._run_pr_specialist_session(
-                config=config,
-                context=context,
-                project_root=project_root,
-                model=model,
-                thinking_budget=thinking_budget,
-            )
-            for config in SPECIALIST_CONFIGS
-        ]
+        # Build coroutine factories so failed specialists can be retried
+        def _make_pr_specialist_factory(cfg: SpecialistConfig):
+            def factory():
+                return self._run_pr_specialist_session(
+                    config=cfg,
+                    context=context,
+                    project_root=project_root,
+                    model=model,
+                    thinking_budget=thinking_budget,
+                )
+            return factory
 
-        # Run all specialists in parallel via base class
+        coroutines = []
+        retry_factories = []
+        for config in SPECIALIST_CONFIGS:
+            factory = _make_pr_specialist_factory(config)
+            coroutines.append(factory())
+            retry_factories.append(factory)
+
+        # Run all specialists in parallel via base class (with retry-once)
         valid_results = await super()._run_parallel_specialists(
             tasks=coroutines,
             orchestrator_name="ParallelOrchestrator",
+            retry_tasks=retry_factories,
         )
 
         # Collect findings and track which agents ran
