@@ -5,13 +5,39 @@
  * queue management. Sets up IPC listeners and manages cleanup.
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAITriageStore } from '../../../stores/github/ai-triage-store';
 import type { CreateIssueParams } from '../../../../shared/types/ai-triage';
 import { createDefaultEnrichment } from '../../../../shared/types/enrichment';
 
 export function useAITriage(projectId: string) {
   const store = useAITriageStore();
+  const loadedRef = useRef(false);
+
+  // Load persisted review queue on mount
+  useEffect(() => {
+    if (!projectId) return;
+    loadedRef.current = false;
+    window.electronAPI.github.loadPendingReview(projectId)
+      .then((items) => {
+        if (items.length > 0) {
+          useAITriageStore.getState().addReviewItems(items);
+        }
+        loadedRef.current = true;
+      })
+      .catch(() => {
+        loadedRef.current = true;
+      });
+  }, [projectId]);
+
+  // Persist review queue whenever it changes
+  const reviewItems = store.reviewItems;
+  useEffect(() => {
+    if (!projectId || !loadedRef.current) return;
+    window.electronAPI.github.savePendingReview(projectId, reviewItems).catch(() => {
+      // Best-effort persistence
+    });
+  }, [projectId, reviewItems]);
 
   // Set up IPC listeners
   useEffect(() => {

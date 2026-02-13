@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-13
 **Total Gaps:** 46 confirmed (from 9-agent triple-verified audit)
-**Status:** 16 / 17 complete
+**Status:** 17 / 17 complete ✓
 
 ---
 
@@ -255,18 +255,17 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 - **Commit:** VGAP-16
 
 ### VGAP-17: Review queue not persisted across sessions (Phase 3 GAP-9)
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** NICE-TO-HAVE
 - **Scope:** Medium
 - **Verified by:** Phase3 agent (CONFIRMED)
 - **Doc ref:** Phase 3 audit > GAP-9
-- **Files to modify:** `renderer/stores/github/ai-triage-store.ts`, `main/ipc-handlers/github/ai-triage-handlers.ts`
-- **Problem:** If user dismisses review queue without accepting/rejecting all, results are lost on next session.
-- **Fix:** Persist review queue to `enrichment.json` under a `pendingReview` key. Load on startup.
-- **Tests:** Test persistence and reload of pending review items
-- **Test status:** —
+- **Files modified:** `shared/constants/ipc.ts`, `main/ipc-handlers/github/ai-triage-handlers.ts`, `preload/api/modules/github-api.ts`, `renderer/components/github-issues/hooks/useAITriage.ts`, `hooks/__tests__/useAITriage.test.ts`
+- **Fix:** Added `GITHUB_TRIAGE_SAVE_PENDING_REVIEW` and `GITHUB_TRIAGE_LOAD_PENDING_REVIEW` IPC channels. Main handler saves/loads `pending-review.json` in the github config directory (auto-deletes when queue is empty). Preload bridge exposes `savePendingReview` and `loadPendingReview`. useAITriage hook loads persisted items on mount via useEffect (with loadedRef guard to prevent premature saves) and auto-saves whenever reviewItems change.
+- **Tests:** 2 new tests: load persisted items on mount, save items on change. 432 pass total, lint clean.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** VGAP-17
 
 ---
 
@@ -278,7 +277,7 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 | 2 | i18n Hardcoded Strings | 5 | 5 | 0 |
 | 3 | Accessibility Keyboard | 2 | 2 | 0 |
 | 4 | IPC Consistency | 3 | 3 | 0 |
-| 5 | Phase 3 Audit Gaps | 5 | 4 | 1 |
-| **Total** | | **17** | **16** | **1** |
+| 5 | Phase 3 Audit Gaps | 5 | 5 | 0 |
+| **Total** | | **17** | **17** | **0** |
 
 Note: VGAP-03 through VGAP-07 contain 28+ individual hardcoded strings grouped by component file. The 17 gap count represents work units (one per component/file), not individual string count.

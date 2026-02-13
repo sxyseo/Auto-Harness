@@ -392,6 +392,8 @@ export interface GitHubAPI {
   onApplyResultsProgress: (callback: (projectId: string, progress: ApplyResultsProgress) => void) => IpcListenerCleanup;
   onApplyResultsComplete: (callback: (projectId: string, results: { succeeded: number; failed: number; skipped: number }) => void) => IpcListenerCleanup;
 
+  savePendingReview: (projectId: string, items: TriageReviewItem[]) => Promise<boolean>;
+  loadPendingReview: (projectId: string) => Promise<TriageReviewItem[]>;
   saveProgressiveTrust: (projectId: string, config: ProgressiveTrustConfig) => Promise<boolean>;
   getProgressiveTrust: (projectId: string) => Promise<ProgressiveTrustConfig>;
 
@@ -989,6 +991,12 @@ export const createGitHubAPI = (): GitHubAPI => ({
 
   onApplyResultsComplete: (callback: (projectId: string, results: { succeeded: number; failed: number; skipped: number }) => void): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_APPLY_RESULTS_COMPLETE, callback),
+
+  savePendingReview: (projectId: string, items: TriageReviewItem[]): Promise<boolean> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_SAVE_PENDING_REVIEW, projectId, items),
+
+  loadPendingReview: (projectId: string): Promise<TriageReviewItem[]> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_LOAD_PENDING_REVIEW, projectId),
 
   saveProgressiveTrust: (projectId: string, config: ProgressiveTrustConfig): Promise<boolean> =>
     invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_SAVE_TRUST, projectId, config),

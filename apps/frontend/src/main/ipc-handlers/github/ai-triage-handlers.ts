@@ -474,5 +474,58 @@ export function registerAITriageHandlers(
     },
   );
 
+  // ============================================
+  // Save pending review queue
+  // ============================================
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_TRIAGE_SAVE_PENDING_REVIEW,
+    async (_, projectId: string, items: TriageReviewItem[]): Promise<boolean> => {
+      debugLog('savePendingReview handler called', { projectId, count: items.length });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const reviewPath = path.join(getGitHubDir(project.path), 'pending-review.json');
+
+        if (items.length === 0) {
+          // Remove file when queue is empty
+          try {
+            fs.unlinkSync(reviewPath);
+          } catch {
+            // File may not exist
+          }
+          return true;
+        }
+
+        fs.mkdirSync(getGitHubDir(project.path), { recursive: true });
+        await writeJsonWithRetry(reviewPath, { items, savedAt: new Date().toISOString() }, { indent: 2 });
+        return true;
+      });
+      return result ?? false;
+    },
+  );
+
+  // ============================================
+  // Load pending review queue
+  // ============================================
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_TRIAGE_LOAD_PENDING_REVIEW,
+    async (_, projectId: string): Promise<TriageReviewItem[]> => {
+      debugLog('loadPendingReview handler called', { projectId });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const reviewPath = path.join(getGitHubDir(project.path), 'pending-review.json');
+
+        try {
+          const data = JSON.parse(fs.readFileSync(reviewPath, 'utf-8'));
+          if (Array.isArray(data.items)) {
+            return data.items as TriageReviewItem[];
+          }
+        } catch {
+          // File doesn't exist or is corrupted
+        }
+
+        return [];
+      });
+      return result ?? [];
+    },
+  );
+
   debugLog('AI Triage handlers registered');
 }

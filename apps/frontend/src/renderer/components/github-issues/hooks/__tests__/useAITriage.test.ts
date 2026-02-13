@@ -27,6 +27,8 @@ const mockGitHub = {
   addIssueComment: vi.fn(),
   saveEnrichment: vi.fn(),
   removeIssueLabels: vi.fn().mockResolvedValue({ success: true }),
+  loadPendingReview: vi.fn().mockResolvedValue([]),
+  savePendingReview: vi.fn().mockResolvedValue(true),
 };
 
 beforeEach(() => {
@@ -386,6 +388,78 @@ describe('useAITriage', () => {
     const items = useAITriageStore.getState().reviewItems;
     expect(items[0].status).toBe('auto-applied');
     expect(items[1].status).toBe('pending');
+  });
+
+  it('loads persisted review items on mount', async () => {
+    const persistedItems = [
+      {
+        issueNumber: 99,
+        issueTitle: 'Persisted issue',
+        result: {
+          category: 'bug',
+          confidence: 0.8,
+          labelsToAdd: ['bug'],
+          labelsToRemove: [],
+          isDuplicate: false,
+          isSpam: false,
+          isFeatureCreep: false,
+          suggestedBreakdown: [],
+          priority: 'medium' as const,
+          triagedAt: '2026-01-01T00:00:00Z',
+        },
+        status: 'pending' as const,
+      },
+    ];
+    mockGitHub.loadPendingReview.mockResolvedValue(persistedItems);
+
+    await act(async () => {
+      renderHook(() => useAITriage('proj-1'));
+    });
+
+    expect(mockGitHub.loadPendingReview).toHaveBeenCalledWith('proj-1');
+    expect(useAITriageStore.getState().reviewItems).toHaveLength(1);
+    expect(useAITriageStore.getState().reviewItems[0].issueNumber).toBe(99);
+  });
+
+  it('saves review items when they change', async () => {
+    mockGitHub.loadPendingReview.mockResolvedValue([]);
+
+    await act(async () => {
+      renderHook(() => useAITriage('proj-1'));
+    });
+
+    // Add review items
+    act(() => {
+      useAITriageStore.getState().addReviewItems([
+        {
+          issueNumber: 50,
+          issueTitle: 'New issue',
+          result: {
+            category: 'feature',
+            confidence: 0.7,
+            labelsToAdd: ['feature'],
+            labelsToRemove: [],
+            isDuplicate: false,
+            isSpam: false,
+            isFeatureCreep: false,
+            suggestedBreakdown: [],
+            priority: 'low' as const,
+            triagedAt: '2026-01-01T00:00:00Z',
+          },
+          status: 'pending' as const,
+        },
+      ]);
+    });
+
+    // Wait for the effect to trigger
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    expect(mockGitHub.savePendingReview).toHaveBeenCalledWith(
+      'proj-1',
+      expect.arrayContaining([expect.objectContaining({ issueNumber: 50 })]),
+    );
   });
 
   it('undoLastBatchWithGitHub removes applied labels from GitHub and restores snapshot', async () => {
