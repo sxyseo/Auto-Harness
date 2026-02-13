@@ -69,6 +69,9 @@ interface QueuedInvestigation {
 /** FIFO queue for investigations waiting to start */
 const investigationQueue: QueuedInvestigation[] = [];
 
+/** Maximum number of investigations to auto-resume on restart */
+const MAX_AUTO_RESUME = 3;
+
 /**
  * Get the max parallel investigations setting for a project.
  * Reads from the project's GitHub config on disk (same source as the settings handler).
@@ -136,6 +139,100 @@ function createDefaultSettings(): InvestigationSettings {
     labelIncludeFilter: [],
     labelExcludeFilter: [],
   };
+}
+
+/**
+ * Read investigation settings for a project from its config file on disk.
+ */
+function getInvestigationSettings(projectId: string): InvestigationSettings {
+  try {
+    const project = projectStore.getProject(projectId);
+    if (!project) return createDefaultSettings();
+    const configPath = path.join(project.path, '.auto-claude', 'github', 'config.json');
+    const data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    if (data.investigation_settings) {
+      return { ...createDefaultSettings(), ...data.investigation_settings } as InvestigationSettings;
+    }
+  } catch {
+    // File doesn't exist or is corrupted, return defaults
+  }
+  return createDefaultSettings();
+}
+
+/**
+ * Auto-create a task from a completed investigation report.
+ * Mirrors the logic in the GITHUB_INVESTIGATION_CREATE_TASK handler.
+ * Returns the specId if successful, or null on failure.
+ */
+async function autoCreateTaskFromInvestigation(
+  projectId: string,
+  issueNumber: number,
+): Promise<{ specId: string; specDir: string; taskDescription: string; metadata: import('./spec-utils').SpecCreationData['metadata'] } | null> {
+  try {
+    const project = projectStore.getProject(projectId);
+    if (!project) return null;
+
+    const reportPath = path.join(
+      project.path,
+      '.auto-claude',
+      'issues',
+      `${issueNumber}`,
+      'investigation_report.json',
+    );
+
+    if (!fs.existsSync(reportPath)) return null;
+
+    const reportData = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+    const summary = reportData.ai_summary || `Investigation of issue #${issueNumber}`;
+    const fixAdvice = reportData.fix_advice;
+    const taskDescription = [
+      `# GitHub Issue #${issueNumber}`,
+      '',
+      `## Summary`,
+      summary,
+      '',
+      fixAdvice?.approaches?.length
+        ? [
+            '## Suggested Approach',
+            fixAdvice.approaches[fixAdvice.recommended_approach || 0]?.description || '',
+            '',
+            '### Files to Modify',
+            ...(fixAdvice.approaches[fixAdvice.recommended_approach || 0]?.files_affected?.map(
+              (f: string) => `- ${f}`,
+            ) || []),
+          ].join('\n')
+        : '',
+    ].join('\n');
+
+    const config = getGitHubConfig(project);
+    const githubUrl = config
+      ? `https://github.com/${config.repo}/issues/${issueNumber}`
+      : '';
+
+    const labels = reportData.suggested_labels
+      ?.filter((l: { accepted?: boolean }) => l.accepted !== false)
+      .map((l: { name: string }) => l.name) ?? [];
+
+    const specData = await createSpecForIssue(
+      project,
+      issueNumber,
+      summary,
+      taskDescription,
+      githubUrl,
+      labels,
+      project.settings?.mainBranch,
+    );
+
+    debugLog('Auto-created task from investigation', { projectId, issueNumber, specId: specData.specId });
+    return specData;
+  } catch (error) {
+    debugLog('Failed to auto-create task from investigation', {
+      projectId,
+      issueNumber,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
 }
 
 // ============================================
@@ -333,6 +430,7 @@ async function runInvestigation(
   projectId: string,
   issueNumber: number,
   getMainWindow: () => BrowserWindow | null,
+  agentManager?: AgentManager,
 ): Promise<void> {
   const mainWindow = getMainWindow();
   if (!mainWindow) return;
@@ -432,12 +530,45 @@ async function runInvestigation(
 
       const investigationResult = result.data as InvestigationResult;
       sendComplete(investigationResult);
+
+      // --- Auto-create task if setting is enabled ---
+      const settings = getInvestigationSettings(projectId);
+      if (settings.autoCreateTasks) {
+        const specData = await autoCreateTaskFromInvestigation(projectId, issueNumber);
+        if (specData && settings.autoStartTasks && agentManager) {
+          // Auto-start the build pipeline for the newly created task
+          try {
+            const proj = projectStore.getProject(projectId);
+            if (proj) {
+              agentManager.startSpecCreation(
+                specData.specId,
+                proj.path,
+                specData.taskDescription,
+                specData.specDir,
+                specData.metadata,
+              );
+              updateImplementationPlanStatus(specData.specDir, 'planning');
+              debugLog('Auto-started build for investigation task', {
+                projectId,
+                issueNumber,
+                specId: specData.specId,
+              });
+            }
+          } catch (startError) {
+            debugLog('Failed to auto-start build for investigation task', {
+              projectId,
+              issueNumber,
+              error: startError instanceof Error ? startError.message : String(startError),
+            });
+          }
+        }
+      }
     });
   } catch (error) {
     sendError(error instanceof Error ? error.message : 'Failed to start investigation');
   } finally {
     // Always try to start the next queued investigation after this one finishes
-    processQueue(getMainWindow);
+    processQueue(getMainWindow, agentManager);
   }
 }
 
@@ -488,7 +619,7 @@ function broadcastQueuePositions(getMainWindow: () => BrowserWindow | null): voi
  * Process the investigation queue: start as many queued investigations as
  * allowed by the maxParallelInvestigations limit.
  */
-function processQueue(getMainWindow: () => BrowserWindow | null): void {
+function processQueue(getMainWindow: () => BrowserWindow | null, agentManager?: AgentManager): void {
   if (investigationQueue.length === 0) return;
 
   // Process items from the front of the queue (FIFO).
@@ -514,7 +645,7 @@ function processQueue(getMainWindow: () => BrowserWindow | null): void {
     });
 
     // Fire-and-forget: runInvestigation will call processQueue again when it finishes
-    runInvestigation(next.projectId, next.issueNumber, getMainWindow);
+    runInvestigation(next.projectId, next.issueNumber, getMainWindow, agentManager);
 
     // Update queue positions for remaining items
     broadcastQueuePositions(getMainWindow);
@@ -593,7 +724,7 @@ export function registerInvestigationHandlers(
       }
 
       // Under the limit — start immediately
-      runInvestigation(projectId, issueNumber, getMainWindow);
+      runInvestigation(projectId, issueNumber, getMainWindow, agentManager);
     },
   );
 
@@ -983,6 +1114,7 @@ export function registerInvestigationHandlers(
             githubCommentId?: number;
             wasInterrupted?: boolean;
           }> = [];
+          const interruptedIssues: number[] = [];
 
           for (const entry of entries) {
             if (!entry.isDirectory()) continue;
@@ -1021,6 +1153,11 @@ export function registerInvestigationHandlers(
                 }
 
                 persisted.push(item);
+
+                // Track for potential auto-resume (max 3 to prevent infinite loops)
+                if (interruptedIssues.length < MAX_AUTO_RESUME) {
+                  interruptedIssues.push(issueNumber);
+                }
                 continue;
               }
 
@@ -1052,6 +1189,21 @@ export function registerInvestigationHandlers(
               // Skip issues with corrupt state files
               debugLog('Skipping corrupt investigation state', { issueNumber });
             }
+          }
+
+          // Schedule auto-resume for interrupted investigations after a delay
+          if (interruptedIssues.length > 0) {
+            debugLog('Scheduling auto-resume for interrupted investigations', {
+              projectId,
+              count: interruptedIssues.length,
+              issues: interruptedIssues,
+            });
+            setTimeout(() => {
+              for (const issueNum of interruptedIssues) {
+                debugLog('Auto-resuming interrupted investigation', { projectId, issueNumber: issueNum });
+                runInvestigation(projectId, issueNum, getMainWindow, agentManager);
+              }
+            }, 3000);
           }
 
           return { success: true, data: persisted };
