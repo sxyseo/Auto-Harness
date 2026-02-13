@@ -7,6 +7,7 @@ import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import { isValidTransition } from '../../../shared/constants/enrichment';
+import { createDefaultEnrichment } from '../../../shared/types/enrichment';
 import type { WorkflowState, Resolution, IssueEnrichment } from '../../../shared/types/enrichment';
 import type { GitHubIssue } from '../../../shared/types/integrations';
 import {
@@ -80,11 +81,7 @@ export function registerEnrichmentHandlers(
         return withEnrichmentFileLock(project.path, async () => {
           const data = await readEnrichmentFile(project.path);
           const key = String(issueNumber);
-          const enrichment = data.issues[key];
-
-          if (!enrichment) {
-            throw new Error(`No enrichment found for issue #${issueNumber}`);
-          }
+          const enrichment = data.issues[key] ?? createDefaultEnrichment(issueNumber);
 
           const from = enrichment.triageState;
 

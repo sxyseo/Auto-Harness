@@ -38,6 +38,7 @@ import {
   BatchTriageReview,
 } from "./github-issues/components";
 import { GitHubSetupModal } from "./GitHubSetupModal";
+import { ResizablePanels, ResizableThreePanels } from "./ui/resizable-panels";
 import { useMutationStore } from "../stores/github/mutation-store";
 import { useAITriageStore } from "../stores/github/ai-triage-store";
 import { formatEnrichmentComment, ENRICHMENT_COMMENT_FOOTER } from "../../shared/constants/ai-triage";
@@ -462,99 +463,173 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       )}
 
       {/* Content */}
-      <div className="flex-1 flex min-h-0">
-        {/* Issue List */}
-        <section className={`${triageModeEnabled ? 'w-1/4' : 'w-1/2'} border-r border-border flex flex-col`} aria-label={t('panels.issueList')} data-triage-panel="1" tabIndex={-1}>
-          <IssueList
-            issues={workflowFilteredIssues}
-            selectedIssueNumber={selectedIssueNumber}
-            isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
-            hasMore={hasMore && !isSearchActive}
-            error={error}
-            onSelectIssue={selectIssue}
-            onInvestigate={handleInvestigate}
-            onLoadMore={!isSearchActive ? handleLoadMore : undefined}
-            enrichments={enrichments}
-            selectedIssueNumbers={selectedIssueNumbers}
-            onToggleSelect={handleToggleSelect}
-            compact={triageModeEnabled}
-          />
-        </section>
-
-        {/* Issue Detail */}
-        <section className={`w-1/2 flex flex-col ${triageModeEnabled ? 'border-r border-border' : ''}`} aria-label={t('panels.issueDetail')} data-triage-panel="2" tabIndex={-1}>
-          {selectedIssue ? (
-            <IssueDetail
-              issue={selectedIssue}
-              onInvestigate={() => handleInvestigate(selectedIssue)}
-              investigationResult={
-                lastInvestigationResult?.issueNumber === selectedIssue.number
-                  ? lastInvestigationResult
-                  : null
-              }
-              linkedTaskId={issueToTaskMap.get(selectedIssue.number)}
-              onViewTask={onNavigateToTask}
-              projectId={selectedProject?.id}
-              autoFixConfig={autoFixConfig}
-              autoFixQueueItem={getAutoFixQueueItem(selectedIssue.number)}
-              enrichment={enrichments[String(selectedIssue.number)] ?? null}
-              onTransition={handleTransition}
-              onAITriage={() => aiTriage.runEnrichment(selectedIssue.number)}
-              onImproveIssue={() => aiTriage.runEnrichment(selectedIssue.number)}
-              onSplitIssue={() => aiTriage.runSplitSuggestion(selectedIssue.number)}
-              isAIBusy={aiTriage.isTriaging}
-              onEditTitle={handleEditTitle}
-              onEditBody={handleEditBody}
-              onClose={handleCloseIssue}
-              onReopen={handleReopenIssue}
-              onComment={handleAddComment}
-              onAddLabels={handleAddLabels}
-              onRemoveLabels={handleRemoveLabels}
-              repoLabels={repoLabels}
-              onAddAssignees={handleAddAssignees}
-              onRemoveAssignees={handleRemoveAssignees}
-              collaborators={collaborators}
-              dependencies={dependencies}
-              isDepsLoading={isDepsLoading}
-              depsError={depsError}
-              onNavigateDependency={selectIssue}
-              onCreateSpec={handleCreateSpec}
-              onPostEnrichmentComment={aiTriage.enrichmentResult ? handlePostEnrichmentComment : undefined}
-              onDismissEnrichmentComment={aiTriage.enrichmentResult ? aiTriage.clearEnrichmentResult : undefined}
-              hasExistingAIComment={hasExistingAIComment}
-            />
-          ) : (
-            <EmptyState message="Select an issue to view details" />
-          )}
-        </section>
-
-        {/* Triage Sidebar (3rd panel) */}
-        {triageModeEnabled && selectedIssue && (
-          <section className="w-1/4 flex flex-col" aria-label={t('panels.triageSidebar')} data-triage-panel="3" tabIndex={-1}>
-            <TriageSidebar
-              enrichment={enrichments[String(selectedIssue.number)] ?? null}
-              currentState={enrichments[String(selectedIssue.number)]?.triageState ?? 'new'}
-              previousState={enrichments[String(selectedIssue.number)]?.previousState}
-              isAgentLocked={enrichments[String(selectedIssue.number)]?.agentLinks?.some(l => l.status === 'active')}
-              onTransition={handleTransition}
-              completenessScore={enrichments[String(selectedIssue.number)]?.completenessScore ?? 0}
-              onAITriage={() => aiTriage.runEnrichment(selectedIssue.number)}
-              onImproveIssue={() => aiTriage.runEnrichment(selectedIssue.number)}
-              onSplitIssue={() => aiTriage.runSplitSuggestion(selectedIssue.number)}
-              isAIBusy={aiTriage.isTriaging}
-              dependencies={dependencies}
-              isDepsLoading={isDepsLoading}
-              depsError={depsError}
-              metrics={metrics}
-              metricsTimeWindow={metricsTimeWindow}
-              isMetricsLoading={isMetricsLoading}
-              onTimeWindowChange={setMetricsTimeWindow}
-              onRefreshMetrics={computeMetrics}
-            />
-          </section>
-        )}
-      </div>
+      {triageModeEnabled && selectedIssue ? (
+        <ResizableThreePanels
+          storageKey="github-issues-panel-3"
+          defaultLeftWidth={25}
+          defaultMiddleWidth={50}
+          minPanelWidth={15}
+          leftPanel={
+            <section className="flex flex-col h-full border-r border-border" aria-label={t('panels.issueList')} data-triage-panel="1" tabIndex={-1}>
+              <IssueList
+                issues={workflowFilteredIssues}
+                selectedIssueNumber={selectedIssueNumber}
+                isLoading={isLoading}
+                isLoadingMore={isLoadingMore}
+                hasMore={hasMore && !isSearchActive}
+                error={error}
+                onSelectIssue={selectIssue}
+                onInvestigate={handleInvestigate}
+                onLoadMore={!isSearchActive ? handleLoadMore : undefined}
+                enrichments={enrichments}
+                selectedIssueNumbers={selectedIssueNumbers}
+                onToggleSelect={handleToggleSelect}
+                compact
+              />
+            </section>
+          }
+          middlePanel={
+            <section className="flex flex-col h-full border-r border-border" aria-label={t('panels.issueDetail')} data-triage-panel="2" tabIndex={-1}>
+              <IssueDetail
+                issue={selectedIssue}
+                onInvestigate={() => handleInvestigate(selectedIssue)}
+                investigationResult={
+                  lastInvestigationResult?.issueNumber === selectedIssue.number
+                    ? lastInvestigationResult
+                    : null
+                }
+                linkedTaskId={issueToTaskMap.get(selectedIssue.number)}
+                onViewTask={onNavigateToTask}
+                projectId={selectedProject?.id}
+                autoFixConfig={autoFixConfig}
+                autoFixQueueItem={getAutoFixQueueItem(selectedIssue.number)}
+                enrichment={enrichments[String(selectedIssue.number)] ?? null}
+                onTransition={handleTransition}
+                onAITriage={() => aiTriage.runEnrichment(selectedIssue.number)}
+                onImproveIssue={() => aiTriage.runEnrichment(selectedIssue.number)}
+                onSplitIssue={() => aiTriage.runSplitSuggestion(selectedIssue.number)}
+                isAIBusy={aiTriage.isTriaging}
+                onEditTitle={handleEditTitle}
+                onEditBody={handleEditBody}
+                onClose={handleCloseIssue}
+                onReopen={handleReopenIssue}
+                onComment={handleAddComment}
+                onAddLabels={handleAddLabels}
+                onRemoveLabels={handleRemoveLabels}
+                repoLabels={repoLabels}
+                onAddAssignees={handleAddAssignees}
+                onRemoveAssignees={handleRemoveAssignees}
+                collaborators={collaborators}
+                dependencies={dependencies}
+                isDepsLoading={isDepsLoading}
+                depsError={depsError}
+                onNavigateDependency={selectIssue}
+                onCreateSpec={handleCreateSpec}
+                onPostEnrichmentComment={aiTriage.enrichmentResult ? handlePostEnrichmentComment : undefined}
+                onDismissEnrichmentComment={aiTriage.enrichmentResult ? aiTriage.clearEnrichmentResult : undefined}
+                hasExistingAIComment={hasExistingAIComment}
+              />
+            </section>
+          }
+          rightPanel={
+            <section className="flex flex-col h-full" aria-label={t('panels.triageSidebar')} data-triage-panel="3" tabIndex={-1}>
+              <TriageSidebar
+                enrichment={enrichments[String(selectedIssue.number)] ?? null}
+                currentState={enrichments[String(selectedIssue.number)]?.triageState ?? 'new'}
+                previousState={enrichments[String(selectedIssue.number)]?.previousState}
+                isAgentLocked={enrichments[String(selectedIssue.number)]?.agentLinks?.some(l => l.status === 'active')}
+                onTransition={handleTransition}
+                completenessScore={enrichments[String(selectedIssue.number)]?.completenessScore ?? 0}
+                onAITriage={() => aiTriage.runEnrichment(selectedIssue.number)}
+                onImproveIssue={() => aiTriage.runEnrichment(selectedIssue.number)}
+                onSplitIssue={() => aiTriage.runSplitSuggestion(selectedIssue.number)}
+                isAIBusy={aiTriage.isTriaging}
+                dependencies={dependencies}
+                isDepsLoading={isDepsLoading}
+                depsError={depsError}
+                metrics={metrics}
+                metricsTimeWindow={metricsTimeWindow}
+                isMetricsLoading={isMetricsLoading}
+                onTimeWindowChange={setMetricsTimeWindow}
+                onRefreshMetrics={computeMetrics}
+              />
+            </section>
+          }
+        />
+      ) : (
+        <ResizablePanels
+          storageKey="github-issues-panel-2"
+          defaultLeftWidth={50}
+          minLeftWidth={25}
+          maxLeftWidth={75}
+          leftPanel={
+            <section className="flex flex-col h-full border-r border-border" aria-label={t('panels.issueList')} data-triage-panel="1" tabIndex={-1}>
+              <IssueList
+                issues={workflowFilteredIssues}
+                selectedIssueNumber={selectedIssueNumber}
+                isLoading={isLoading}
+                isLoadingMore={isLoadingMore}
+                hasMore={hasMore && !isSearchActive}
+                error={error}
+                onSelectIssue={selectIssue}
+                onInvestigate={handleInvestigate}
+                onLoadMore={!isSearchActive ? handleLoadMore : undefined}
+                enrichments={enrichments}
+                selectedIssueNumbers={selectedIssueNumbers}
+                onToggleSelect={handleToggleSelect}
+                compact={triageModeEnabled}
+              />
+            </section>
+          }
+          rightPanel={
+            <section className="flex flex-col h-full" aria-label={t('panels.issueDetail')} data-triage-panel="2" tabIndex={-1}>
+              {selectedIssue ? (
+                <IssueDetail
+                  issue={selectedIssue}
+                  onInvestigate={() => handleInvestigate(selectedIssue)}
+                  investigationResult={
+                    lastInvestigationResult?.issueNumber === selectedIssue.number
+                      ? lastInvestigationResult
+                      : null
+                  }
+                  linkedTaskId={issueToTaskMap.get(selectedIssue.number)}
+                  onViewTask={onNavigateToTask}
+                  projectId={selectedProject?.id}
+                  autoFixConfig={autoFixConfig}
+                  autoFixQueueItem={getAutoFixQueueItem(selectedIssue.number)}
+                  enrichment={enrichments[String(selectedIssue.number)] ?? null}
+                  onTransition={handleTransition}
+                  onAITriage={() => aiTriage.runEnrichment(selectedIssue.number)}
+                  onImproveIssue={() => aiTriage.runEnrichment(selectedIssue.number)}
+                  onSplitIssue={() => aiTriage.runSplitSuggestion(selectedIssue.number)}
+                  isAIBusy={aiTriage.isTriaging}
+                  onEditTitle={handleEditTitle}
+                  onEditBody={handleEditBody}
+                  onClose={handleCloseIssue}
+                  onReopen={handleReopenIssue}
+                  onComment={handleAddComment}
+                  onAddLabels={handleAddLabels}
+                  onRemoveLabels={handleRemoveLabels}
+                  repoLabels={repoLabels}
+                  onAddAssignees={handleAddAssignees}
+                  onRemoveAssignees={handleRemoveAssignees}
+                  collaborators={collaborators}
+                  dependencies={dependencies}
+                  isDepsLoading={isDepsLoading}
+                  depsError={depsError}
+                  onNavigateDependency={selectIssue}
+                  onCreateSpec={handleCreateSpec}
+                  onPostEnrichmentComment={aiTriage.enrichmentResult ? handlePostEnrichmentComment : undefined}
+                  onDismissEnrichmentComment={aiTriage.enrichmentResult ? aiTriage.clearEnrichmentResult : undefined}
+                  hasExistingAIComment={hasExistingAIComment}
+                />
+              ) : (
+                <EmptyState message="Select an issue to view details" />
+              )}
+            </section>
+          }
+        />
+      )}
 
       {/* Investigation Dialog */}
       <InvestigationDialog
