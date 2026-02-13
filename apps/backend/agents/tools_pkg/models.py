@@ -38,6 +38,7 @@ TOOL_RECORD_DISCOVERY = "mcp__auto-claude__record_discovery"
 TOOL_RECORD_GOTCHA = "mcp__auto-claude__record_gotcha"
 TOOL_GET_SESSION_CONTEXT = "mcp__auto-claude__get_session_context"
 TOOL_UPDATE_QA_STATUS = "mcp__auto-claude__update_qa_status"
+TOOL_SEARCH_MEMORY = "mcp__auto-claude__search_memory"
 
 # =============================================================================
 # External MCP Tools
@@ -196,6 +197,7 @@ AGENT_CONFIGS = {
             TOOL_GET_BUILD_PROGRESS,
             TOOL_GET_SESSION_CONTEXT,
             TOOL_RECORD_DISCOVERY,
+            TOOL_SEARCH_MEMORY,
         ],
         "thinking_default": "high",
     },
@@ -209,6 +211,7 @@ AGENT_CONFIGS = {
             TOOL_RECORD_DISCOVERY,
             TOOL_RECORD_GOTCHA,
             TOOL_GET_SESSION_CONTEXT,
+            TOOL_SEARCH_MEMORY,
         ],
         "thinking_default": "low",  # Coding uses minimal thinking (effort: low for Opus, 1024 tokens for Sonnet/Haiku)
     },
@@ -225,6 +228,7 @@ AGENT_CONFIGS = {
             TOOL_GET_BUILD_PROGRESS,
             TOOL_UPDATE_QA_STATUS,
             TOOL_GET_SESSION_CONTEXT,
+            TOOL_SEARCH_MEMORY,
         ],
         "thinking_default": "high",
     },
@@ -237,6 +241,7 @@ AGENT_CONFIGS = {
             TOOL_GET_BUILD_PROGRESS,
             TOOL_UPDATE_QA_STATUS,
             TOOL_RECORD_GOTCHA,
+            TOOL_SEARCH_MEMORY,
         ],
         "thinking_default": "medium",
     },
