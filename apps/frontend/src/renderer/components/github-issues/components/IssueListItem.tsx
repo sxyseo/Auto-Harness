@@ -6,8 +6,7 @@ import {
   GITHUB_ISSUE_STATE_COLORS,
   GITHUB_ISSUE_STATE_LABELS
 } from '@shared/constants';
-import { WorkflowStateBadge } from './WorkflowStateBadge';
-import { CompletenessIndicator } from './CompletenessIndicator';
+import { InvestigationProgressBar } from './InvestigationProgressBar';
 import type { IssueListItemProps } from '../types';
 
 export const IssueListItem = memo(function IssueListItem({
@@ -15,12 +14,14 @@ export const IssueListItem = memo(function IssueListItem({
   isSelected,
   onClick,
   onInvestigate,
-  triageState,
-  completenessScore,
   isSelectable,
   isChecked,
   onToggleSelect,
   compact,
+  investigationState,
+  investigationProgress,
+  linkedTaskId,
+  onViewTask,
 }: IssueListItemProps) {
   return (
     <div
@@ -62,7 +63,6 @@ export const IssueListItem = memo(function IssueListItem({
             >
               {GITHUB_ISSUE_STATE_LABELS[issue.state]}
             </Badge>
-            <WorkflowStateBadge state={triageState ?? 'new'} />
             <span className="text-xs text-muted-foreground">#{issue.number}</span>
           </div>
           <h4 className="text-sm font-medium text-foreground truncate">
@@ -103,10 +103,16 @@ export const IssueListItem = memo(function IssueListItem({
                   )}
                 </div>
               )}
-              {completenessScore !== undefined && (
-                <CompletenessIndicator score={completenessScore} compact />
-              )}
             </div>
+          )}
+          {/* Investigation progress bar */}
+          {investigationState && (
+            <InvestigationProgressBar
+              state={investigationState}
+              progress={investigationProgress}
+              linkedTaskId={linkedTaskId}
+              onViewTask={onViewTask}
+            />
           )}
         </div>
         <Button
@@ -126,8 +132,9 @@ export const IssueListItem = memo(function IssueListItem({
 }, (prev, next) => {
   return prev.issue.id === next.issue.id
     && prev.isSelected === next.isSelected
-    && prev.triageState === next.triageState
-    && prev.completenessScore === next.completenessScore
+    && prev.investigationState === next.investigationState
+    && prev.investigationProgress === next.investigationProgress
+    && prev.linkedTaskId === next.linkedTaskId
     && prev.isChecked === next.isChecked
     && prev.isSelectable === next.isSelectable
     && prev.compact === next.compact;

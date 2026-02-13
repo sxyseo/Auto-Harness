@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ExternalLink, User, Clock, MessageCircle, Sparkles, CheckCircle2, Eye, X, RotateCcw } from 'lucide-react';
+import { ExternalLink, User, Clock, MessageCircle, CheckCircle2, Eye, X, RotateCcw, XCircle } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
@@ -10,7 +10,6 @@ import { ScrollArea } from '../../ui/scroll-area';
 import {
   GITHUB_ISSUE_STATE_COLORS,
   GITHUB_ISSUE_STATE_LABELS,
-  GITHUB_COMPLEXITY_COLORS
 } from '@shared/constants';
 import { formatDate } from '../utils';
 import { AutoFixButton } from './AutoFixButton';
@@ -20,8 +19,10 @@ import { CommentForm } from './CommentForm';
 import { InlineEditor } from './InlineEditor';
 import { LabelManager } from './LabelManager';
 import { AssigneeManager } from './AssigneeManager';
-import { CreateSpecButton } from './CreateSpecButton';
+import { InvestigateButton } from './InvestigateButton';
+import { InvestigationPanel } from './InvestigationPanel';
 import type { IssueDetailProps } from '../types';
+import type { InvestigationDismissReason } from '@shared/types';
 
 export function IssueDetail({
   issue,
@@ -57,18 +58,33 @@ export function IssueDetail({
   onPostEnrichmentComment,
   onDismissEnrichmentComment,
   hasExistingAIComment,
+  // Investigation system (F5)
+  investigationState,
+  investigationReport,
+  investigationProgress,
+  isInvestigating,
+  investigationError,
+  onCancelInvestigation,
+  onCreateTask,
+  onDismissIssue,
+  onPostToGitHub,
+  onAcceptLabel,
+  onRejectLabel,
+  isPostingToGitHub,
 }: IssueDetailProps) {
   const { t } = useTranslation('common');
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
+  const [showDismissMenu, setShowDismissMenu] = useState(false);
 
-  // Determine which task ID to use - either already linked or just created
-  const taskId = linkedTaskId || (investigationResult?.success ? investigationResult.taskId : undefined);
-  const hasLinkedTask = !!taskId;
+  // Use new investigation state if available, fall back to old
+  const derivedState = investigationState ?? 'new';
+  const hasLinkedTask = !!linkedTaskId;
 
   const handleViewTask = () => {
-    if (taskId && onViewTask) {
-      onViewTask(taskId);
+    if (linkedTaskId && onViewTask) {
+      onViewTask(linkedTaskId);
     }
   };
 
@@ -91,6 +107,20 @@ export function IssueDetail({
       setIsReopening(false);
     }
   };
+
+  const handleDismiss = (reason: InvestigationDismissReason) => {
+    onDismissIssue?.(reason);
+    setShowDismissMenu(false);
+  };
+
+  // Show investigation panel when report is available
+  const showInvestigationResults = investigationReport && (
+    derivedState === 'findings_ready'
+    || derivedState === 'resolved'
+    || derivedState === 'task_created'
+    || derivedState === 'building'
+    || derivedState === 'done'
+  );
 
   return (
     <ScrollArea className="flex-1">
@@ -180,7 +210,7 @@ export function IssueDetail({
           </div>
         ) : null}
 
-        {/* Actions */}
+        {/* Investigation Actions */}
         <div className="flex items-center gap-2">
           {hasLinkedTask ? (
             <Button onClick={handleViewTask} className="flex-1" variant="secondary">
@@ -188,20 +218,69 @@ export function IssueDetail({
               {t('phase5.viewTask')}
             </Button>
           ) : (
-            <>
-              <Button onClick={onInvestigate} className="flex-1">
-                <Sparkles className="h-4 w-4 mr-2" />
-                {t('phase5.createTask')}
+            <InvestigateButton
+              state={derivedState}
+              progress={investigationProgress}
+              hasError={!!investigationError}
+              onInvestigate={onInvestigate}
+              onCancel={onCancelInvestigation ?? (() => {})}
+              onViewResults={() => {/* scroll to results handled inline */}}
+              onCreateTask={onCreateTask ?? (() => {})}
+              disabled={isInvestigating && !onCancelInvestigation}
+            />
+          )}
+          {projectId && autoFixConfig?.enabled && !hasLinkedTask && (
+            <AutoFixButton
+              issue={issue}
+              projectId={projectId}
+              config={autoFixConfig}
+              queueItem={autoFixQueueItem ?? null}
+            />
+          )}
+          {/* Dismiss button */}
+          {onDismissIssue && derivedState !== 'done' && (
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDismissMenu(!showDismissMenu)}
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                {t('investigation.button.dismiss', 'Dismiss')}
               </Button>
-              {projectId && autoFixConfig?.enabled && (
-                <AutoFixButton
-                  issue={issue}
-                  projectId={projectId}
-                  config={autoFixConfig}
-                  queueItem={autoFixQueueItem ?? null}
-                />
+              {showDismissMenu && (
+                <div className="absolute right-0 top-full mt-1 z-10 bg-popover border rounded-md shadow-md py-1 min-w-[160px]">
+                  <button
+                    type="button"
+                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors"
+                    onClick={() => handleDismiss('wont_fix')}
+                  >
+                    {t('investigation.dismiss.wontFix', "Won't Fix")}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors"
+                    onClick={() => handleDismiss('duplicate')}
+                  >
+                    {t('investigation.dismiss.duplicate', 'Duplicate')}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors"
+                    onClick={() => handleDismiss('cannot_reproduce')}
+                  >
+                    {t('investigation.dismiss.cannotReproduce', 'Cannot Reproduce')}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors"
+                    onClick={() => handleDismiss('out_of_scope')}
+                  >
+                    {t('investigation.dismiss.outOfScope', 'Out of Scope')}
+                  </button>
+                </div>
               )}
-            </>
+            </div>
           )}
           {issue.state === 'open' && onClose && (
             <Button
@@ -227,15 +306,36 @@ export function IssueDetail({
           )}
         </div>
 
-        {/* Create Spec */}
-        {onCreateSpec && (
-          <CreateSpecButton
-            issueNumber={issue.number}
-            issueClosed={issue.state === 'closed'}
-            hasActiveAgent={!!enrichment?.agentLinks?.some(l => l.status === 'active')}
-            hasEnrichment={!!enrichment?.enrichment}
-            onCreateSpec={onCreateSpec}
-          />
+        {/* Investigation Error */}
+        {investigationError && (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="pt-4">
+              <p className="text-sm text-destructive">{investigationError}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Investigation Results Panel */}
+        {showInvestigationResults && investigationReport && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">
+                {t('investigation.panel.title', 'Investigation Results')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <InvestigationPanel
+                report={investigationReport}
+                state={derivedState}
+                showOriginal={showOriginal}
+                onToggleOriginal={() => setShowOriginal(!showOriginal)}
+                onPostToGitHub={onPostToGitHub}
+                onAcceptLabel={onAcceptLabel}
+                onRejectLabel={onRejectLabel}
+                isPostingToGitHub={isPostingToGitHub}
+              />
+            </CardContent>
+          </Card>
         )}
 
         {/* Task Linked Info */}
@@ -248,30 +348,16 @@ export function IssueDetail({
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-2">
-              {investigationResult?.success ? (
-                <>
-                  <p className="text-foreground">{investigationResult.analysis.summary}</p>
-                  <div className="flex items-center gap-2">
-                    <Badge className={GITHUB_COMPLEXITY_COLORS[investigationResult.analysis.estimatedComplexity]}>
-                      {investigationResult.analysis.estimatedComplexity}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {t('phase5.taskId')} {taskId}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {t('phase5.taskId')} {taskId}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {t('phase5.taskId')} {linkedTaskId}
+                </span>
+              </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Body */}
+        {/* Body / Description */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">{t('phase5.description')}</CardTitle>
@@ -296,7 +382,7 @@ export function IssueDetail({
           </CardContent>
         </Card>
 
-        {/* Enrichment Panel */}
+        {/* Legacy Enrichment Panel (backwards compat until F9) */}
         {enrichment !== undefined && onTransition && (
           <Card>
             <CardHeader className="pb-2">

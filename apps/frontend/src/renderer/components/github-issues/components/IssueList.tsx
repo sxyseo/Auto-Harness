@@ -25,6 +25,8 @@ export function IssueList({
   selectedIssueNumbers,
   onToggleSelect,
   compact,
+  investigationStates,
+  onViewTask,
 }: IssueListProps) {
   const { t } = useTranslation('common');
   const loadingMoreRef = useRef(false);
@@ -90,7 +92,7 @@ export function IssueList({
       >
         {virtualItems.map((virtualRow) => {
           const issue = issues[virtualRow.index];
-          const enrichment = enrichments?.[String(issue.number)];
+          const invState = investigationStates?.[String(issue.number)];
           return (
             <div
               key={issue.id}
@@ -108,12 +110,14 @@ export function IssueList({
                 isSelected={selectedIssueNumber === issue.number}
                 onClick={() => onSelectIssue(issue.number)}
                 onInvestigate={() => onInvestigate(issue)}
-                triageState={enrichment?.triageState ?? 'new'}
-                completenessScore={enrichment?.completenessScore ?? 0}
                 isSelectable={!!onToggleSelect}
                 isChecked={selectedIssueNumbers?.has(issue.number) ?? false}
                 onToggleSelect={onToggleSelect ? () => onToggleSelect(issue.number) : undefined}
                 compact={compact}
+                investigationState={invState?.state}
+                investigationProgress={invState?.progress}
+                linkedTaskId={invState?.linkedTaskId}
+                onViewTask={onViewTask}
               />
             </div>
           );

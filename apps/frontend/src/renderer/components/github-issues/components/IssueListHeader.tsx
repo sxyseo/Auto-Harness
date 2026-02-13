@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Github, RefreshCw, Search, Filter, Wand2, Loader2, Layers } from 'lucide-react';
+import { Github, RefreshCw, Search, Filter, Wand2, Loader2, Layers, EyeOff, Eye } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
@@ -20,6 +20,42 @@ import {
 } from '../../ui/tooltip';
 import { WorkflowFilter } from './WorkflowFilter';
 import type { IssueListHeaderProps } from '../types';
+import type { InvestigationState } from '@shared/types';
+
+const INVESTIGATION_STATE_LABELS: Record<InvestigationState, string> = {
+  new: 'investigation.stateFilters.new',
+  investigating: 'investigation.stateFilters.investigating',
+  findings_ready: 'investigation.stateFilters.findingsReady',
+  resolved: 'investigation.stateFilters.resolved',
+  failed: 'investigation.stateFilters.failed',
+  task_created: 'investigation.stateFilters.taskCreated',
+  building: 'investigation.stateFilters.building',
+  done: 'investigation.stateFilters.done',
+};
+
+const INVESTIGATION_STATE_DEFAULTS: Record<InvestigationState, string> = {
+  new: 'New',
+  investigating: 'Investigating',
+  findings_ready: 'Findings Ready',
+  resolved: 'Resolved',
+  failed: 'Failed',
+  task_created: 'Task Created',
+  building: 'Building',
+  done: 'Done',
+};
+
+const INVESTIGATION_STATE_COLORS: Record<InvestigationState, string> = {
+  new: 'bg-muted text-muted-foreground',
+  investigating: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  findings_ready: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  resolved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  failed: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  task_created: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  building: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  done: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+};
+
+const FILTER_STATES: InvestigationState[] = ['new', 'investigating', 'findings_ready', 'task_created', 'done', 'failed'];
 
 export function IssueListHeader({
   repoFullName,
@@ -42,8 +78,25 @@ export function IssueListHeader({
   onToggleTriageMode,
   isTriageModeEnabled,
   isTriageModeAvailable,
+  // Investigation system (F5)
+  investigationStateFilter,
+  onInvestigationStateFilterChange,
+  investigationStateCounts,
+  showDismissed,
+  onToggleShowDismissed,
+  activeInvestigationCount,
 }: IssueListHeaderProps) {
   const { t } = useTranslation('common');
+
+  const toggleInvestigationState = (state: InvestigationState) => {
+    if (!onInvestigationStateFilterChange) return;
+    const current = investigationStateFilter ?? [];
+    if (current.includes(state)) {
+      onInvestigationStateFilterChange(current.filter(s => s !== state));
+    } else {
+      onInvestigationStateFilterChange([...current, state]);
+    }
+  };
 
   return (
     <div className="shrink-0 p-4 border-b border-border">
@@ -65,6 +118,13 @@ export function IssueListHeader({
           <Badge variant="outline" className="text-xs">
             {t('issues.openCount', { count: openIssuesCount })}
           </Badge>
+          {activeInvestigationCount != null && activeInvestigationCount > 0 && (
+            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              {t('investigation.stateFilters.activeCount', { count: activeInvestigationCount, defaultValue: '{{count}} investigating' })}
+            </Badge>
+          )}
+          {/* Legacy triage mode toggle — kept for backwards compat */}
           {onToggleTriageMode && (
             <TooltipProvider>
               <Tooltip>
@@ -86,6 +146,29 @@ export function IssueListHeader({
               </Tooltip>
             </TooltipProvider>
           )}
+          {onToggleShowDismissed && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showDismissed ? 'secondary' : 'ghost'}
+                    size="icon"
+                    onClick={onToggleShowDismissed}
+                    aria-label={t('investigation.stateFilters.showDismissed')}
+                    aria-pressed={showDismissed}
+                  >
+                    {showDismissed ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{showDismissed
+                    ? t('investigation.stateFilters.hideDismissedTooltip', 'Hide dismissed issues')
+                    : t('investigation.stateFilters.showDismissedTooltip', 'Show dismissed issues')
+                  }</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -100,7 +183,7 @@ export function IssueListHeader({
 
       {/* Issue Management Actions */}
       <div className="flex items-center gap-3 mb-4">
-        {/* Analyze & Group Button (Proactive) */}
+        {/* Legacy Analyze & Group Button */}
         {onAnalyzeAndGroup && (
           <TooltipProvider>
             <Tooltip>
@@ -127,7 +210,7 @@ export function IssueListHeader({
           </TooltipProvider>
         )}
 
-        {/* Auto-Fix Toggle (Reactive) */}
+        {/* Auto-Fix Toggle */}
         {onAutoFixToggle && (
           <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border">
             <TooltipProvider>
@@ -162,6 +245,33 @@ export function IssueListHeader({
         )}
       </div>
 
+      {/* Investigation State Filter Chips */}
+      {onInvestigationStateFilterChange && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {FILTER_STATES.map((state) => {
+            const isActive = investigationStateFilter?.includes(state) ?? false;
+            const count = investigationStateCounts?.[state];
+            return (
+              <button
+                key={state}
+                type="button"
+                onClick={() => toggleInvestigationState(state)}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+                  isActive
+                    ? INVESTIGATION_STATE_COLORS[state]
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {t(INVESTIGATION_STATE_LABELS[state], INVESTIGATION_STATE_DEFAULTS[state])}
+                {count != null && count > 0 && (
+                  <span className="text-[10px] opacity-70">{count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
@@ -184,6 +294,7 @@ export function IssueListHeader({
             <SelectItem value="all">{t('issues.filterAll')}</SelectItem>
           </SelectContent>
         </Select>
+        {/* Legacy workflow filter — kept for backwards compat */}
         {onWorkflowFilterChange && (
           <WorkflowFilter
             selectedStates={workflowFilter ?? []}
