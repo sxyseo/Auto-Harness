@@ -15,9 +15,11 @@ from __future__ import annotations
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "AutoFixProcessor": (".autofix_processor", "AutoFixProcessor"),
     "BatchProcessor": (".batch_processor", "BatchProcessor"),
+    "EnrichmentEngine": (".enrichment_engine", "EnrichmentEngine"),
     "PRReviewEngine": (".pr_review_engine", "PRReviewEngine"),
     "PromptManager": (".prompt_manager", "PromptManager"),
     "ResponseParser": (".response_parsers", "ResponseParser"),
+    "SplitEngine": (".split_engine", "SplitEngine"),
     "TriageEngine": (".triage_engine", "TriageEngine"),
 }
 
@@ -26,6 +28,8 @@ __all__ = [
     "ResponseParser",
     "PRReviewEngine",
     "TriageEngine",
+    "EnrichmentEngine",
+    "SplitEngine",
     "AutoFixProcessor",
     "BatchProcessor",
 ]

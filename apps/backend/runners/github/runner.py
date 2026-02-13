@@ -337,6 +337,44 @@ async def cmd_followup_review_pr(args) -> int:
         return 1
 
 
+async def cmd_enrich(args) -> int:
+    """Enrich a single issue with deep AI analysis."""
+    config = get_config(args)
+    orchestrator = GitHubOrchestrator(
+        project_dir=args.project,
+        config=config,
+        progress_callback=print_progress,
+    )
+
+    result = await orchestrator.enrich_issue(args.issue_number)
+
+    # Output JSON for the Electron frontend to parse
+    safe_print(f"\nJSON Output")
+    safe_print(f"{'=' * 60}")
+    safe_print(json.dumps(result, indent=2))
+
+    return 0
+
+
+async def cmd_split(args) -> int:
+    """Suggest how to split an issue into sub-issues."""
+    config = get_config(args)
+    orchestrator = GitHubOrchestrator(
+        project_dir=args.project,
+        config=config,
+        progress_callback=print_progress,
+    )
+
+    result = await orchestrator.split_issue(args.issue_number)
+
+    # Output JSON for the Electron frontend to parse
+    safe_print(f"\nJSON Output")
+    safe_print(f"{'=' * 60}")
+    safe_print(json.dumps(result, indent=2))
+
+    return 0
+
+
 async def cmd_triage(args) -> int:
     """Triage issues."""
     config = get_config(args)
@@ -721,6 +759,14 @@ def main():
     )
     followup_parser.add_argument("pr_number", type=int, help="PR number to review")
 
+    # enrich command
+    enrich_parser = subparsers.add_parser("enrich", help="Enrich a single issue with deep AI analysis")
+    enrich_parser.add_argument("issue_number", type=int, help="Issue number to enrich")
+
+    # split command
+    split_parser = subparsers.add_parser("split", help="Suggest how to split an issue into sub-issues")
+    split_parser.add_argument("issue_number", type=int, help="Issue number to analyze for splitting")
+
     # triage command
     triage_parser = subparsers.add_parser("triage", help="Triage issues")
     triage_parser.add_argument(
@@ -813,6 +859,8 @@ def main():
     commands = {
         "review-pr": cmd_review_pr,
         "followup-review-pr": cmd_followup_review_pr,
+        "enrich": cmd_enrich,
+        "split": cmd_split,
         "triage": cmd_triage,
         "auto-fix": cmd_auto_fix,
         "check-auto-fix-labels": cmd_check_labels,

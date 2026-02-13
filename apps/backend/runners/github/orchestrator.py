@@ -43,7 +43,9 @@ try:
     from .services import (
         AutoFixProcessor,
         BatchProcessor,
+        EnrichmentEngine,
         PRReviewEngine,
+        SplitEngine,
         TriageEngine,
     )
     from .services.io_utils import safe_print
@@ -72,7 +74,9 @@ except (ImportError, ValueError, SystemError):
     from services import (
         AutoFixProcessor,
         BatchProcessor,
+        EnrichmentEngine,
         PRReviewEngine,
+        SplitEngine,
         TriageEngine,
     )
     from services.io_utils import safe_print
@@ -179,6 +183,20 @@ class GitHubOrchestrator:
         )
 
         self.batch_processor = BatchProcessor(
+            project_dir=self.project_dir,
+            github_dir=self.github_dir,
+            config=self.config,
+            progress_callback=self.progress_callback,
+        )
+
+        self.enrichment_engine = EnrichmentEngine(
+            project_dir=self.project_dir,
+            github_dir=self.github_dir,
+            config=self.config,
+            progress_callback=self.progress_callback,
+        )
+
+        self.split_engine = SplitEngine(
             project_dir=self.project_dir,
             github_dir=self.github_dir,
             config=self.config,
@@ -1468,6 +1486,62 @@ class GitHubOrchestrator:
 
         self._report_progress("complete", 100, f"Triaged {len(results)} issues")
         return results
+
+    # =========================================================================
+    # ENRICHMENT WORKFLOW
+    # =========================================================================
+
+    async def enrich_issue(self, issue_number: int) -> dict:
+        """
+        Perform deep AI enrichment on a single issue.
+
+        Args:
+            issue_number: The issue number to enrich
+
+        Returns:
+            Dict matching AIEnrichmentResult interface
+        """
+        self._report_progress(
+            "fetching", 10, f"Fetching issue #{issue_number}...",
+            issue_number=issue_number,
+        )
+
+        issue = await self._fetch_issue_data(issue_number)
+        result = await self.enrichment_engine.enrich_single_issue(issue)
+
+        self._report_progress(
+            "complete", 100, "Enrichment complete!",
+            issue_number=issue_number,
+        )
+        return result
+
+    # =========================================================================
+    # SPLIT SUGGESTION WORKFLOW
+    # =========================================================================
+
+    async def split_issue(self, issue_number: int) -> dict:
+        """
+        Analyze an issue and suggest how to split it into sub-issues.
+
+        Args:
+            issue_number: The issue number to analyze
+
+        Returns:
+            Dict matching SplitSuggestion interface
+        """
+        self._report_progress(
+            "fetching", 10, f"Fetching issue #{issue_number}...",
+            issue_number=issue_number,
+        )
+
+        issue = await self._fetch_issue_data(issue_number)
+        result = await self.split_engine.suggest_split(issue)
+
+        self._report_progress(
+            "complete", 100, "Split analysis complete!",
+            issue_number=issue_number,
+        )
+        return result
 
     # =========================================================================
     # AUTO-FIX WORKFLOW

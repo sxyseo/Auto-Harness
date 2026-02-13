@@ -28,6 +28,7 @@ import {
   getRunnerPath,
   validateGitHubModule,
   buildRunnerArgs,
+  parseJSONFromOutput,
 } from './utils/subprocess-runner';
 import { MAX_SPLIT_SUB_ISSUES } from '../../../shared/constants/ai-triage';
 import { createDefaultProgressiveTrust } from '../../../shared/types/ai-triage';
@@ -147,6 +148,7 @@ export function registerAITriageHandlers(
             onProgress: (percent, message) => {
               sendProgress({ phase: 'generating', progress: percent, message });
             },
+            onComplete: (stdout) => parseJSONFromOutput<AIEnrichmentResult>(stdout),
             onStdout: (line) => debugLog('STDOUT:', line),
             onStderr: (line) => debugLog('STDERR:', line),
             onAuthFailure: (authFailureInfo: AuthFailureInfo) => {
@@ -254,6 +256,7 @@ export function registerAITriageHandlers(
             onProgress: (percent, message) => {
               sendProgress({ phase: 'suggesting', progress: percent, message });
             },
+            onComplete: (stdout) => parseJSONFromOutput<SplitSuggestion>(stdout),
             onStdout: (line) => debugLog('STDOUT:', line),
             onStderr: (line) => debugLog('STDERR:', line),
             onAuthFailure: (authFailureInfo: AuthFailureInfo) => {
