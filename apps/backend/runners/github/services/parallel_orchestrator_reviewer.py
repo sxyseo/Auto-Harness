@@ -22,7 +22,6 @@ import hashlib
 import logging
 import os
 from collections import defaultdict
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +52,7 @@ try:
     from .agent_utils import create_working_dir_injector
     from .category_utils import map_category
     from .io_utils import safe_print
+    from .parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
     from .pr_worktree_manager import PRWorktreeManager
     from .pydantic_models import (
         AgentAgreement,
@@ -83,6 +83,7 @@ except (ImportError, ValueError, SystemError):
     from services.agent_utils import create_working_dir_injector
     from services.category_utils import map_category
     from services.io_utils import safe_print
+    from services.parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
     from services.pr_worktree_manager import PRWorktreeManager
     from services.pydantic_models import (
         AgentAgreement,
@@ -96,16 +97,7 @@ except (ImportError, ValueError, SystemError):
 # =============================================================================
 # Specialist Configuration for Parallel SDK Sessions
 # =============================================================================
-
-
-@dataclass
-class SpecialistConfig:
-    """Configuration for a specialist agent in parallel SDK sessions."""
-
-    name: str
-    prompt_file: str
-    tools: list[str]
-    description: str
+# SpecialistConfig is imported from parallel_agent_base.py
 
 
 # Define specialist configurations
@@ -182,7 +174,7 @@ def _is_finding_in_scope(
     return True, "In scope"
 
 
-class ParallelOrchestratorReviewer:
+class ParallelOrchestratorReviewer(ParallelAgentOrchestrator):
     """
     PR reviewer using SDK subagents for parallel specialist analysis.
 
@@ -194,6 +186,12 @@ class ParallelOrchestratorReviewer:
     Model Configuration:
     - Orchestrator uses user-configured model from frontend settings
     - Specialist agents use model="inherit" (same as orchestrator)
+
+    Inherits from ParallelAgentOrchestrator:
+    - _report_progress() — progress callback
+    - _load_prompt() — loads from prompts/github/ directory
+    - _run_specialist_session() — generic SDK session runner
+    - _run_parallel_specialists() — asyncio.gather wrapper
     """
 
     def __init__(
@@ -203,40 +201,8 @@ class ParallelOrchestratorReviewer:
         config: GitHubRunnerConfig,
         progress_callback=None,
     ):
-        self.project_dir = Path(project_dir)
-        self.github_dir = Path(github_dir)
-        self.config = config
-        self.progress_callback = progress_callback
+        super().__init__(project_dir, github_dir, config, progress_callback)
         self.worktree_manager = PRWorktreeManager(project_dir, PR_WORKTREE_DIR)
-
-    def _report_progress(self, phase: str, progress: int, message: str, **kwargs):
-        """Report progress if callback is set."""
-        if self.progress_callback:
-            import sys
-
-            if "orchestrator" in sys.modules:
-                ProgressCallback = sys.modules["orchestrator"].ProgressCallback
-            else:
-                try:
-                    from ..orchestrator import ProgressCallback
-                except ImportError:
-                    from orchestrator import ProgressCallback
-
-            self.progress_callback(
-                ProgressCallback(
-                    phase=phase, progress=progress, message=message, **kwargs
-                )
-            )
-
-    def _load_prompt(self, filename: str) -> str:
-        """Load a prompt file from the prompts/github directory."""
-        prompt_file = (
-            Path(__file__).parent.parent.parent.parent / "prompts" / "github" / filename
-        )
-        if prompt_file.exists():
-            return prompt_file.read_text(encoding="utf-8")
-        logger.warning(f"Prompt file not found: {prompt_file}")
-        return ""
 
     def _create_pr_worktree(self, head_sha: str, pr_number: int) -> Path:
         """Create a temporary worktree at the PR head commit.
@@ -475,7 +441,7 @@ Report findings with specific file paths, line numbers, and code evidence.
 
         return prompt_with_cwd + pr_context
 
-    async def _run_specialist_session(
+    async def _run_pr_specialist_session(
         self,
         config: SpecialistConfig,
         context: PRContext,
@@ -483,7 +449,10 @@ Report findings with specific file paths, line numbers, and code evidence.
         model: str,
         thinking_budget: int | None,
     ) -> tuple[str, list[PRReviewFinding]]:
-        """Run a single specialist as its own SDK session.
+        """Run a single PR review specialist as its own SDK session.
+
+        Builds the PR-specific prompt, delegates to the base class's generic
+        _run_specialist_session(), then parses findings from the result.
 
         Args:
             config: Specialist configuration
@@ -495,84 +464,36 @@ Report findings with specific file paths, line numbers, and code evidence.
         Returns:
             Tuple of (specialist_name, findings)
         """
-        safe_print(
-            f"[Specialist:{config.name}] Starting analysis...",
-            flush=True,
-        )
-
         # Build the specialist prompt with PR context
         prompt = self._build_specialist_prompt(config, context, project_root)
 
-        try:
-            # Create SDK client for this specialist
-            # Note: Agent type uses the generic "pr_reviewer" since individual
-            # specialist types aren't registered in AGENT_CONFIGS. The specialist-specific
-            # system prompt handles differentiation.
-            # Get betas from model shorthand (before resolution to full ID)
-            betas = get_model_betas(self.config.model or "sonnet")
-            thinking_kwargs = get_thinking_kwargs_for_model(
-                model, self.config.thinking_level or "medium"
-            )
-            client = create_client(
-                project_dir=project_root,
-                spec_dir=self.github_dir,
-                model=model,
-                agent_type="pr_reviewer",
-                betas=betas,
-                fast_mode=self.config.fast_mode,
-                output_format={
-                    "type": "json_schema",
-                    "schema": SpecialistResponse.model_json_schema(),
-                },
-                **thinking_kwargs,
-            )
+        # Delegate to base class generic session runner
+        stream_result = await super()._run_specialist_session(
+            config=config,
+            prompt=prompt,
+            project_root=project_root,
+            model=model,
+            thinking_budget=thinking_budget,
+            output_schema=SpecialistResponse.model_json_schema(),
+            agent_type="pr_reviewer",
+        )
 
-            async with client:
-                await client.query(prompt)
-
-                # Process SDK stream
-                stream_result = await process_sdk_stream(
-                    client=client,
-                    context_name=f"Specialist:{config.name}",
-                    model=model,
-                    system_prompt=prompt,
-                    agent_definitions={},  # No subagents for specialists
-                )
-
-                error = stream_result.get("error")
-                if error:
-                    logger.error(
-                        f"[Specialist:{config.name}] SDK stream failed: {error}"
-                    )
-                    safe_print(
-                        f"[Specialist:{config.name}] Analysis failed: {error}",
-                        flush=True,
-                    )
-                    return (config.name, [])
-
-                # Parse structured output
-                structured_output = stream_result.get("structured_output")
-                findings = self._parse_specialist_output(
-                    config.name, structured_output, stream_result.get("result_text", "")
-                )
-
-                safe_print(
-                    f"[Specialist:{config.name}] Complete: {len(findings)} findings",
-                    flush=True,
-                )
-
-                return (config.name, findings)
-
-        except Exception as e:
-            logger.error(
-                f"[Specialist:{config.name}] Session failed: {e}",
-                exc_info=True,
-            )
-            safe_print(
-                f"[Specialist:{config.name}] Error: {e}",
-                flush=True,
-            )
+        error = stream_result.get("error")
+        if error:
             return (config.name, [])
+
+        # Parse structured output into PRReviewFindings
+        structured_output = stream_result.get("structured_output")
+        findings = self._parse_specialist_output(
+            config.name, structured_output, stream_result.get("result_text", "")
+        )
+
+        safe_print(
+            f"[Specialist:{config.name}] Complete: {len(findings)} findings",
+            flush=True,
+        )
+
+        return (config.name, findings)
 
     def _parse_specialist_output(
         self,
@@ -643,14 +564,17 @@ Report findings with specific file paths, line numbers, and code evidence.
 
         return findings
 
-    async def _run_parallel_specialists(
+    async def _run_parallel_pr_specialists(
         self,
         context: PRContext,
         project_root: Path,
         model: str,
         thinking_budget: int | None,
     ) -> tuple[list[PRReviewFinding], list[str]]:
-        """Run all specialists in parallel and collect findings.
+        """Run all PR review specialists in parallel and collect findings.
+
+        Uses the base class's _run_parallel_specialists() for the gather
+        pattern, with PR-specific task creation and result parsing.
 
         Args:
             context: PR context
@@ -661,14 +585,9 @@ Report findings with specific file paths, line numbers, and code evidence.
         Returns:
             Tuple of (all_findings, agents_invoked)
         """
-        safe_print(
-            f"[ParallelOrchestrator] Launching {len(SPECIALIST_CONFIGS)} specialists in parallel...",
-            flush=True,
-        )
-
-        # Create tasks for all specialists
-        tasks = [
-            self._run_specialist_session(
+        # Create coroutines for all specialists
+        coroutines = [
+            self._run_pr_specialist_session(
                 config=config,
                 context=context,
                 project_root=project_root,
@@ -678,25 +597,22 @@ Report findings with specific file paths, line numbers, and code evidence.
             for config in SPECIALIST_CONFIGS
         ]
 
-        # Run all specialists in parallel
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        # Run all specialists in parallel via base class
+        valid_results = await super()._run_parallel_specialists(
+            tasks=coroutines,
+            orchestrator_name="ParallelOrchestrator",
+        )
 
         # Collect findings and track which agents ran
         all_findings: list[PRReviewFinding] = []
         agents_invoked: list[str] = []
 
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"[ParallelOrchestrator] Specialist task failed: {result}")
-                continue
-
-            specialist_name, findings = result
+        for specialist_name, findings in valid_results:
             agents_invoked.append(specialist_name)
             all_findings.extend(findings)
 
         safe_print(
-            f"[ParallelOrchestrator] All specialists complete. "
-            f"Total findings: {len(all_findings)}",
+            f"[ParallelOrchestrator] Total findings: {len(all_findings)}",
             flush=True,
         )
 
@@ -1127,7 +1043,7 @@ The SDK will run invoked agents in parallel automatically.
             # =================================================================
 
             # Run all specialists in parallel
-            findings, agents_invoked = await self._run_parallel_specialists(
+            findings, agents_invoked = await self._run_parallel_pr_specialists(
                 context=context,
                 project_root=project_root,
                 model=model,

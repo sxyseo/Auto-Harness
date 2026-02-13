@@ -117,6 +117,36 @@ _modules_to_mock = [
 _original_modules = {name: sys.modules.get(name) for name in _modules_to_mock}
 for name in _modules_to_mock:
     sys.modules[name] = MagicMock()
+# Provide real SpecialistConfig and ParallelAgentOrchestrator for the base class.
+# Using MagicMock as the base class breaks MRO for methods like _cross_validate_findings.
+# We create a lightweight stub module with the real dataclass and a minimal base class.
+import dataclasses
+import types as _types
+
+_base_stub = _types.ModuleType("services.parallel_agent_base")
+
+@dataclasses.dataclass
+class _SpecialistConfig:
+    name: str
+    prompt_file: str
+    tools: list
+    description: str
+
+class _ParallelAgentOrchestrator:
+    def __init__(self, project_dir, github_dir, config, progress_callback=None):
+        from pathlib import Path
+        self.project_dir = Path(project_dir)
+        self.github_dir = Path(github_dir)
+        self.config = config
+        self.progress_callback = progress_callback
+    def _report_progress(self, phase, progress, message, **kwargs):
+        pass
+    def _load_prompt(self, filename):
+        return ""
+
+_base_stub.SpecialistConfig = _SpecialistConfig
+_base_stub.ParallelAgentOrchestrator = _ParallelAgentOrchestrator
+sys.modules["services.parallel_agent_base"] = _base_stub
 # IMPORTANT: Register the module in sys.modules BEFORE exec_module
 # This is required for dataclass decorators to find the module by name
 sys.modules["parallel_orchestrator_reviewer"] = orchestrator_module
