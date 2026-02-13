@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy workflow filter — replaced by investigation state filter chips in IssueListHeader.
+ * Kept for backwards compatibility. Will be removed in a future cleanup pass.
+ */
 import { useTranslation } from 'react-i18next';
 import { Filter } from 'lucide-react';
 import { Button } from '../../ui/button';

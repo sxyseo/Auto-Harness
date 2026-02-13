@@ -91,17 +91,17 @@ export interface IssueDetailProps {
   autoFixConfig?: AutoFixConfig | null;
   /** Auto-fix queue item for this issue */
   autoFixQueueItem?: AutoFixQueueItem | null;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy enrichment — no longer wired in F6+. Will be deleted in a future pass. */
   enrichment?: IssueEnrichment | null;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy workflow transition — no longer wired in F6+. */
   onTransition?: (to: WorkflowState, resolution?: Resolution) => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy AI triage — replaced by investigation system. */
   onAITriage?: () => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy improve issue — replaced by investigation system. */
   onImproveIssue?: () => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy split issue — replaced by investigation system. */
   onSplitIssue?: () => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy AI busy flag — no longer wired in F6+. */
   isAIBusy?: boolean;
   onEditTitle?: (title: string) => Promise<void>;
   onEditBody?: (body: string) => Promise<void>;
@@ -111,7 +111,7 @@ export interface IssueDetailProps {
   onAddAssignees?: (logins: string[]) => Promise<void>;
   onRemoveAssignees?: (logins: string[]) => Promise<void>;
   collaborators?: string[];
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy create spec — replaced by investigation system task creation. */
   onCreateSpec?: () => Promise<{ specNumber: string } | null>;
   onClose?: (comment?: string) => Promise<void>;
   onReopen?: () => Promise<void>;
@@ -120,11 +120,11 @@ export interface IssueDetailProps {
   isDepsLoading?: boolean;
   depsError?: string | null;
   onNavigateDependency?: (issueNumber: number) => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy enrichment comment — replaced by investigation postToGitHub. */
   onPostEnrichmentComment?: () => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy enrichment comment — replaced by investigation postToGitHub. */
   onDismissEnrichmentComment?: () => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy enrichment comment — replaced by investigation postToGitHub. */
   hasExistingAIComment?: boolean;
   // --- Investigation system (F5) ---
   /** Investigation derived state for this issue */
@@ -153,6 +153,7 @@ export interface IssueDetailProps {
   isPostingToGitHub?: boolean;
 }
 
+/** @deprecated Removed in F9. Use InvestigateButton + InvestigationPanel instead. */
 export interface InvestigationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -182,21 +183,21 @@ export interface IssueListHeaderProps {
   autoFixRunning?: boolean;
   autoFixProcessing?: number; // Number of issues being processed
   onAutoFixToggle?: (enabled: boolean) => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy analyze/group — replaced by investigation system. */
   onAnalyzeAndGroup?: () => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy analyze/group — replaced by investigation system. */
   isAnalyzing?: boolean;
-  /** @deprecated Use investigationStateFilter instead. Kept for F6 migration. */
+  /** @deprecated Legacy workflow filter — replaced by investigationStateFilter. */
   workflowFilter?: WorkflowState[];
-  /** @deprecated Use onInvestigationStateFilterChange instead. Kept for F6 migration. */
+  /** @deprecated Legacy workflow filter — replaced by onInvestigationStateFilterChange. */
   onWorkflowFilterChange?: (states: WorkflowState[]) => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy workflow state counts — replaced by investigationStateCounts. */
   stateCounts?: Record<WorkflowState, number>;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy triage mode — replaced by investigation system. */
   onToggleTriageMode?: () => void;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy triage mode — replaced by investigation system. */
   isTriageModeEnabled?: boolean;
-  /** @deprecated Will be removed in F9. */
+  /** @deprecated Legacy triage mode — replaced by investigation system. */
   isTriageModeAvailable?: boolean;
   // --- Investigation system (F5) ---
   /** Filter by investigation states */
@@ -245,6 +246,7 @@ export interface NotConnectedStateProps {
   onOpenSettings?: () => void;
 }
 
+/** @deprecated Legacy triage sidebar props — replaced by investigation system. */
 export interface TriageSidebarProps {
   enrichment: IssueEnrichment | null;
   currentState: WorkflowState;

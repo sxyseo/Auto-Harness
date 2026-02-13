@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy enrichment store — replaced by investigation-store.ts.
+ * Kept for backwards compatibility. Will be removed in a future cleanup pass.
+ */
 import { create } from 'zustand';
 import type {
   IssueEnrichment,

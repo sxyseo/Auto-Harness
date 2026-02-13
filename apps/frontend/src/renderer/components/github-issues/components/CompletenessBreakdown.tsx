@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy completeness breakdown — replaced by investigation report details.
+ * Kept for backwards compatibility. Will be removed in a future cleanup pass.
+ */
 import { useState } from 'react';
 import { Check, Circle, ChevronDown, ChevronRight } from 'lucide-react';
 import type { IssueEnrichment } from '@shared/types/enrichment';

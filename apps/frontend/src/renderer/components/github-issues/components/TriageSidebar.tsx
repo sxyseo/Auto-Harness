@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy triage sidebar — replaced by InvestigationPanel in the investigation system.
+ * Kept for backwards compatibility. Will be removed in a future cleanup pass.
+ */
 import { ScrollArea } from '../../ui/scroll-area';
 import { EnrichmentPanel } from './EnrichmentPanel';
 import { DependencyList } from './DependencyList';

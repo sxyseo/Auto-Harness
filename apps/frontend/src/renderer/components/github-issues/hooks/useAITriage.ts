@@ -1,4 +1,7 @@
 /**
+ * @deprecated Legacy AI triage hook — replaced by investigation system (useInvestigationStore).
+ * Kept for backwards compatibility. Will be removed in a future cleanup pass.
+ *
  * React hook wrapping IPC calls for AI triage operations (Phase 3).
  *
  * Provides enrichment, split suggestion, apply results, and review

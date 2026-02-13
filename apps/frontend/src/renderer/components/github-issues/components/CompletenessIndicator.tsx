@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy completeness indicator — replaced by InvestigationProgressBar.
+ * Kept for backwards compatibility. Will be removed in a future cleanup pass.
+ */
 import { useTranslation } from 'react-i18next';
 
 interface CompletenessIndicatorProps {

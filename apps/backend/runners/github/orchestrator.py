@@ -1488,6 +1488,146 @@ class GitHubOrchestrator:
         return results
 
     # =========================================================================
+    # ISSUE INVESTIGATION WORKFLOW
+    # =========================================================================
+
+    async def investigate_issue(
+        self,
+        issue_number: int,
+        project_root: Path | None = None,
+    ) -> dict:
+        """
+        Run an AI investigation on a GitHub issue.
+
+        Launches 4 specialist agents in parallel (root cause, impact,
+        fix advisor, reproducer) to explore the codebase and produce
+        a structured investigation report.
+
+        Args:
+            issue_number: The GitHub issue number to investigate
+            project_root: Working directory for agents (e.g., worktree path).
+                         Defaults to self.project_dir.
+
+        Returns:
+            Dict with investigation results (InvestigationReport as dict)
+        """
+        from datetime import datetime, timezone
+
+        try:
+            from .services.investigation_models import InvestigationState
+            from .services.investigation_persistence import (
+                load_investigation_report,
+                save_investigation_state,
+            )
+            from .services.issue_investigation_orchestrator import (
+                IssueInvestigationOrchestrator,
+            )
+        except (ImportError, ValueError, SystemError):
+            from services.investigation_models import InvestigationState
+            from services.investigation_persistence import (
+                load_investigation_report,
+                save_investigation_state,
+            )
+            from services.issue_investigation_orchestrator import (
+                IssueInvestigationOrchestrator,
+            )
+
+        self._report_progress(
+            "fetching",
+            5,
+            f"Fetching issue #{issue_number}...",
+            issue_number=issue_number,
+        )
+
+        # Fetch issue data
+        issue = await self._fetch_issue_data(issue_number)
+        issue_title = issue.get("title", f"Issue #{issue_number}")
+        issue_body = issue.get("body", "")
+        issue_labels = [
+            label.get("name", "") for label in issue.get("labels", [])
+        ]
+
+        # Fetch comments
+        issue_comments = []
+        try:
+            comments_data = await self.gh_client.issue_comments(issue_number)
+            issue_comments = [c.get("body", "") for c in comments_data if c.get("body")]
+        except Exception as e:
+            safe_print(
+                f"[Investigation] Warning: Could not fetch comments: {e}",
+                flush=True,
+            )
+
+        # Save initial state
+        save_investigation_state(
+            self.project_dir,
+            issue_number,
+            {
+                "issue_number": issue_number,
+                "status": "investigating",
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "model_used": self.config.model or "sonnet",
+            },
+        )
+
+        working_dir = project_root or self.project_dir
+
+        try:
+            # Create investigation orchestrator
+            orchestrator = IssueInvestigationOrchestrator(
+                project_dir=self.project_dir,
+                github_dir=self.github_dir,
+                config=self.config,
+                progress_callback=self.progress_callback,
+            )
+
+            # Run investigation
+            report = await orchestrator.investigate(
+                issue_number=issue_number,
+                issue_title=issue_title,
+                issue_body=issue_body,
+                issue_labels=issue_labels,
+                issue_comments=issue_comments,
+                project_root=working_dir,
+            )
+
+            # Update state to findings_ready
+            save_investigation_state(
+                self.project_dir,
+                issue_number,
+                {
+                    "issue_number": issue_number,
+                    "status": "findings_ready",
+                    "started_at": datetime.now(timezone.utc).isoformat(),
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "model_used": self.config.model or "sonnet",
+                },
+            )
+
+            return report.model_dump(mode="json")
+
+        except Exception as e:
+            # Update state to failed
+            save_investigation_state(
+                self.project_dir,
+                issue_number,
+                {
+                    "issue_number": issue_number,
+                    "status": "failed",
+                    "started_at": datetime.now(timezone.utc).isoformat(),
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "error": str(e),
+                    "model_used": self.config.model or "sonnet",
+                },
+            )
+
+            safe_print(
+                f"[Investigation] Investigation failed for issue #{issue_number}: {e}",
+                flush=True,
+            )
+            raise
+
+    # =========================================================================
     # ENRICHMENT WORKFLOW
     # =========================================================================
 

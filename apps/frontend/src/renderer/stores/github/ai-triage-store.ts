@@ -1,4 +1,7 @@
 /**
+ * @deprecated Legacy AI triage store — replaced by investigation-store.ts.
+ * Kept for backwards compatibility. Will be removed in a future cleanup pass.
+ *
  * AI Triage Zustand store (Phase 3).
  *
  * Manages triage operation state, review queue, enrichment progress,

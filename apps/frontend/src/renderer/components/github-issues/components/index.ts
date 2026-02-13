@@ -1,7 +1,6 @@
 // Core
 export { IssueListItem } from './IssueListItem';
 export { IssueDetail } from './IssueDetail';
-export { InvestigationDialog } from './InvestigationDialog';
 export { EmptyState, NotConnectedState } from './EmptyStates';
 export { IssueListHeader } from './IssueListHeader';
 export { IssueList } from './IssueList';
@@ -22,7 +21,7 @@ export { AssigneeManager } from './AssigneeManager';
 export { CommentForm } from './CommentForm';
 export { BulkActionBar } from './BulkActionBar';
 export { BulkResultsPanel } from './BulkResultsPanel';
-export { CreateSpecButton } from './CreateSpecButton';
+// CreateSpecButton — removed in F9, replaced by investigation system
 
 // Phase 3 — AI Triage
 export { TriageResultCard } from './TriageResultCard';

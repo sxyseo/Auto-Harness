@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy enrichment panel — replaced by InvestigationPanel in the investigation system.
+ * Kept for backwards compatibility. Will be removed in a future cleanup pass.
+ */
 import { useTranslation } from 'react-i18next';
 import { WorkflowStateDropdown } from './WorkflowStateDropdown';
 import { CompletenessIndicator } from './CompletenessIndicator';

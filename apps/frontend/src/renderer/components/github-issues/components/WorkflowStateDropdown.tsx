@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy workflow state dropdown — replaced by investigation state machine.
+ * Kept for backwards compatibility. Will be removed in a future cleanup pass.
+ */
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '../../ui/button';
