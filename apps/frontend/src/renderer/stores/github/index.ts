@@ -5,7 +5,7 @@
  * Previously managed by a single monolithic store, now split into:
  * - Issues Store: Issue data and filtering
  * - PR Review Store: Pull request review state and progress
- * - Investigation Store: Issue investigation workflow
+ * - Investigation Store: Issue investigation workflow (new multi-issue system + legacy compat)
  * - Sync Status Store: GitHub connection status
  */
 
@@ -33,8 +33,15 @@ import { cleanupPRReviewListeners as _cleanupPRReviewListeners } from './pr-revi
 // Investigation Store
 export {
   useInvestigationStore,
-  investigateGitHubIssue
+  initializeInvestigationListeners,
+  cleanupInvestigationListeners,
+  startIssueInvestigation,
+  cancelIssueInvestigation,
+  investigateGitHubIssue,
+  type IssueInvestigationState
 } from './investigation-store';
+import { initializeInvestigationListeners as _initInvestigationListeners } from './investigation-store';
+import { cleanupInvestigationListeners as _cleanupInvestigationListeners } from './investigation-store';
 
 // Sync Status Store
 export {
@@ -48,7 +55,7 @@ export {
  */
 export function initializeGitHubListeners(): void {
   _initPRReviewListeners();
-  // Add other global listeners here as needed
+  _initInvestigationListeners();
 }
 
 /**
@@ -57,6 +64,7 @@ export function initializeGitHubListeners(): void {
  */
 export function cleanupGitHubListeners(): void {
   _cleanupPRReviewListeners();
+  _cleanupInvestigationListeners();
 }
 
 // Re-export types for convenience
@@ -69,5 +77,10 @@ export type {
   GitHubIssue,
   GitHubSyncStatus,
   GitHubInvestigationStatus,
-  GitHubInvestigationResult
+  GitHubInvestigationResult,
+  InvestigationState,
+  InvestigationProgress,
+  InvestigationResult,
+  InvestigationReport,
+  InvestigationSettings
 } from '@shared/types';
