@@ -102,6 +102,8 @@ export interface IssueDetailProps {
   isDepsLoading?: boolean;
   depsError?: string | null;
   onNavigateDependency?: (issueNumber: number) => void;
+  onPostEnrichmentComment?: () => void;
+  hasExistingAIComment?: boolean;
 }
 
 export interface InvestigationDialogProps {

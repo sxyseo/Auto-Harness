@@ -44,7 +44,6 @@ describe('Phase 5 Barrel Exports', () => {
       // Phase 3
       expect(exportNames).toContain('TriageResultCard');
       expect(exportNames).toContain('BatchTriageReview');
-      expect(exportNames).toContain('EnrichmentCommentPreview');
       expect(exportNames).toContain('IssueSplitDialog');
       expect(exportNames).toContain('TriageProgressOverlay');
       expect(exportNames).toContain('ProgressiveTrustSettings');
@@ -66,7 +65,7 @@ describe('Phase 5 Barrel Exports', () => {
       expect(exportNames).toContain('EmptyState');
       expect(exportNames).toContain('NotConnectedState');
 
-      expect(exportNames.length).toBeGreaterThanOrEqual(30);
+      expect(exportNames.length).toBeGreaterThanOrEqual(29);
     });
   });
 

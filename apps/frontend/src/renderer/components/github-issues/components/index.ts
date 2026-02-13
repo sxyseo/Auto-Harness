@@ -27,7 +27,6 @@ export { CreateSpecButton } from './CreateSpecButton';
 // Phase 3 — AI Triage
 export { TriageResultCard } from './TriageResultCard';
 export { BatchTriageReview } from './BatchTriageReview';
-export { EnrichmentCommentPreview } from './EnrichmentCommentPreview';
 export { IssueSplitDialog } from './IssueSplitDialog';
 export { TriageProgressOverlay } from './TriageProgressOverlay';
 export { ProgressiveTrustSettings } from './ProgressiveTrustSettings';

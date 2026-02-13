@@ -5,16 +5,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TriageProgressOverlay } from '../components/TriageProgressOverlay';
 import { IssueSplitDialog } from '../components/IssueSplitDialog';
-import { EnrichmentCommentPreview } from '../components/EnrichmentCommentPreview';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
-}));
-
-vi.mock('@shared/constants/ai-triage', () => ({
-  ENRICHMENT_COMMENT_FOOTER: '---\n_AI-generated_',
 }));
 
 describe('AI Triage integration', () => {
@@ -76,24 +71,4 @@ describe('AI Triage integration', () => {
     expect(onConfirm).toHaveBeenCalledWith(42, [{ title: 'Sub A', body: 'Body A', labels: [] }]);
   });
 
-  it('EnrichmentCommentPreview renders content and post button', () => {
-    render(
-      <EnrichmentCommentPreview
-        content="AI analysis comment"
-        onPost={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-    expect(screen.getByDisplayValue('AI analysis comment')).toBeDefined();
-  });
-
-  it('EnrichmentCommentPreview calls onCancel on discard', () => {
-    const onCancel = vi.fn();
-    render(
-      <EnrichmentCommentPreview content="test" onPost={vi.fn()} onCancel={onCancel} />,
-    );
-    const cancelBtn = screen.getByRole('button', { name: 'common:enrichmentComment.cancel' });
-    fireEvent.click(cancelBtn);
-    expect(onCancel).toHaveBeenCalledOnce();
-  });
 });

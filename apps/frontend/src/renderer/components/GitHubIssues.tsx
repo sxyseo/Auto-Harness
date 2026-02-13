@@ -35,7 +35,6 @@ import {
   TriageProgressOverlay,
   IssueSplitDialog,
   TriageSidebar,
-  EnrichmentCommentPreview,
   BatchTriageReview,
 } from "./github-issues/components";
 import { GitHubSetupModal } from "./GitHubSetupModal";
@@ -387,6 +386,14 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     [selectedIssueForInvestigation, startInvestigation]
   );
 
+  const handlePostEnrichmentComment = useCallback(() => {
+    if (!selectedIssue || !aiTriage.enrichmentResult) return;
+    const content = formatEnrichmentComment(aiTriage.enrichmentResult);
+    const fullContent = `${content}\n\n${ENRICHMENT_COMMENT_FOOTER}`;
+    mutations.addComment(selectedIssue.number, fullContent);
+    aiTriage.clearEnrichmentResult();
+  }, [selectedIssue, aiTriage.enrichmentResult, aiTriage.clearEnrichmentResult, mutations]);
+
   const handleTransition = useCallback(
     (to: WorkflowState, resolution?: Resolution) => {
       if (selectedIssue && selectedProject?.id) {
@@ -513,6 +520,8 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
               depsError={depsError}
               onNavigateDependency={selectIssue}
               onCreateSpec={handleCreateSpec}
+              onPostEnrichmentComment={aiTriage.enrichmentResult ? handlePostEnrichmentComment : undefined}
+              hasExistingAIComment={hasExistingAIComment}
             />
           ) : (
             <EmptyState message="Select an issue to view details" />
@@ -591,19 +600,6 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
           onDismiss={() => { useAITriageStore.getState().dismissReview(); }}
           onApply={() => { useAITriageStore.getState().snapshotBeforeApply(); aiTriage.applyTriageResults(); }}
           onUndo={lastBatchSnapshot ? () => { aiTriage.undoLastBatchWithGitHub(); } : undefined}
-        />
-      )}
-
-      {/* Enrichment Comment Preview (GAP-10) */}
-      {aiTriage.enrichmentResult && selectedIssue && (
-        <EnrichmentCommentPreview
-          content={formatEnrichmentComment(aiTriage.enrichmentResult)}
-          onPost={(content) => {
-            mutations.addComment(selectedIssue.number, content);
-            aiTriage.clearEnrichmentResult();
-          }}
-          onCancel={aiTriage.clearEnrichmentResult}
-          hasExistingAIComment={hasExistingAIComment}
         />
       )}
 

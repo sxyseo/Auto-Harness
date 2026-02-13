@@ -17,6 +17,8 @@ interface EnrichmentPanelProps {
   onSplitIssue?: () => void;
   lastError?: string | null;
   onRetry?: () => void;
+  onPostComment?: () => void;
+  hasExistingAIComment?: boolean;
 }
 
 const ENRICHMENT_SECTION_KEYS = [
@@ -41,6 +43,8 @@ export function EnrichmentPanel({
   onSplitIssue,
   lastError,
   onRetry,
+  onPostComment,
+  hasExistingAIComment,
 }: EnrichmentPanelProps) {
   const { t } = useTranslation('common');
   const enrichmentData = enrichment?.enrichment;
@@ -154,6 +158,25 @@ export function EnrichmentPanel({
           );
         })}
       </div>
+
+      {/* Post enrichment comment */}
+      {onPostComment && (
+        <div className="border-t border-border pt-3 space-y-2">
+          {hasExistingAIComment && (
+            <div role="alert" className="rounded-md border border-yellow-500/50 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-600 dark:text-yellow-400">
+              {t('enrichmentComment.duplicateWarning')}
+            </div>
+          )}
+          <button
+            type="button"
+            className="w-full text-xs px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+            onClick={onPostComment}
+            aria-label={t('enrichmentComment.post')}
+          >
+            {t('enrichmentComment.post')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

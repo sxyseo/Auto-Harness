@@ -54,6 +54,8 @@ export function IssueDetail({
   isDepsLoading,
   depsError,
   onNavigateDependency,
+  onPostEnrichmentComment,
+  hasExistingAIComment,
 }: IssueDetailProps) {
   const { t } = useTranslation('common');
   const [isClosing, setIsClosing] = useState(false);
@@ -303,6 +305,8 @@ export function IssueDetail({
                 onAITriage={isAIBusy ? undefined : onAITriage}
                 onImproveIssue={isAIBusy ? undefined : onImproveIssue}
                 onSplitIssue={isAIBusy ? undefined : onSplitIssue}
+                onPostComment={onPostEnrichmentComment}
+                hasExistingAIComment={hasExistingAIComment}
               />
             </CardContent>
           </Card>

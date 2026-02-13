@@ -254,6 +254,68 @@ describe('EnrichmentPanel', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('renders post comment button when onPostComment is provided', () => {
+    const onPostComment = vi.fn();
+    render(
+      <EnrichmentPanel
+        enrichment={null}
+        currentState="new"
+        completenessScore={0}
+        onTransition={vi.fn()}
+        onPostComment={onPostComment}
+      />,
+    );
+
+    const postBtn = screen.getByRole('button', { name: 'enrichmentComment.post' });
+    expect(postBtn).toBeDefined();
+    fireEvent.click(postBtn);
+    expect(onPostComment).toHaveBeenCalledOnce();
+  });
+
+  it('does not render post comment button when onPostComment is not provided', () => {
+    render(
+      <EnrichmentPanel
+        enrichment={null}
+        currentState="new"
+        completenessScore={0}
+        onTransition={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'enrichmentComment.post' })).toBeNull();
+  });
+
+  it('shows duplicate warning when hasExistingAIComment is true and onPostComment is provided', () => {
+    render(
+      <EnrichmentPanel
+        enrichment={null}
+        currentState="new"
+        completenessScore={0}
+        onTransition={vi.fn()}
+        onPostComment={vi.fn()}
+        hasExistingAIComment={true}
+      />,
+    );
+
+    expect(screen.getByRole('alert')).toBeDefined();
+    expect(screen.getByText('enrichmentComment.duplicateWarning')).toBeDefined();
+  });
+
+  it('does not show duplicate warning when hasExistingAIComment is false', () => {
+    render(
+      <EnrichmentPanel
+        enrichment={null}
+        currentState="new"
+        completenessScore={0}
+        onTransition={vi.fn()}
+        onPostComment={vi.fn()}
+        hasExistingAIComment={false}
+      />,
+    );
+
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('renders risksEdgeCases section when data is provided', () => {
     const enrichment = makeEnrichment({
       enrichment: {
