@@ -49,15 +49,19 @@ export const IssueListItem = memo(function IssueListItem({
     >
       <div className="flex items-start gap-3">
         {isSelectable && (
-          <input
-            type="checkbox"
-            checked={isChecked ?? false}
-            onChange={(e) => {
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={isChecked ?? false}
+            onClick={(e) => {
               e.stopPropagation();
               onToggleSelect?.();
             }}
-            onClick={(e) => e.stopPropagation()}
-            className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+            className="mt-1 h-4 w-4 shrink-0 rounded-full border-2 transition-colors"
+            style={{
+              backgroundColor: isChecked ? 'var(--accent-foreground)' : 'transparent',
+              borderColor: 'var(--accent-foreground)',
+            }}
             aria-label={t('phase5.selectIssue', { number: issue.number })}
           />
         )}
