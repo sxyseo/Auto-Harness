@@ -6,8 +6,10 @@ Handles running agent sessions and post-session processing including
 memory updates, recovery tracking, and Linear integration.
 """
 
+import asyncio
 import logging
 from pathlib import Path
+from typing import Any
 
 from claude_agent_sdk import ClaudeSDKClient
 from core.error_utils import (
@@ -51,6 +53,111 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ── Observer lifecycle helpers ─────────────────────────────────────────
+
+
+def _publish_event(
+    event_bus: Any,
+    event_type: str,
+    data: dict,
+) -> None:
+    """Publish an event to the observer bus. Never raises."""
+    try:
+        from observer.models import SessionEvent
+
+        event = SessionEvent(event_type=event_type, data=data, source="agent")
+        # event_bus.publish is a coroutine but we fire-and-forget
+        import asyncio
+
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(event_bus.publish(event))
+        else:
+            loop.run_until_complete(event_bus.publish(event))
+    except Exception:
+        logger.debug("Failed to publish observer event: %s", event_type, exc_info=True)
+
+
+async def start_observer(
+    spec_id: str,
+    project_id: str,
+    session_num: int,
+    project_dir: str,
+) -> tuple[Any, Any, Any] | None:
+    """Start the observer agent as a background task.
+
+    Returns (event_bus, observer_agent, observer_task) or None if observer
+    is disabled or fails to start. Never raises.
+    """
+    try:
+        from observer.agent import ObserverAgent
+        from observer.config import ObserverConfig
+        from observer.event_bus import SessionEventBus
+        from observer.store import ObservationStore
+
+        config = ObserverConfig.from_env()
+        if not config.enabled:
+            logger.debug("Observer disabled via config")
+            return None
+
+        event_bus = SessionEventBus()
+        store = ObservationStore(project_id)
+        agent = ObserverAgent(
+            config=config,
+            event_bus=event_bus,
+            store=store,
+            spec_id=spec_id,
+            project_id=project_id,
+            session_num=session_num,
+            project_dir=project_dir,
+        )
+        task = asyncio.create_task(agent.run())
+        logger.info("Observer agent started for spec=%s session=%d", spec_id, session_num)
+        return event_bus, agent, task
+    except Exception:
+        logger.warning("Failed to start observer agent", exc_info=True)
+        return None
+
+
+async def stop_observer(
+    observer_info: tuple[Any, Any, Any] | None,
+    timeout: float = 10.0,
+) -> None:
+    """Signal the observer to flush and stop, waiting with timeout. Never raises."""
+    if observer_info is None:
+        return
+
+    try:
+        event_bus, agent, task = observer_info
+
+        # Signal session end so the agent flushes
+        try:
+            from observer.models import SessionEvent
+
+            end_event = SessionEvent(
+                event_type="session_end", data={}, source="agent"
+            )
+            await event_bus.publish(end_event)
+        except Exception:
+            logger.debug("Failed to publish session_end event", exc_info=True)
+
+        # Wait for the observer task to finish
+        try:
+            await asyncio.wait_for(task, timeout=timeout)
+        except asyncio.TimeoutError:
+            logger.warning("Observer task did not finish within %.1fs, cancelling", timeout)
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+        except Exception:
+            logger.debug("Error waiting for observer task", exc_info=True)
+
+        logger.info("Observer agent stopped")
+    except Exception:
+        logger.warning("Failed to stop observer agent", exc_info=True)
 
 
 def _execute_recovery_action(
@@ -444,6 +551,7 @@ async def run_agent_session(
     spec_dir: Path,
     verbose: bool = False,
     phase: LogPhase = LogPhase.CODING,
+    event_bus: Any | None = None,
 ) -> tuple[str, str, dict]:
     """
     Run a single agent session using Claude Agent SDK.
@@ -515,6 +623,12 @@ async def run_agent_session(
                                 phase,
                                 print_to_console=False,
                             )
+                        # Publish to observer event bus
+                        if event_bus and block.text.strip():
+                            _publish_event(event_bus, "assistant_text", {
+                                "text": block.text[:2000],
+                                "phase": phase.value,
+                            })
                     elif block_type == "ToolUseBlock" and hasattr(block, "name"):
                         tool_name = block.name
                         tool_input_display = None
@@ -565,6 +679,14 @@ async def run_agent_session(
                             else:
                                 print(f"   Input: {input_str}", flush=True)
                         current_tool = tool_name
+
+                        # Publish tool call to observer event bus
+                        if event_bus:
+                            _publish_event(event_bus, "tool_call", {
+                                "tool_name": tool_name,
+                                "tool_input": tool_input_display,
+                                "phase": phase.value,
+                            })
 
             # Handle UserMessage (tool results)
             elif msg_type == "UserMessage" and hasattr(msg, "content"):
@@ -645,6 +767,15 @@ async def run_agent_session(
                                     detail=detail_content,
                                     phase=phase,
                                 )
+
+                        # Publish tool result to observer event bus
+                        if event_bus and current_tool:
+                            _publish_event(event_bus, "tool_result", {
+                                "tool_name": current_tool,
+                                "is_error": is_error,
+                                "result": str(result_content)[:2000],
+                                "phase": phase.value,
+                            })
 
                         current_tool = None
 
