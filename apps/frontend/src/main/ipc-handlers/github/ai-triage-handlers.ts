@@ -176,9 +176,9 @@ export function registerAITriageHandlers(
           }
 
           const enrichmentResult = result.data as AIEnrichmentResult;
-          sendComplete(enrichmentResult);
 
-          // Persist enrichment data to local file
+          // Persist enrichment data to local file BEFORE notifying the frontend,
+          // so that loadEnrichment() in the renderer reads the updated file.
           try {
             await withEnrichmentFileLock(project.path, async () => {
               const enrichmentFile = await readEnrichmentFile(project.path);
@@ -206,6 +206,8 @@ export function registerAITriageHandlers(
               error: persistErr instanceof Error ? persistErr.message : persistErr,
             });
           }
+
+          sendComplete(enrichmentResult);
         });
       } catch (error) {
         sendError(error instanceof Error ? error.message : 'Failed to run enrichment');
