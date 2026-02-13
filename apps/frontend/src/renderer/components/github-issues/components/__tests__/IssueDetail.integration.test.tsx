@@ -263,41 +263,5 @@ describe('IssueDetail integration', () => {
     expect(onRemoveAssignees).toHaveBeenCalledWith(['dev1']);
   });
 
-  // GAP-06: CreateSpecButton integration
-  it('renders CreateSpecButton when onCreateSpec is provided', () => {
-    render(
-      <IssueDetail
-        {...baseProps}
-        onCreateSpec={vi.fn()}
-      />,
-    );
-    // CreateSpecButton renders a section with aria-label "Create spec from issue"
-    expect(screen.getByLabelText('Create spec from issue')).toBeDefined();
-    expect(screen.getByText('spec.createFromIssue')).toBeDefined();
-  });
-
-  it('does not render CreateSpecButton when onCreateSpec is not provided', () => {
-    render(<IssueDetail {...baseProps} />);
-    expect(screen.queryByLabelText('Create spec from issue')).toBeNull();
-  });
-
-  it('CreateSpecButton is disabled when agent is active', () => {
-    const enrichment = {
-      issueNumber: 42,
-      triageState: 'triage' as const,
-      completenessScore: 50,
-      enrichment: { problem: 'p', goal: 'g', scopeIn: [], scopeOut: [], acceptanceCriteria: [], technicalContext: '' },
-      agentLinks: [{ agentId: 'a1', status: 'active' as const, specNumber: '001' }],
-    };
-    render(
-      <IssueDetail
-        {...baseProps}
-        enrichment={enrichment as never}
-        onTransition={vi.fn()}
-        onCreateSpec={vi.fn()}
-      />,
-    );
-    const createBtn = screen.getByText('spec.createFromIssue');
-    expect(createBtn.hasAttribute('disabled')).toBe(true);
-  });
+  // GAP-06: CreateSpecButton — removed in F9, replaced by investigation system
 });

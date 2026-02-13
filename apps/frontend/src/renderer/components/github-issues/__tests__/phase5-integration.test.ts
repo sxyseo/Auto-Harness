@@ -39,8 +39,8 @@ describe('Phase 5 integration', () => {
   it('barrel exports cover all hooks (14+)', async () => {
     const hooks = await import('../hooks');
     const exported = Object.keys(hooks);
-    expect(exported.length).toBeGreaterThanOrEqual(12);
-    expect(exported).toContain('useTriageMode');
+    expect(exported.length).toBeGreaterThanOrEqual(11);
+    // useTriageMode — removed in F9, replaced by investigation system
     expect(exported).toContain('useBulkOperations');
     expect(exported).toContain('useAITriage');
     expect(exported).toContain('useMetrics');
@@ -49,7 +49,7 @@ describe('Phase 5 integration', () => {
   it('barrel exports cover all components (30+)', { timeout: 15000 }, async () => {
     const components = await import('../components');
     const exported = Object.keys(components);
-    expect(exported.length).toBeGreaterThanOrEqual(30);
+    expect(exported.length).toBeGreaterThanOrEqual(28);
     expect(exported).toContain('TriageSidebar');
     expect(exported).toContain('BulkActionBar');
     expect(exported).toContain('MetricsDashboard');

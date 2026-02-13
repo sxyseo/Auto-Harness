@@ -39,7 +39,7 @@ describe('Phase 5 Barrel Exports', () => {
       expect(exportNames).toContain('CommentForm');
       expect(exportNames).toContain('BulkActionBar');
       expect(exportNames).toContain('BulkResultsPanel');
-      expect(exportNames).toContain('CreateSpecButton');
+      // CreateSpecButton — removed in F9, replaced by investigation system
 
       // Phase 3
       expect(exportNames).toContain('TriageResultCard');
@@ -59,13 +59,13 @@ describe('Phase 5 Barrel Exports', () => {
       expect(exportNames).toContain('IssueDetail');
       expect(exportNames).toContain('IssueList');
       expect(exportNames).toContain('IssueListHeader');
-      expect(exportNames).toContain('InvestigationDialog');
+      // InvestigationDialog — removed in F9, replaced by InvestigateButton + InvestigationPanel
       expect(exportNames).toContain('BatchReviewWizard');
       expect(exportNames).toContain('AutoFixButton');
       expect(exportNames).toContain('EmptyState');
       expect(exportNames).toContain('NotConnectedState');
 
-      expect(exportNames.length).toBeGreaterThanOrEqual(29);
+      expect(exportNames.length).toBeGreaterThanOrEqual(27);
     });
   });
 
