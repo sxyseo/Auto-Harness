@@ -86,6 +86,7 @@ export function IssueListHeader({
   onToggleShowDismissed,
   activeInvestigationCount,
   onCancelAllInvestigations,
+  children,
 }: IssueListHeaderProps) {
   const { t } = useTranslation('common');
 
@@ -317,6 +318,7 @@ export function IssueListHeader({
           />
         )}
       </div>
+      {children}
     </div>
   );
 }

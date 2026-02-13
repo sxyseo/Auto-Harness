@@ -556,10 +556,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
         onToggleShowDismissed={() => setShowDismissed(!showDismissed)}
         activeInvestigationCount={activeInvestigations.length}
         onCancelAllInvestigations={selectedProject?.id ? () => cancelAllIssueInvestigations(selectedProject.id) : undefined}
-      />
-
-      {/* Bulk Action Bar */}
-      {selectedIssueNumbers.size > 0 && (
+      >
         <BulkActionBar
           selectedCount={selectedIssueNumbers.size}
           onBulkAction={handleBulkAction}
@@ -568,7 +565,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
           onSelectAll={handleSelectAll}
           onDeselectAll={handleDeselectAll}
         />
-      )}
+      </IssueListHeader>
 
       {/* Bulk Results Panel */}
       {bulkResult && (

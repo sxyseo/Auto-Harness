@@ -218,6 +218,8 @@ export interface IssueListHeaderProps {
   activeInvestigationCount?: number;
   /** Cancel all active investigations for this project */
   onCancelAllInvestigations?: () => void;
+  /** Optional content rendered below the search/filter bar */
+  children?: React.ReactNode;
 }
 
 export interface IssueListProps {

@@ -16,15 +16,28 @@ vi.mock('@shared/constants/ai-triage', () => ({
 }));
 
 describe('BulkActionBar', () => {
-  it('not rendered when selectedCount is 0', () => {
-    const { container } = render(
+  it('renders with disabled action buttons when selectedCount is 0', () => {
+    render(
       <BulkActionBar
         selectedCount={0}
         onBulkAction={vi.fn()}
         isOperating={false}
+        onSelectAll={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onInvestigateSelected={vi.fn()}
       />,
     );
-    expect(container.innerHTML).toBe('');
+    // Toolbar is still rendered
+    expect(screen.getByRole('toolbar')).toBeDefined();
+    // Action buttons should be disabled
+    const closeBtn = screen.getByText('bulk.actionClose');
+    expect(closeBtn.hasAttribute('disabled')).toBe(true);
+    // Select All / Deselect All remain enabled
+    expect(screen.getByText('phase5.selectAll').hasAttribute('disabled')).toBe(false);
+    expect(screen.getByText('phase5.deselectAll').hasAttribute('disabled')).toBe(false);
+    // Investigate button should be disabled
+    const investigateBtn = screen.getByText('investigation.button.investigateSelected');
+    expect(investigateBtn.hasAttribute('disabled')).toBe(true);
   });
 
   it('shows selected count text', () => {
