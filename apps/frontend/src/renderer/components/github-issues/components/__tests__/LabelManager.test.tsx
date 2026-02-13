@@ -86,6 +86,70 @@ describe('LabelManager', () => {
     expect(onAddLabel).toHaveBeenCalledWith('bug');
   });
 
+  it('Enter key on option fires onAddLabel', () => {
+    const onAddLabel = vi.fn();
+    render(
+      <LabelManager
+        currentLabels={[]}
+        repoLabels={repoLabels}
+        onAddLabel={onAddLabel}
+        onRemoveLabel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add label' }));
+    const option = screen.getByRole('option', { name: /bug/ });
+    fireEvent.keyDown(option, { key: 'Enter' });
+    expect(onAddLabel).toHaveBeenCalledWith('bug');
+  });
+
+  it('Space key on option fires onAddLabel', () => {
+    const onAddLabel = vi.fn();
+    render(
+      <LabelManager
+        currentLabels={[]}
+        repoLabels={repoLabels}
+        onAddLabel={onAddLabel}
+        onRemoveLabel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add label' }));
+    const option = screen.getByRole('option', { name: /bug/ });
+    fireEvent.keyDown(option, { key: ' ' });
+    expect(onAddLabel).toHaveBeenCalledWith('bug');
+  });
+
+  it('Escape key closes dropdown', () => {
+    render(
+      <LabelManager
+        currentLabels={[]}
+        repoLabels={repoLabels}
+        onAddLabel={vi.fn()}
+        onRemoveLabel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add label' }));
+    expect(screen.getByRole('listbox')).toBeDefined();
+    const option = screen.getByRole('option', { name: /bug/ });
+    fireEvent.keyDown(option, { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('Enter key does not fire onAddLabel for already-applied label', () => {
+    const onAddLabel = vi.fn();
+    render(
+      <LabelManager
+        currentLabels={['bug']}
+        repoLabels={repoLabels}
+        onAddLabel={onAddLabel}
+        onRemoveLabel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add label' }));
+    const option = screen.getByRole('option', { selected: true });
+    fireEvent.keyDown(option, { key: 'Enter' });
+    expect(onAddLabel).not.toHaveBeenCalled();
+  });
+
   it('aria-label present on container', () => {
     const { container } = render(
       <LabelManager

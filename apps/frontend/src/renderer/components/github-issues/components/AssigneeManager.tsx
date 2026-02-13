@@ -105,7 +105,21 @@ export function AssigneeManager({
             {filteredCollaborators.map((login) => {
               const isAssigned = assignedLogins.has(login);
               return (
-                <div key={login} role="option" tabIndex={0} aria-selected={isAssigned}>
+                <div
+                  key={login}
+                  role="option"
+                  tabIndex={0}
+                  aria-selected={isAssigned}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (!isAssigned) onAddAssignee(login);
+                    } else if (e.key === 'Escape') {
+                      setDropdownOpen(false);
+                      setSearch('');
+                    }
+                  }}
+                >
                   <button
                     type="button"
                     className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"

@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-13
 **Total Gaps:** 46 confirmed (from 9-agent triple-verified audit)
-**Status:** 7 / 17 complete
+**Status:** 9 / 17 complete
 
 ---
 
@@ -130,32 +130,30 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 ## TIER 3 — Accessibility Keyboard Support
 
 ### VGAP-08: LabelManager dropdown options missing keyboard handlers
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** SHOULD-FIX
 - **Scope:** Small
 - **Verified by:** i18n agent + Verifier-2 (CONFIRMED)
 - **Doc ref:** Design doc > Section 8.4 Accessibility
-- **Files to modify:** `renderer/components/github-issues/components/LabelManager.tsx`
-- **Problem:** Options with `role="option"` and `tabIndex={0}` have NO `onKeyDown` handler. Enter/Space don't activate, Escape doesn't close dropdown. Arrow keys don't navigate between options.
-- **Fix:** Add `onKeyDown` handler to option buttons: Enter/Space to select, Escape to close dropdown. Follow the pattern used in IssueListItem.tsx (GAP-25).
-- **Tests:** Add keyboard activation tests (fireEvent.keyDown with Enter, Space, Escape)
-- **Test status:** —
+- **Files modified:** `renderer/components/github-issues/components/LabelManager.tsx`, `__tests__/LabelManager.test.tsx`
+- **Fix:** Added `onKeyDown` handler to `role="option"` divs: Enter/Space to select (with `preventDefault`), Escape to close dropdown and reset search.
+- **Tests:** 4 new tests: Enter key select, Space key select, Escape close, Enter on applied label no-op. All pass.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** VGAP-08+09
 
 ### VGAP-09: AssigneeManager dropdown options missing keyboard handlers
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** SHOULD-FIX
 - **Scope:** Small
 - **Verified by:** i18n agent + Verifier-2 (CONFIRMED)
 - **Doc ref:** Design doc > Section 8.4 Accessibility
-- **Files to modify:** `renderer/components/github-issues/components/AssigneeManager.tsx`
-- **Problem:** Same as VGAP-08 — options with `role="option"` and `tabIndex={0}` but no `onKeyDown`. No keyboard navigation.
-- **Fix:** Add `onKeyDown` handler identical to LabelManager fix. Enter/Space to select, Escape to close dropdown.
-- **Tests:** Add keyboard activation tests
-- **Test status:** —
+- **Files modified:** `renderer/components/github-issues/components/AssigneeManager.tsx`, `__tests__/AssigneeManager.test.tsx`
+- **Fix:** Added `onKeyDown` handler identical to LabelManager: Enter/Space to select, Escape to close dropdown.
+- **Tests:** 4 new tests: Enter key select, Space key select, Escape close, Enter on assigned user no-op. All pass.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** VGAP-08+09
 
 ---
 
@@ -285,9 +283,9 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 |------|-------------|-------|------|-----------|
 | 1 | Critical Wiring | 2 | 2 | 0 |
 | 2 | i18n Hardcoded Strings | 5 | 5 | 0 |
-| 3 | Accessibility Keyboard | 2 | 0 | 2 |
+| 3 | Accessibility Keyboard | 2 | 2 | 0 |
 | 4 | IPC Consistency | 3 | 0 | 3 |
 | 5 | Phase 3 Audit Gaps | 5 | 0 | 5 |
-| **Total** | | **17** | **7** | **10** |
+| **Total** | | **17** | **9** | **8** |
 
 Note: VGAP-03 through VGAP-07 contain 28+ individual hardcoded strings grouped by component file. The 17 gap count represents work units (one per component/file), not individual string count.

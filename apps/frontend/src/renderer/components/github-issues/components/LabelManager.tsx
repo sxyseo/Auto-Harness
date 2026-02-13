@@ -109,7 +109,21 @@ export function LabelManager({
             {filteredLabels.map((label) => {
               const isApplied = currentLabels.includes(label.name);
               return (
-                <div key={label.name} role="option" tabIndex={0} aria-selected={isApplied}>
+                <div
+                  key={label.name}
+                  role="option"
+                  tabIndex={0}
+                  aria-selected={isApplied}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (!isApplied) onAddLabel(label.name);
+                    } else if (e.key === 'Escape') {
+                      setDropdownOpen(false);
+                      setSearch('');
+                    }
+                  }}
+                >
                   <button
                     type="button"
                     className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"
