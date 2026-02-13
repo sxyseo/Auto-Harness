@@ -102,26 +102,26 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
   };
 
   return (
-    <section className="space-y-4" aria-label={t('settings:investigation.title', 'AI Investigation')}>
+    <section className="space-y-4" aria-label={t('settings:investigationSettings.title', 'AI Investigation')}>
       {/* Section Header */}
       <div className="flex items-center gap-2">
         <Brain className="h-4 w-4 text-info" />
         <h4 className="text-sm font-medium text-foreground">
-          {t('settings:investigation.title', 'AI Investigation')}
+          {t('settings:investigationSettings.title', 'AI Investigation')}
         </h4>
         {isLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
       </div>
       <p className="text-xs text-muted-foreground">
-        {t('settings:investigation.description', 'Configure how AI investigations create tasks and interact with GitHub.')}
+        {t('settings:investigationSettings.description', 'Configure how AI investigations create tasks and interact with GitHub.')}
       </p>
 
       <Separator />
 
       {/* 1. Auto-create tasks */}
       <SettingToggle
-        label={t('settings:investigation.autoCreateTasks', 'Auto-create tasks')}
+        label={t('settings:investigationSettings.autoCreateTasks', 'Auto-create tasks')}
         description={t(
-          'settings:investigation.autoCreateTasksDescription',
+          'settings:investigationSettings.autoCreateTasksDescription',
           'Automatically create kanban tasks from investigation results',
         )}
         checked={settings.autoCreateTasks}
@@ -130,9 +130,9 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
 
       {/* 2. Auto-start tasks */}
       <SettingToggle
-        label={t('settings:investigation.autoStartTasks', 'Auto-start tasks')}
+        label={t('settings:investigationSettings.autoStartTasks', 'Auto-start tasks')}
         description={t(
-          'settings:investigation.autoStartTasksDescription',
+          'settings:investigationSettings.autoStartTasksDescription',
           'Auto-start build pipeline when tasks are created',
         )}
         checked={settings.autoStartTasks}
@@ -143,11 +143,11 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
           <Label className="font-normal text-foreground">
-            {t('settings:investigation.pipelineMode', 'Pipeline mode')}
+            {t('settings:investigationSettings.pipelineMode', 'Pipeline mode')}
           </Label>
           <p className="text-xs text-muted-foreground">
             {t(
-              'settings:investigation.pipelineModeDescription',
+              'settings:investigationSettings.pipelineModeDescription',
               'Pipeline mode for investigation-created tasks',
             )}
           </p>
@@ -161,13 +161,13 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="full">
-              {t('settings:investigation.pipelineFull', 'Full')}
+              {t('settings:investigationSettings.pipelineFull', 'Full')}
             </SelectItem>
             <SelectItem value="skip_to_planning">
-              {t('settings:investigation.pipelineSkipToPlanning', 'Skip to planning')}
+              {t('settings:investigationSettings.pipelineSkipToPlanning', 'Skip to planning')}
             </SelectItem>
             <SelectItem value="minimal">
-              {t('settings:investigation.pipelineMinimal', 'Minimal')}
+              {t('settings:investigationSettings.pipelineMinimal', 'Minimal')}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -177,9 +177,9 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
 
       {/* 4. Auto-post to GitHub */}
       <SettingToggle
-        label={t('settings:investigation.autoPostToGitHub', 'Auto-post to GitHub')}
+        label={t('settings:investigationSettings.autoPostToGitHub', 'Auto-post to GitHub')}
         description={t(
-          'settings:investigation.autoPostToGitHubDescription',
+          'settings:investigationSettings.autoPostToGitHubDescription',
           'Automatically post investigation results to GitHub',
         )}
         checked={settings.autoPostToGitHub}
@@ -188,9 +188,9 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
 
       {/* 5. Auto-close issues */}
       <SettingToggle
-        label={t('settings:investigation.autoCloseIssues', 'Auto-close issues')}
+        label={t('settings:investigationSettings.autoCloseIssues', 'Auto-close issues')}
         description={t(
-          'settings:investigation.autoCloseIssuesDescription',
+          'settings:investigationSettings.autoCloseIssuesDescription',
           'Close GitHub issues when linked task completes',
         )}
         checked={settings.autoCloseIssues}
@@ -203,11 +203,11 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
           <Label className="font-normal text-foreground">
-            {t('settings:investigation.maxParallel', 'Max parallel investigations')}
+            {t('settings:investigationSettings.maxParallel', 'Max parallel investigations')}
           </Label>
           <p className="text-xs text-muted-foreground">
             {t(
-              'settings:investigation.maxParallelDescription',
+              'settings:investigationSettings.maxParallelDescription',
               'Maximum concurrent investigations (1-10)',
             )}
           </p>
@@ -231,11 +231,11 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
       <div className="space-y-2">
         <div className="space-y-0.5">
           <Label className="font-normal text-foreground">
-            {t('settings:investigation.labelIncludeFilter', 'Label include filter')}
+            {t('settings:investigationSettings.labelIncludeFilter', 'Label include filter')}
           </Label>
           <p className="text-xs text-muted-foreground">
             {t(
-              'settings:investigation.labelIncludeFilterDescription',
+              'settings:investigationSettings.labelIncludeFilterDescription',
               'Only auto-create tasks for issues with these labels',
             )}
           </p>
@@ -251,7 +251,7 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
         </div>
         <div className="flex gap-2">
           <Input
-            placeholder={t('settings:investigation.labelPlaceholder', 'Add label...')}
+            placeholder={t('settings:investigationSettings.labelPlaceholder', 'Add label...')}
             value={labelIncludeInput}
             onChange={(e) => setLabelIncludeInput(e.target.value)}
             onKeyDown={(e) => {
@@ -269,11 +269,11 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
       <div className="space-y-2">
         <div className="space-y-0.5">
           <Label className="font-normal text-foreground">
-            {t('settings:investigation.labelExcludeFilter', 'Label exclude filter')}
+            {t('settings:investigationSettings.labelExcludeFilter', 'Label exclude filter')}
           </Label>
           <p className="text-xs text-muted-foreground">
             {t(
-              'settings:investigation.labelExcludeFilterDescription',
+              'settings:investigationSettings.labelExcludeFilterDescription',
               'Never auto-create tasks for issues with these labels',
             )}
           </p>
@@ -289,7 +289,7 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
         </div>
         <div className="flex gap-2">
           <Input
-            placeholder={t('settings:investigation.labelPlaceholder', 'Add label...')}
+            placeholder={t('settings:investigationSettings.labelPlaceholder', 'Add label...')}
             value={labelExcludeInput}
             onChange={(e) => setLabelExcludeInput(e.target.value)}
             onKeyDown={(e) => {

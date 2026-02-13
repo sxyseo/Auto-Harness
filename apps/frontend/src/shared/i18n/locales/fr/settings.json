@@ -894,28 +894,31 @@
       "description": "Remplit intelligemment les modèles de PR GitHub à partir des changements de code"
     }
   },
-  "investigation": {
+  "investigationSettings": {
     "title": "Investigation IA",
     "description": "Configurer comment les investigations IA créent des tâches et interagissent avec GitHub.",
     "autoCreateTasks": "Création auto des tâches",
-    "autoCreateTasksDescription": "Créer automatiquement des tâches kanban à partir des résultats d'investigation",
+    "autoCreateTasksDescription": "Créer automatiquement des tâches kanban à partir des résultats d'investigation. Les tâches sont rassemblées en zone de validation avant création.",
     "autoStartTasks": "Démarrage auto des tâches",
-    "autoStartTasksDescription": "Démarrer automatiquement le pipeline de construction quand les tâches sont créées",
+    "autoStartTasksDescription": "Démarrer automatiquement le pipeline de construction quand les tâches sont créées par investigation",
     "pipelineMode": "Mode pipeline",
-    "pipelineModeDescription": "Mode pipeline pour les tâches créées par investigation",
+    "pipelineModeDescription": "Contrôle la portion du pipeline de spécification exécutée pour les tâches créées par investigation",
     "pipelineFull": "Complet",
+    "pipelineFullDescription": "Exécuter le pipeline complet de création de spécification",
     "pipelineSkipToPlanning": "Passer à la planification",
+    "pipelineSkipToPlanningDescription": "Ignorer la collecte de spécification, passer directement à la planification",
     "pipelineMinimal": "Minimal",
+    "pipelineMinimalDescription": "Pipeline minimal avec uniquement le contexte d'investigation",
     "autoPostToGitHub": "Publication auto sur GitHub",
-    "autoPostToGitHubDescription": "Publier automatiquement les résultats d'investigation sur GitHub",
+    "autoPostToGitHubDescription": "Publier automatiquement les résultats d'investigation en commentaire GitHub",
     "autoCloseIssues": "Fermeture auto des issues",
-    "autoCloseIssuesDescription": "Fermer les issues GitHub quand la tâche liée est terminée",
+    "autoCloseIssuesDescription": "Fermer l'issue GitHub avec un commentaire de complétion quand la tâche liée est terminée",
     "maxParallel": "Investigations parallèles max",
     "maxParallelDescription": "Nombre maximum d'investigations simultanées (1-10)",
     "labelIncludeFilter": "Filtre d'inclusion de labels",
-    "labelIncludeFilterDescription": "Ne créer automatiquement des tâches que pour les issues avec ces labels",
+    "labelIncludeFilterDescription": "Ne créer automatiquement des tâches que pour les issues avec ces labels (vide = toutes)",
     "labelExcludeFilter": "Filtre d'exclusion de labels",
-    "labelExcludeFilterDescription": "Ne jamais créer de tâches pour les issues avec ces labels",
+    "labelExcludeFilterDescription": "Ne jamais créer de tâches pour les issues avec ces labels (vide = aucun)",
     "labelPlaceholder": "Ajouter un label..."
   }
 }

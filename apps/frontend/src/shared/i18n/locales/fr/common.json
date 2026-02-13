@@ -1029,7 +1029,12 @@
       "retry": "Relancer l'investigation",
       "done": "Terminé",
       "building": "Construction en cours...",
-      "taskCreated": "Tâche créée"
+      "taskCreated": "Tâche créée",
+      "dismiss": "Rejeter",
+      "reInvestigate": "Ré-investiguer",
+      "investigateSelected": "Investiguer la sélection",
+      "investigateAllMatching": "Investiguer tout ce qui correspond",
+      "cancelAll": "Tout annuler"
     },
     "panel": {
       "findings": "Résultats",
@@ -1041,15 +1046,39 @@
       "linkedPRs": "PRs liées",
       "suggestedLabels": "Labels suggérés",
       "posting": "Publication...",
-      "postToGitHub": "Publier sur GitHub"
+      "postToGitHub": "Publier sur GitHub",
+      "postedToGitHub": "Publié sur GitHub",
+      "closeIssue": "Fermer l'issue",
+      "closedIssueWarning": "Cette issue a été fermée sur GitHub.",
+      "confidence": "Confiance",
+      "rootCause": "Cause racine",
+      "impact": "Impact",
+      "fixAdvice": "Conseil de correction",
+      "reproduction": "Reproduction",
+      "affectedComponents": "Composants affectés",
+      "userImpact": "Impact utilisateur",
+      "riskIfUnfixed": "Risque si non corrigé",
+      "suggestedApproaches": "Approches suggérées",
+      "filesToModify": "Fichiers à modifier",
+      "patternsToFollow": "Patterns à suivre",
+      "reproductionSteps": "Étapes de reproduction",
+      "existingTests": "Tests existants",
+      "testGaps": "Lacunes de tests",
+      "suggestedTests": "Tests suggérés",
+      "reproducible": "Reproductible",
+      "notReproducible": "Non reproductible",
+      "reproUnknown": "Inconnu"
     },
     "batchStaging": {
       "title": "Créations de tâches en attente",
       "approveAll": "Tout approuver",
+      "rejectAll": "Tout rejeter",
       "approve": "Approuver",
       "reject": "Rejeter",
       "approved": "Approuvé",
-      "rejected": "Rejeté"
+      "rejected": "Rejeté",
+      "pending": "En attente",
+      "empty": "Aucune création de tâche en attente"
     },
     "states": {
       "new": "Nouveau",
@@ -1059,7 +1088,24 @@
       "failed": "Échoué",
       "taskCreated": "Tâche créée",
       "building": "En construction",
-      "done": "Terminé"
+      "done": "Terminé",
+      "dismissed": "Rejeté"
+    },
+    "stateFilters": {
+      "all": "Tous",
+      "new": "Nouveau",
+      "investigating": "En investigation",
+      "findingsReady": "Résultats prêts",
+      "resolved": "Résolu",
+      "failed": "Échoué",
+      "taskCreated": "Tâche créée",
+      "building": "En construction",
+      "done": "Terminé",
+      "dismissed": "Rejeté",
+      "showDismissed": "Afficher les rejetés",
+      "hideDismissedTooltip": "Masquer les problèmes rejetés",
+      "showDismissedTooltip": "Afficher les problèmes rejetés",
+      "activeCount": "{{count}} en investigation"
     },
     "agents": {
       "rootCause": "Analyseur de cause racine",
@@ -1067,7 +1113,23 @@
       "fixAdvisor": "Conseiller de correction",
       "reproducer": "Reproducteur"
     },
+    "progress": {
+      "starting": "Démarrage de l'investigation...",
+      "analyzing": "Analyse du code source...",
+      "agentRunning": "{{agent}} en cours...",
+      "agentComplete": "{{agent}} terminé",
+      "agentFailed": "{{agent}} échoué",
+      "buildingReport": "Construction du rapport...",
+      "complete": "Investigation terminée",
+      "failed": "Investigation échouée"
+    },
     "dismiss": {
+      "wontFix": "Ne sera pas corrigé",
+      "duplicate": "Doublon",
+      "cannotReproduce": "Non reproductible",
+      "outOfScope": "Hors périmètre"
+    },
+    "dismissReasons": {
       "wontFix": "Ne sera pas corrigé",
       "duplicate": "Doublon",
       "cannotReproduce": "Non reproductible",
@@ -1078,6 +1140,25 @@
       "high": "Élevé",
       "medium": "Moyen",
       "low": "Faible"
+    },
+    "activityLog": {
+      "title": "Activité",
+      "investigatedOn": "Investigué le {{date}}",
+      "taskCreatedOn": "Tâche créée le {{date}}",
+      "postedToGitHub": "Publié sur GitHub le {{date}}",
+      "dismissed": "Rejeté : {{reason}}",
+      "closedOnGitHub": "Fermé sur GitHub le {{date}}",
+      "reInvestigated": "Ré-investigué le {{date}}"
+    },
+    "complexity": {
+      "simple": "Simple",
+      "standard": "Standard",
+      "complex": "Complexe"
+    },
+    "queue": {
+      "position": "Position dans la file : {{position}}",
+      "waiting": "En attente dans la file...",
+      "running": "{{current}} sur {{max}} en cours"
     }
   }
 }

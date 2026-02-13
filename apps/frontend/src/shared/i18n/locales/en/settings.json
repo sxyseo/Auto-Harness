@@ -894,28 +894,31 @@
       "description": "AI-fills GitHub PR templates from code changes"
     }
   },
-  "investigation": {
+  "investigationSettings": {
     "title": "AI Investigation",
     "description": "Configure how AI investigations create tasks and interact with GitHub.",
     "autoCreateTasks": "Auto-create tasks",
-    "autoCreateTasksDescription": "Automatically create kanban tasks from investigation results",
+    "autoCreateTasksDescription": "Automatically create kanban tasks from investigation results. Tasks collect in batch staging area for review.",
     "autoStartTasks": "Auto-start tasks",
-    "autoStartTasksDescription": "Auto-start build pipeline when tasks are created",
+    "autoStartTasksDescription": "Auto-start build pipeline when tasks are created from investigations",
     "pipelineMode": "Pipeline mode",
-    "pipelineModeDescription": "Pipeline mode for investigation-created tasks",
+    "pipelineModeDescription": "Controls how much of the spec pipeline runs for investigation-created tasks",
     "pipelineFull": "Full",
+    "pipelineFullDescription": "Run full spec creation pipeline",
     "pipelineSkipToPlanning": "Skip to planning",
+    "pipelineSkipToPlanningDescription": "Skip spec gathering, go straight to planning",
     "pipelineMinimal": "Minimal",
+    "pipelineMinimalDescription": "Minimal pipeline with investigation context only",
     "autoPostToGitHub": "Auto-post to GitHub",
-    "autoPostToGitHubDescription": "Automatically post investigation results to GitHub",
+    "autoPostToGitHubDescription": "Automatically post investigation results as a GitHub comment",
     "autoCloseIssues": "Auto-close issues",
-    "autoCloseIssuesDescription": "Close GitHub issues when linked task completes",
+    "autoCloseIssuesDescription": "Close GitHub issue with completion comment when linked task reaches done",
     "maxParallel": "Max parallel investigations",
     "maxParallelDescription": "Maximum concurrent investigations (1-10)",
     "labelIncludeFilter": "Label include filter",
-    "labelIncludeFilterDescription": "Only auto-create tasks for issues with these labels",
+    "labelIncludeFilterDescription": "Only auto-create tasks for issues with these labels (empty = all)",
     "labelExcludeFilter": "Label exclude filter",
-    "labelExcludeFilterDescription": "Never auto-create tasks for issues with these labels",
+    "labelExcludeFilterDescription": "Never auto-create tasks for issues with these labels (empty = none)",
     "labelPlaceholder": "Add label..."
   }
 }

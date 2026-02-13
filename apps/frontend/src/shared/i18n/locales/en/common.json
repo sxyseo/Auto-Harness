@@ -1029,7 +1029,12 @@
       "retry": "Retry Investigation",
       "done": "Done",
       "building": "Building...",
-      "taskCreated": "Task Created"
+      "taskCreated": "Task Created",
+      "dismiss": "Dismiss",
+      "reInvestigate": "Re-Investigate",
+      "investigateSelected": "Investigate Selected",
+      "investigateAllMatching": "Investigate All Matching",
+      "cancelAll": "Cancel All"
     },
     "panel": {
       "findings": "Findings",
@@ -1041,15 +1046,39 @@
       "linkedPRs": "Linked PRs",
       "suggestedLabels": "Suggested Labels",
       "posting": "Posting...",
-      "postToGitHub": "Post to GitHub"
+      "postToGitHub": "Post to GitHub",
+      "postedToGitHub": "Posted to GitHub",
+      "closeIssue": "Close Issue",
+      "closedIssueWarning": "This issue has been closed on GitHub.",
+      "confidence": "Confidence",
+      "rootCause": "Root Cause",
+      "impact": "Impact",
+      "fixAdvice": "Fix Advice",
+      "reproduction": "Reproduction",
+      "affectedComponents": "Affected Components",
+      "userImpact": "User Impact",
+      "riskIfUnfixed": "Risk If Unfixed",
+      "suggestedApproaches": "Suggested Approaches",
+      "filesToModify": "Files to Modify",
+      "patternsToFollow": "Patterns to Follow",
+      "reproductionSteps": "Reproduction Steps",
+      "existingTests": "Existing Tests",
+      "testGaps": "Test Gaps",
+      "suggestedTests": "Suggested Tests",
+      "reproducible": "Reproducible",
+      "notReproducible": "Not Reproducible",
+      "reproUnknown": "Unknown"
     },
     "batchStaging": {
       "title": "Pending Task Creations",
       "approveAll": "Approve All",
+      "rejectAll": "Reject All",
       "approve": "Approve",
       "reject": "Reject",
       "approved": "Approved",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "pending": "Pending",
+      "empty": "No pending task creations"
     },
     "states": {
       "new": "New",
@@ -1059,7 +1088,24 @@
       "failed": "Failed",
       "taskCreated": "Task Created",
       "building": "Building",
-      "done": "Done"
+      "done": "Done",
+      "dismissed": "Dismissed"
+    },
+    "stateFilters": {
+      "all": "All",
+      "new": "New",
+      "investigating": "Investigating",
+      "findingsReady": "Findings Ready",
+      "resolved": "Resolved",
+      "failed": "Failed",
+      "taskCreated": "Task Created",
+      "building": "Building",
+      "done": "Done",
+      "dismissed": "Dismissed",
+      "showDismissed": "Show dismissed",
+      "hideDismissedTooltip": "Hide dismissed issues",
+      "showDismissedTooltip": "Show dismissed issues",
+      "activeCount": "{{count}} investigating"
     },
     "agents": {
       "rootCause": "Root Cause Analyzer",
@@ -1067,7 +1113,23 @@
       "fixAdvisor": "Fix Advisor",
       "reproducer": "Reproducer"
     },
+    "progress": {
+      "starting": "Starting investigation...",
+      "analyzing": "Analyzing codebase...",
+      "agentRunning": "{{agent}} running...",
+      "agentComplete": "{{agent}} complete",
+      "agentFailed": "{{agent}} failed",
+      "buildingReport": "Building report...",
+      "complete": "Investigation complete",
+      "failed": "Investigation failed"
+    },
     "dismiss": {
+      "wontFix": "Won't fix",
+      "duplicate": "Duplicate",
+      "cannotReproduce": "Cannot reproduce",
+      "outOfScope": "Out of scope"
+    },
+    "dismissReasons": {
       "wontFix": "Won't fix",
       "duplicate": "Duplicate",
       "cannotReproduce": "Cannot reproduce",
@@ -1078,6 +1140,25 @@
       "high": "High",
       "medium": "Medium",
       "low": "Low"
+    },
+    "activityLog": {
+      "title": "Activity",
+      "investigatedOn": "Investigated on {{date}}",
+      "taskCreatedOn": "Task created on {{date}}",
+      "postedToGitHub": "Posted to GitHub on {{date}}",
+      "dismissed": "Dismissed: {{reason}}",
+      "closedOnGitHub": "Closed on GitHub on {{date}}",
+      "reInvestigated": "Re-investigated on {{date}}"
+    },
+    "complexity": {
+      "simple": "Simple",
+      "standard": "Standard",
+      "complex": "Complex"
+    },
+    "queue": {
+      "position": "Queue position: {{position}}",
+      "waiting": "Waiting in queue...",
+      "running": "{{current}} of {{max}} running"
     }
   }
 }
