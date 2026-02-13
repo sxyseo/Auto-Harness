@@ -965,6 +965,17 @@ def get_sdk_env_vars() -> dict[str, str]:
         if bash_path:
             env["CLAUDE_CODE_GIT_BASH_PATH"] = bash_path
 
+    # Forward observer memory system configuration if set
+    for observer_var in (
+        "OBSERVER_ENABLED",
+        "OBSERVER_MODEL",
+        "OBSERVER_MAX_CALLS_PER_SESSION",
+        "OBSERVER_TIMEOUT_SECONDS",
+    ):
+        value = os.environ.get(observer_var)
+        if value:
+            env[observer_var] = value
+
     # Explicitly unset PYTHONPATH in SDK subprocess environment to prevent
     # pollution of agent subprocess environments. This fixes ACS-251 where
     # external projects with different Python versions would fail due to
