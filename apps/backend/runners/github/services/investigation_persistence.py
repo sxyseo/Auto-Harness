@@ -28,10 +28,10 @@ from typing import Any
 
 try:
     from ...core.file_utils import write_json_atomic
+    from .investigation_models import InvestigationReport, InvestigationState
 except (ImportError, ValueError, SystemError):
     from core.file_utils import write_json_atomic
-
-from .investigation_models import InvestigationReport, InvestigationState
+    from investigation_models import InvestigationReport, InvestigationState
 
 logger = logging.getLogger(__name__)
 

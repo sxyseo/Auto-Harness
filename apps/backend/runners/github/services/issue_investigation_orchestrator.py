@@ -43,19 +43,19 @@ except (ImportError, ValueError, SystemError):
         get_thinking_budget,
         resolve_model_id,
     )
-    from services.investigation_models import (
+    from investigation_models import (
         FixAdvice,
         ImpactAssessment,
         InvestigationReport,
         ReproductionAnalysis,
         RootCauseAnalysis,
     )
-    from services.investigation_persistence import (
+    from investigation_persistence import (
         save_agent_log,
         save_investigation_report,
     )
-    from services.io_utils import safe_print
-    from services.parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
+    from io_utils import safe_print
+    from parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
 
 
 logger = logging.getLogger(__name__)
