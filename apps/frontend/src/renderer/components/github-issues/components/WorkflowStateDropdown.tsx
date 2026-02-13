@@ -15,8 +15,8 @@ import {
 import {
   WORKFLOW_STATE_COLORS,
   getValidTargets,
-} from '../../../../shared/constants/enrichment';
-import type { WorkflowState, Resolution } from '../../../../shared/types/enrichment';
+} from '@shared/constants/enrichment';
+import type { WorkflowState, Resolution } from '@shared/types/enrichment';
 
 const RESOLUTION_KEYS: { value: Resolution; i18nKey: string }[] = [
   { value: 'completed', i18nKey: 'enrichment.resolutions.completed' },

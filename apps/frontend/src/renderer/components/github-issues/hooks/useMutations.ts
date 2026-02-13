@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { useMutationStore } from '../../../stores/github/mutation-store';
 import { useIssuesStore } from '../../../stores/github/issues-store';
-import { validateTitle, validateBody } from '../../../../shared/utils/mutation-validation';
-import type { MutationResult } from '../../../../shared/types/mutations';
+import { validateTitle, validateBody } from '@shared/utils/mutation-validation';
+import type { MutationResult } from '@shared/types/mutations';
 
 export function useMutations(projectId: string) {
   const { startMutation, endMutation } = useMutationStore();

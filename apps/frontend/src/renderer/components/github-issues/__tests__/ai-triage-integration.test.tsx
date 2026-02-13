@@ -13,7 +13,7 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
-vi.mock('../../../../shared/constants/ai-triage', () => ({
+vi.mock('@shared/constants/ai-triage', () => ({
   ENRICHMENT_COMMENT_FOOTER: '---\n_AI-generated_',
 }));
 

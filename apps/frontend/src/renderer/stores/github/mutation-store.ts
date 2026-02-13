@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { BulkOperationProgress, BulkOperationResult, BulkActionType } from '../../../shared/types/mutations';
+import type { BulkOperationProgress, BulkOperationResult, BulkActionType } from '@shared/types/mutations';
 
 interface MutationState {
   // Single mutations

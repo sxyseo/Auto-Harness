@@ -6,8 +6,8 @@ import { renderHook } from '@testing-library/react';
 import { useEnrichedIssue } from '../useEnrichedIssue';
 import { useIssuesStore } from '../../../../stores/github/issues-store';
 import { useEnrichmentStore } from '../../../../stores/github/enrichment-store';
-import { createDefaultEnrichment } from '../../../../../shared/types/enrichment';
-import type { GitHubIssue } from '../../../../../shared/types/integrations';
+import { createDefaultEnrichment } from '@shared/types/enrichment';
+import type { GitHubIssue } from '@shared/types/integrations';
 
 function mockIssue(number: number): GitHubIssue {
   return {

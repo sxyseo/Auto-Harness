@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useMutationStore } from '../../../stores/github/mutation-store';
-import type { BulkActionType, BulkOperationResult, BulkExecuteParams } from '../../../../shared/types/mutations';
+import type { BulkActionType, BulkOperationResult, BulkExecuteParams } from '@shared/types/mutations';
 
 export function useBulkOperations(projectId: string) {
   const { startBulkOperation, updateBulkProgress, endBulkOperation } = useMutationStore();

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Badge } from '../../ui/badge';
-import { WORKFLOW_STATE_COLORS } from '../../../../shared/constants/enrichment';
-import type { WorkflowState } from '../../../../shared/types/enrichment';
+import { WORKFLOW_STATE_COLORS } from '@shared/constants/enrichment';
+import type { WorkflowState } from '@shared/types/enrichment';
 
 interface WorkflowStateBadgeProps {
   state: WorkflowState;

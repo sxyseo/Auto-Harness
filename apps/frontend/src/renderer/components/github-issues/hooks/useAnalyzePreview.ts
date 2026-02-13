@@ -5,7 +5,7 @@ import type {
   AnalyzePreviewProgress,
   ProposedBatch,
 } from '../../../../preload/api/modules/github-api';
-import type { TaskMetadata } from '../../../../shared/types';
+import type { TaskMetadata } from '@shared/types';
 
 interface UseAnalyzePreviewProps {
   projectId: string;

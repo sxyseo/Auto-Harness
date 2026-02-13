@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type {
   GitHubInvestigationStatus,
   GitHubInvestigationResult
-} from '../../../shared/types';
+} from '@shared/types';
 
 interface InvestigationState {
   // Investigation state

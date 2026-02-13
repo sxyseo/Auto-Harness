@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import type { TriageMetrics, MetricsTimeWindow } from '../../../../shared/types/metrics';
-import { formatDuration } from '../../../../shared/types/metrics';
-import { WORKFLOW_STATE_COLORS } from '../../../../shared/constants/enrichment';
-import type { WorkflowState } from '../../../../shared/types/enrichment';
+import type { TriageMetrics, MetricsTimeWindow } from '@shared/types/metrics';
+import { formatDuration } from '@shared/types/metrics';
+import { WORKFLOW_STATE_COLORS } from '@shared/constants/enrichment';
+import type { WorkflowState } from '@shared/types/enrichment';
 
 interface MetricsDashboardProps {
   metrics: TriageMetrics;
@@ -13,11 +13,13 @@ interface MetricsDashboardProps {
   onRefresh: () => void;
 }
 
-const TIME_WINDOWS: { value: MetricsTimeWindow; label: string }[] = [
-  { value: '7d', label: '7 days' },
-  { value: '30d', label: '30 days' },
-  { value: 'all', label: 'All time' },
-];
+const TIME_WINDOW_VALUES: MetricsTimeWindow[] = ['7d', '30d', 'all'];
+
+const TIME_WINDOW_KEYS: Record<MetricsTimeWindow, string> = {
+  '7d': 'metrics.timeWindow7d',
+  '30d': 'metrics.timeWindow30d',
+  'all': 'metrics.timeWindowAll',
+};
 
 const STATE_ORDER: WorkflowState[] = ['new', 'triage', 'ready', 'in_progress', 'review', 'done', 'blocked'];
 
@@ -42,19 +44,19 @@ export function MetricsDashboard({
         </h3>
         <div className="flex items-center gap-2">
           <div className="flex rounded border border-border overflow-hidden" role="group" aria-label={t('metrics.timeWindow')}>
-            {TIME_WINDOWS.map((tw) => (
+            {TIME_WINDOW_VALUES.map((tw) => (
               <button
-                key={tw.value}
+                key={tw}
                 type="button"
-                aria-pressed={timeWindow === tw.value}
+                aria-pressed={timeWindow === tw}
                 className={`px-2 py-0.5 text-xs transition-colors ${
-                  timeWindow === tw.value
+                  timeWindow === tw
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent'
                 }`}
-                onClick={() => onTimeWindowChange(tw.value)}
+                onClick={() => onTimeWindowChange(tw)}
               >
-                {tw.label}
+                {t(TIME_WINDOW_KEYS[tw])}
               </button>
             ))}
           </div>

@@ -4,8 +4,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { EnrichmentPanel } from '../EnrichmentPanel';
-import { createDefaultEnrichment } from '../../../../../shared/types/enrichment';
-import type { IssueEnrichment } from '../../../../../shared/types/enrichment';
+import { createDefaultEnrichment } from '@shared/types/enrichment';
+import type { IssueEnrichment } from '@shared/types/enrichment';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({

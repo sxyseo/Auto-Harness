@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import type { GitHubIssue } from '../../../../shared/types';
+import type { GitHubIssue } from '@shared/types';
 import { filterIssuesBySearch } from '../utils';
 
 interface UseIssueFilteringOptions {

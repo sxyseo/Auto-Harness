@@ -4,9 +4,9 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ProgressiveTrustConfig } from '../../../../shared/types/ai-triage';
-import { THRESHOLD_MIN, THRESHOLD_MAX, THRESHOLD_STEP } from '../../../../shared/constants/ai-triage';
-import type { TrustLevel } from '../../../../shared/constants/ai-triage';
+import type { ProgressiveTrustConfig } from '@shared/types/ai-triage';
+import { THRESHOLD_MIN, THRESHOLD_MAX, THRESHOLD_STEP } from '@shared/constants/ai-triage';
+import type { TrustLevel } from '@shared/constants/ai-triage';
 
 const CATEGORIES = ['type', 'priority', 'labels', 'duplicate'] as const;
 type Category = (typeof CATEGORIES)[number];

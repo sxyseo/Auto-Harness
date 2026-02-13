@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
 import { useLabelSyncStore } from '../../../stores/github/label-sync-store';
-import { SYNC_DEBOUNCE_MS } from '../../../../shared/constants/label-sync';
-import type { LabelSyncConfig } from '../../../../shared/types/label-sync';
+import { SYNC_DEBOUNCE_MS } from '@shared/constants/label-sync';
+import type { LabelSyncConfig } from '@shared/types/label-sync';
 
 export function useLabelSync() {
   const projectId = useProjectStore((s) => s.activeProjectId);

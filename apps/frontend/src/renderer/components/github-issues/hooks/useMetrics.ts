@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
 import { usePhase4Store } from '../../../stores/github/phase4-store';
-import type { MetricsTimeWindow } from '../../../../shared/types/metrics';
+import type { MetricsTimeWindow } from '@shared/types/metrics';
 
 // Stable reference to getState — never changes, safe outside of hooks
 const getPhase4State = usePhase4Store.getState;

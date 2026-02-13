@@ -13,7 +13,7 @@ import type {
   SplitProgress,
   ProgressiveTrustConfig,
   AIEnrichmentResult,
-} from '../../../shared/types/ai-triage';
+} from '@shared/types/ai-triage';
 
 // Re-use the enrichment progress type for triage progress display
 type TriageProgress = EnrichmentProgress;

@@ -9,7 +9,7 @@ import type {
   ReviewsStatus,
   MergeableState,
   PRStatusUpdate
-} from '../../../shared/types/pr-status';
+} from '@shared/types/pr-status';
 
 /**
  * PR review state for a single PR

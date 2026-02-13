@@ -4,8 +4,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { IssueList } from '../IssueList';
-import type { GitHubIssue } from '../../../../../shared/types';
-import type { IssueEnrichment } from '../../../../../shared/types/enrichment';
+import type { GitHubIssue } from '@shared/types';
+import type { IssueEnrichment } from '@shared/types/enrichment';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({

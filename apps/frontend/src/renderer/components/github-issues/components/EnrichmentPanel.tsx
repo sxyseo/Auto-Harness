@@ -3,7 +3,7 @@ import { WorkflowStateDropdown } from './WorkflowStateDropdown';
 import { CompletenessIndicator } from './CompletenessIndicator';
 import { CompletenessBreakdown } from './CompletenessBreakdown';
 import { Badge } from '../../ui/badge';
-import type { WorkflowState, Resolution, IssueEnrichment } from '../../../../shared/types/enrichment';
+import type { WorkflowState, Resolution, IssueEnrichment } from '@shared/types/enrichment';
 
 interface EnrichmentPanelProps {
   enrichment: IssueEnrichment | null;

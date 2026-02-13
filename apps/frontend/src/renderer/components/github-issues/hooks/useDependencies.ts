@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
 import { usePhase4Store } from '../../../stores/github/phase4-store';
-import type { IssueDependencies } from '../../../../shared/types/dependencies';
+import type { IssueDependencies } from '@shared/types/dependencies';
 
 const EMPTY_DEPS: IssueDependencies = { tracks: [], trackedBy: [] };
 

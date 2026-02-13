@@ -52,7 +52,8 @@
     "hideTokenEntryAriaLabel": "Masquer la saisie du jeton",
     "enterTokenManuallyAriaLabel": "Saisir le jeton manuellement",
     "renameProfileAriaLabel": "Renommer le profil",
-    "deleteProfileAriaLabel": "Supprimer le profil"
+    "deleteProfileAriaLabel": "Supprimer le profil",
+    "editAriaLabel": "Modifier {{field}}"
   },
   "buttons": {
     "save": "Enregistrer",
@@ -107,7 +108,14 @@
     "required": "Requis",
     "dismiss": "Ignorer",
     "important": "Important",
-    "orphaned": "(orphelin)"
+    "orphaned": "(orphelin)",
+    "manage": "Gérer les labels",
+    "add": "Ajouter un label",
+    "remove": "Supprimer le label",
+    "search": "Rechercher des labels...",
+    "filter": "Filtrer les labels...",
+    "noMatch": "Aucun label correspondant",
+    "limit": "Maximum de {{limit}} labels atteint"
   },
   "selection": {
     "select": "Sélectionner",
@@ -135,7 +143,8 @@
     "taskNotFoundForWorktree": "Tâche introuvable pour le worktree : {{specName}}",
     "failedToDeleteTaskWorktree": "Échec de la suppression du worktree de tâche : {{specName}}",
     "terminalWorktreeNotFound": "Worktree terminal introuvable : {{name}}",
-    "failedToDeleteTerminalWorktree": "Échec de la suppression du worktree terminal : {{name}}"
+    "failedToDeleteTerminalWorktree": "Échec de la suppression du worktree terminal : {{name}}",
+    "fieldRequired": "Ce champ est requis"
   },
   "worktrees": {
     "deleteSuccess": "Worktree '{{branch}}' supprimé avec succès",
@@ -460,6 +469,7 @@
     "openSettings": "Ouvrir les paramètres"
   },
   "enrichment": {
+    "title": "Enrichissement",
     "states": {
       "new": "Nouveau",
       "triage": "Triage",
@@ -520,16 +530,8 @@
     "saving": "Enregistrement...",
     "error": "Erreur : {{message}}"
   },
-  "labels": {
-    "manage": "Gérer les labels",
-    "add": "Ajouter un label",
-    "remove": "Supprimer le label",
-    "search": "Rechercher des labels...",
-    "filter": "Filtrer les labels...",
-    "noMatch": "Aucun label correspondant",
-    "limit": "Maximum de {{limit}} labels atteint"
-  },
   "assignees": {
+    "title": "Assignés",
     "manage": "Gérer les assignés",
     "assign": "Assigner",
     "unassign": "Désassigner",
@@ -678,7 +680,10 @@
     "transitions": "Transitions",
     "avgBacklog": "Arriéré moy.",
     "thisWeek": "Cette semaine",
-    "triageMode": "Mode triage"
+    "triageMode": "Mode triage",
+    "timeWindow7d": "7 jours",
+    "timeWindow30d": "30 jours",
+    "timeWindowAll": "Tout le temps"
   },
   "usage": {
     "dataUnavailable": "Données d'utilisation non disponibles",
@@ -1004,6 +1009,14 @@
     "closeIssue": "Fermer l'issue",
     "reopenIssue": "Rouvrir l'issue",
     "bulkInProgress": "Opération en masse en cours...",
-    "narrowScreen": "Le mode triage nécessite un écran plus large"
+    "narrowScreen": "Le mode triage nécessite un écran plus large",
+    "viewTask": "Voir la tâche",
+    "createTask": "Créer une tâche",
+    "taskLinked": "Tâche liée",
+    "taskId": "ID de la tâche :",
+    "description": "Description",
+    "noDescription": "Aucune description fournie.",
+    "milestone": "Jalon",
+    "commentCount": "{{count}} commentaires"
   }
 }

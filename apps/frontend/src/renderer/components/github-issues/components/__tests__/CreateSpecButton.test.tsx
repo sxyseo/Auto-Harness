@@ -5,6 +5,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CreateSpecButton } from '../CreateSpecButton';
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
 describe('CreateSpecButton', () => {
   it('renders Create Spec button', () => {
     render(
@@ -16,7 +22,7 @@ describe('CreateSpecButton', () => {
         onCreateSpec={vi.fn()}
       />,
     );
-    expect(screen.getByText('Create Spec')).toBeDefined();
+    expect(screen.getByText('spec.createFromIssue')).toBeDefined();
   });
 
   it('click shows confirmation', () => {
@@ -29,10 +35,10 @@ describe('CreateSpecButton', () => {
         onCreateSpec={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByText('Create Spec'));
-    expect(screen.getByText('Create a spec from issue #42?')).toBeDefined();
-    expect(screen.getByText('Confirm')).toBeDefined();
-    expect(screen.getByText('Cancel')).toBeDefined();
+    fireEvent.click(screen.getByText('spec.createFromIssue'));
+    expect(screen.getByText('spec.confirm')).toBeDefined();
+    expect(screen.getByText('buttons.confirm')).toBeDefined();
+    expect(screen.getByText('buttons.cancel')).toBeDefined();
   });
 
   it('confirm fires onCreateSpec', async () => {
@@ -46,8 +52,8 @@ describe('CreateSpecButton', () => {
         onCreateSpec={onCreateSpec}
       />,
     );
-    fireEvent.click(screen.getByText('Create Spec'));
-    fireEvent.click(screen.getByText('Confirm'));
+    fireEvent.click(screen.getByText('spec.createFromIssue'));
+    fireEvent.click(screen.getByText('buttons.confirm'));
 
     await waitFor(() => {
       expect(onCreateSpec).toHaveBeenCalled();
@@ -64,10 +70,10 @@ describe('CreateSpecButton', () => {
         onCreateSpec={vi.fn()}
       />,
     );
-    const button = screen.getByText('Create Spec');
+    const button = screen.getByText('spec.createFromIssue');
     expect(button.hasAttribute('disabled')).toBe(true);
     expect(
-      screen.getByText('An agent is already working on this issue'),
+      screen.getByText('spec.agentActive'),
     ).toBeDefined();
   });
 
@@ -81,9 +87,9 @@ describe('CreateSpecButton', () => {
         onCreateSpec={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByText('Create Spec'));
+    fireEvent.click(screen.getByText('spec.createFromIssue'));
     expect(
-      screen.getByText('Enrichment data will improve spec quality'),
+      screen.getByText('spec.noEnrichmentTip'),
     ).toBeDefined();
   });
 
@@ -98,11 +104,11 @@ describe('CreateSpecButton', () => {
         onCreateSpec={onCreateSpec}
       />,
     );
-    fireEvent.click(screen.getByText('Create Spec'));
-    fireEvent.click(screen.getByText('Confirm'));
+    fireEvent.click(screen.getByText('spec.createFromIssue'));
+    fireEvent.click(screen.getByText('buttons.confirm'));
 
     await waitFor(() => {
-      expect(screen.getByText('Spec 007 created')).toBeDefined();
+      expect(screen.getByText('spec.created')).toBeDefined();
     });
   });
 
@@ -117,8 +123,8 @@ describe('CreateSpecButton', () => {
         onCreateSpec={onCreateSpec}
       />,
     );
-    fireEvent.click(screen.getByText('Create Spec'));
-    fireEvent.click(screen.getByText('Confirm'));
+    fireEvent.click(screen.getByText('spec.createFromIssue'));
+    fireEvent.click(screen.getByText('buttons.confirm'));
 
     await waitFor(() => {
       expect(screen.getByText('Network error')).toBeDefined();

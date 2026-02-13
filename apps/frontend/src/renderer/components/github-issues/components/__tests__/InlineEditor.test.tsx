@@ -5,6 +5,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { InlineEditor } from '../InlineEditor';
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
 describe('InlineEditor', () => {
   it('renders display mode with text', () => {
     render(
@@ -17,7 +23,7 @@ describe('InlineEditor', () => {
     render(
       <InlineEditor value="Hello" onSave={vi.fn()} ariaLabel="Title" />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Title' }));
+    fireEvent.click(screen.getByRole('button', { name: 'accessibility.editAriaLabel' }));
     const input = screen.getByRole('textbox');
     expect(input).toBeDefined();
     expect((input as HTMLInputElement).value).toBe('Hello');
@@ -28,7 +34,7 @@ describe('InlineEditor', () => {
     render(
       <InlineEditor value="Hello" onSave={onSave} ariaLabel="Title" />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Title' }));
+    fireEvent.click(screen.getByRole('button', { name: 'accessibility.editAriaLabel' }));
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: 'Updated' } });
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -42,7 +48,7 @@ describe('InlineEditor', () => {
     render(
       <InlineEditor value="Hello" onSave={vi.fn()} ariaLabel="Title" />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Title' }));
+    fireEvent.click(screen.getByRole('button', { name: 'accessibility.editAriaLabel' }));
     const input = screen.getByRole('textbox');
     fireEvent.keyDown(input, { key: 'Escape' });
 
@@ -60,14 +66,14 @@ describe('InlineEditor', () => {
         required
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Title' }));
+    fireEvent.click(screen.getByRole('button', { name: 'accessibility.editAriaLabel' }));
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: '' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeDefined();
-      expect(screen.getByText('This field is required')).toBeDefined();
+      expect(screen.getByText('errors.fieldRequired')).toBeDefined();
     });
     expect(onSave).not.toHaveBeenCalled();
   });
@@ -82,7 +88,7 @@ describe('InlineEditor', () => {
         counterThreshold={5}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Title' }));
+    fireEvent.click(screen.getByRole('button', { name: 'accessibility.editAriaLabel' }));
     expect(screen.getByText('5/20')).toBeDefined();
   });
 
@@ -90,7 +96,7 @@ describe('InlineEditor', () => {
     render(
       <InlineEditor value="Hello" onSave={vi.fn()} ariaLabel="Issue title" />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Issue title' }));
+    fireEvent.click(screen.getByRole('button', { name: 'accessibility.editAriaLabel' }));
     const input = screen.getByRole('textbox');
     expect(input.getAttribute('aria-label')).toBe('Issue title');
   });
@@ -104,7 +110,7 @@ describe('InlineEditor', () => {
         disabled
       />,
     );
-    const button = screen.getByRole('button', { name: 'Edit Title' });
+    const button = screen.getByRole('button', { name: 'accessibility.editAriaLabel' });
     expect(button.hasAttribute('disabled')).toBe(true);
   });
 });

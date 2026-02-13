@@ -137,14 +137,12 @@ describe('runPythonSubprocess', () => {
         env: customEnv,
       });
 
-      // Assert - should use the exact env provided
-      expect(mockSpawn).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Array),
-        expect.objectContaining({
-          env: customEnv,
-        })
-      );
+      // Assert - should contain the caller-provided env keys (subprocess-runner also adds PYTHONIOENCODING + PYTHONUTF8)
+      const spawnCall = mockSpawn.mock.calls[0];
+      const envArg = spawnCall[2].env;
+      expect(envArg).toEqual(expect.objectContaining(customEnv));
+      expect(envArg.PYTHONIOENCODING).toBe('utf-8');
+      expect(envArg.PYTHONUTF8).toBe('1');
     });
 
     it('should create fallback env when options.env is not provided', () => {

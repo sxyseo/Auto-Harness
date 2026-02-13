@@ -52,7 +52,8 @@
     "hideTokenEntryAriaLabel": "Hide token entry",
     "enterTokenManuallyAriaLabel": "Enter token manually",
     "renameProfileAriaLabel": "Rename profile",
-    "deleteProfileAriaLabel": "Delete profile"
+    "deleteProfileAriaLabel": "Delete profile",
+    "editAriaLabel": "Edit {{field}}"
   },
   "buttons": {
     "save": "Save",
@@ -107,7 +108,14 @@
     "required": "Required",
     "dismiss": "Dismiss",
     "important": "Important",
-    "orphaned": "(orphaned)"
+    "orphaned": "(orphaned)",
+    "manage": "Manage labels",
+    "add": "Add label",
+    "remove": "Remove label",
+    "search": "Search labels...",
+    "filter": "Filter labels...",
+    "noMatch": "No matching labels",
+    "limit": "Maximum of {{limit}} labels reached"
   },
   "selection": {
     "select": "Select",
@@ -135,7 +143,8 @@
     "taskNotFoundForWorktree": "Task not found for worktree: {{specName}}",
     "failedToDeleteTaskWorktree": "Failed to delete task worktree: {{specName}}",
     "terminalWorktreeNotFound": "Terminal worktree not found: {{name}}",
-    "failedToDeleteTerminalWorktree": "Failed to delete terminal worktree: {{name}}"
+    "failedToDeleteTerminalWorktree": "Failed to delete terminal worktree: {{name}}",
+    "fieldRequired": "This field is required"
   },
   "worktrees": {
     "deleteSuccess": "Worktree '{{branch}}' deleted successfully",
@@ -460,6 +469,7 @@
     "openSettings": "Open Settings"
   },
   "enrichment": {
+    "title": "Enrichment",
     "states": {
       "new": "New",
       "triage": "Triage",
@@ -520,16 +530,8 @@
     "saving": "Saving...",
     "error": "Error: {{message}}"
   },
-  "labels": {
-    "manage": "Manage labels",
-    "add": "Add label",
-    "remove": "Remove label",
-    "search": "Search labels...",
-    "filter": "Filter labels...",
-    "noMatch": "No matching labels",
-    "limit": "Maximum of {{limit}} labels reached"
-  },
   "assignees": {
+    "title": "Assignees",
     "manage": "Manage assignees",
     "assign": "Assign",
     "unassign": "Unassign",
@@ -678,7 +680,10 @@
     "transitions": "Transitions",
     "avgBacklog": "Avg Backlog",
     "thisWeek": "This Week",
-    "triageMode": "Triage Mode"
+    "triageMode": "Triage Mode",
+    "timeWindow7d": "7 days",
+    "timeWindow30d": "30 days",
+    "timeWindowAll": "All time"
   },
   "usage": {
     "dataUnavailable": "Usage data unavailable",
@@ -1004,6 +1009,14 @@
     "closeIssue": "Close Issue",
     "reopenIssue": "Reopen Issue",
     "bulkInProgress": "Bulk operation in progress...",
-    "narrowScreen": "Triage mode requires a wider screen"
+    "narrowScreen": "Triage mode requires a wider screen",
+    "viewTask": "View Task",
+    "createTask": "Create Task",
+    "taskLinked": "Task Linked",
+    "taskId": "Task ID:",
+    "description": "Description",
+    "noDescription": "No description provided.",
+    "milestone": "Milestone",
+    "commentCount": "{{count}} comments"
   }
 }

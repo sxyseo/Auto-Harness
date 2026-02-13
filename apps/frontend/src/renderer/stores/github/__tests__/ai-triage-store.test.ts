@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAITriageStore } from '../ai-triage-store';
-import type { TriageReviewItem, ProgressiveTrustConfig } from '../../../../shared/types/ai-triage';
+import type { TriageReviewItem, ProgressiveTrustConfig } from '@shared/types/ai-triage';
 
 function makeReviewItem(
   overrides: Partial<TriageReviewItem> & { issueNumber: number },

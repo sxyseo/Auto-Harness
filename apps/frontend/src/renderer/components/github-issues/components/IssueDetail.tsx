@@ -11,7 +11,7 @@ import {
   GITHUB_ISSUE_STATE_COLORS,
   GITHUB_ISSUE_STATE_LABELS,
   GITHUB_COMPLEXITY_COLORS
-} from '../../../../shared/constants';
+} from '@shared/constants';
 import { formatDate } from '../utils';
 import { AutoFixButton } from './AutoFixButton';
 import { EnrichmentPanel } from './EnrichmentPanel';
@@ -139,7 +139,7 @@ export function IssueDetail({
           {issue.commentsCount > 0 && (
             <div className="flex items-center gap-1">
               <MessageCircle className="h-4 w-4" />
-              {issue.commentsCount} comments
+              {t('phase5.commentCount', { count: issue.commentsCount })}
             </div>
           )}
         </div>
@@ -175,13 +175,13 @@ export function IssueDetail({
           {hasLinkedTask ? (
             <Button onClick={handleViewTask} className="flex-1" variant="secondary">
               <Eye className="h-4 w-4 mr-2" />
-              View Task
+              {t('phase5.viewTask')}
             </Button>
           ) : (
             <>
               <Button onClick={onInvestigate} className="flex-1">
                 <Sparkles className="h-4 w-4 mr-2" />
-                Create Task
+                {t('phase5.createTask')}
               </Button>
               {projectId && autoFixConfig?.enabled && (
                 <AutoFixButton
@@ -234,7 +234,7 @@ export function IssueDetail({
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2 text-success">
                 <CheckCircle2 className="h-4 w-4" />
-                Task Linked
+                {t('phase5.taskLinked')}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-2">
@@ -246,14 +246,14 @@ export function IssueDetail({
                       {investigationResult.analysis.estimatedComplexity}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      Task ID: {taskId}
+                      {t('phase5.taskId')} {taskId}
                     </span>
                   </div>
                 </>
               ) : (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
-                    Task ID: {taskId}
+                    {t('phase5.taskId')} {taskId}
                   </span>
                 </div>
               )}
@@ -264,7 +264,7 @@ export function IssueDetail({
         {/* Body */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Description</CardTitle>
+            <CardTitle className="text-sm">{t('phase5.description')}</CardTitle>
           </CardHeader>
           <CardContent>
             {onEditBody ? (
@@ -280,7 +280,7 @@ export function IssueDetail({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground italic">
-                No description provided.
+                {t('phase5.noDescription')}
               </p>
             )}
           </CardContent>
@@ -290,7 +290,7 @@ export function IssueDetail({
         {enrichment !== undefined && onTransition && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Enrichment</CardTitle>
+              <CardTitle className="text-sm">{t('enrichment.title')}</CardTitle>
             </CardHeader>
             <CardContent>
               <EnrichmentPanel
@@ -326,7 +326,7 @@ export function IssueDetail({
         {onAddAssignees && onRemoveAssignees && collaborators ? (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Assignees</CardTitle>
+              <CardTitle className="text-sm">{t('assignees.title')}</CardTitle>
             </CardHeader>
             <CardContent>
               <AssigneeManager
@@ -340,7 +340,7 @@ export function IssueDetail({
         ) : issue.assignees.length > 0 ? (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Assignees</CardTitle>
+              <CardTitle className="text-sm">{t('assignees.title')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
@@ -359,7 +359,7 @@ export function IssueDetail({
         {issue.milestone && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Milestone</CardTitle>
+              <CardTitle className="text-sm">{t('phase5.milestone')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Badge variant="outline">{issue.milestone.title}</Badge>

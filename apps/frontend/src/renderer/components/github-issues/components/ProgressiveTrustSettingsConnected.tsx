@@ -6,8 +6,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ProgressiveTrustSettings } from './ProgressiveTrustSettings';
 import { useProjectStore } from '../../../stores/project-store';
-import { createDefaultProgressiveTrust } from '../../../../shared/types/ai-triage';
-import type { ProgressiveTrustConfig } from '../../../../shared/types/ai-triage';
+import { createDefaultProgressiveTrust } from '@shared/types/ai-triage';
+import type { ProgressiveTrustConfig } from '@shared/types/ai-triage';
 
 export function ProgressiveTrustSettingsConnected() {
   const projectId = useProjectStore((s) => s.activeProjectId);

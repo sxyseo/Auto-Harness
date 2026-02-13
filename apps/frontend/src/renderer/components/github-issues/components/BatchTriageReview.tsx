@@ -4,7 +4,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { TriageResultCard } from './TriageResultCard';
-import type { TriageReviewItem } from '../../../../shared/types/ai-triage';
+import type { TriageReviewItem } from '@shared/types/ai-triage';
 
 interface BatchTriageReviewProps {
   items: TriageReviewItem[];

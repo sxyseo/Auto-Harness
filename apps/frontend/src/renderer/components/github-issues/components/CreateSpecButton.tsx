@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface CreateSpecButtonProps {
   issueNumber: number;
@@ -17,6 +18,7 @@ export function CreateSpecButton({
   hasEnrichment,
   onCreateSpec,
 }: CreateSpecButtonProps) {
+  const { t } = useTranslation('common');
   const [showConfirm, setShowConfirm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ specNumber: string } | null>(null);
@@ -31,10 +33,10 @@ export function CreateSpecButton({
         setResult(res);
         setShowConfirm(false);
       } else {
-        setError('Failed to create spec');
+        setError(t('spec.createFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create spec');
+      setError(err instanceof Error ? err.message : t('spec.createFailed'));
     } finally {
       setCreating(false);
     }
@@ -49,7 +51,7 @@ export function CreateSpecButton({
         disabled={hasActiveAgent}
         title={
           hasActiveAgent
-            ? 'An agent is already working on this issue'
+            ? t('spec.agentActive')
             : undefined
         }
         onClick={() => {
@@ -58,13 +60,13 @@ export function CreateSpecButton({
           setError(null);
         }}
       >
-        Create Spec
+        {t('spec.createFromIssue')}
       </button>
 
       {/* Tooltip for disabled state */}
       {hasActiveAgent && (
         <p className="text-xs text-muted-foreground">
-          An agent is already working on this issue
+          {t('spec.agentActive')}
         </p>
       )}
 
@@ -72,18 +74,18 @@ export function CreateSpecButton({
       {showConfirm && (
         <div className="rounded-md border border-border bg-card p-3 space-y-2">
           <p className="text-sm">
-            Create a spec from issue #{issueNumber}?
+            {t('spec.confirm', { number: issueNumber })}
           </p>
 
           {issueClosed && (
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              This issue is closed. The spec may not be actionable.
+              {t('spec.closedWarning')}
             </p>
           )}
 
           {!hasEnrichment && (
             <p className="text-xs text-muted-foreground">
-              Enrichment data will improve spec quality
+              {t('spec.noEnrichmentTip')}
             </p>
           )}
 
@@ -94,7 +96,7 @@ export function CreateSpecButton({
               onClick={handleConfirm}
               disabled={creating}
             >
-              {creating ? 'Creating...' : 'Confirm'}
+              {creating ? t('labels.creating') : t('buttons.confirm')}
             </button>
             <button
               type="button"
@@ -102,7 +104,7 @@ export function CreateSpecButton({
               onClick={() => setShowConfirm(false)}
               disabled={creating}
             >
-              Cancel
+              {t('buttons.cancel')}
             </button>
           </div>
         </div>
@@ -111,7 +113,7 @@ export function CreateSpecButton({
       {/* Success notification */}
       {result && (
         <p className="text-xs text-emerald-600 dark:text-emerald-400">
-          Spec {result.specNumber} created
+          {t('spec.created', { specNumber: result.specNumber })}
         </p>
       )}
 

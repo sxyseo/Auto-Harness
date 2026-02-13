@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TriageSidebar } from '../TriageSidebar';
-import type { WorkflowState } from '../../../../../shared/types/enrichment';
+import type { WorkflowState } from '@shared/types/enrichment';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({

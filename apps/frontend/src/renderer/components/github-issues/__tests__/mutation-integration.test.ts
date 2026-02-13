@@ -9,9 +9,9 @@ import {
   validateLabel,
   validateLogin,
   validateIssueNumber,
-} from '../../../../shared/utils/mutation-validation';
-import type { BulkActionType } from '../../../../shared/types/mutations';
-import { BULK_ACTION_LABELS } from '../../../../shared/constants/mutations';
+} from '@shared/utils/mutation-validation';
+import type { BulkActionType } from '@shared/types/mutations';
+import { BULK_ACTION_LABELS } from '@shared/constants/mutations';
 
 beforeEach(() => {
   useMutationStore.setState({

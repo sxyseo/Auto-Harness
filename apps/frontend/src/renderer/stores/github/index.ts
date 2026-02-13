@@ -70,4 +70,4 @@ export type {
   GitHubSyncStatus,
   GitHubInvestigationStatus,
   GitHubInvestigationResult
-} from '../../../shared/types';
+} from '@shared/types';

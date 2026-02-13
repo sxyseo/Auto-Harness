@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TriageProgressOverlay } from '../TriageProgressOverlay';
-import type { EnrichmentProgress } from '../../../../../shared/types/ai-triage';
+import type { EnrichmentProgress } from '@shared/types/ai-triage';
 
 // Mock i18n
 vi.mock('react-i18next', () => ({

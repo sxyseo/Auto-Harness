@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import type { IssueDependencies } from '../../../../shared/types/dependencies';
-import { hasDependencies, totalDependencyCount } from '../../../../shared/types/dependencies';
+import type { IssueDependencies } from '@shared/types/dependencies';
+import { hasDependencies, totalDependencyCount } from '@shared/types/dependencies';
 
 interface DependencyListProps {
   dependencies: IssueDependencies;

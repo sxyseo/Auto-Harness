@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useIssuesStore } from '../../../stores/github/issues-store';
 import { useEnrichmentStore } from '../../../stores/github/enrichment-store';
-import type { WorkflowState } from '../../../../shared/types/enrichment';
-import type { GitHubIssue } from '../../../../shared/types/integrations';
+import type { WorkflowState } from '@shared/types/enrichment';
+import type { GitHubIssue } from '@shared/types/integrations';
 
 export interface EnrichedIssueFilterOptions {
   workflowStates?: WorkflowState[];

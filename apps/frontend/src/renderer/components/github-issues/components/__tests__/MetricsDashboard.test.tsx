@@ -4,8 +4,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MetricsDashboard } from '../MetricsDashboard';
-import { createEmptyMetrics } from '../../../../../shared/types/metrics';
-import type { TriageMetrics } from '../../../../../shared/types/metrics';
+import { createEmptyMetrics } from '@shared/types/metrics';
+import type { TriageMetrics } from '@shared/types/metrics';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -34,21 +34,21 @@ describe('MetricsDashboard', () => {
 
   it('renders time window toggle buttons', () => {
     render(<MetricsDashboard {...defaultProps} />);
-    expect(screen.getByText('7 days')).toBeDefined();
-    expect(screen.getByText('30 days')).toBeDefined();
-    expect(screen.getByText('All time')).toBeDefined();
+    expect(screen.getByText('metrics.timeWindow7d')).toBeDefined();
+    expect(screen.getByText('metrics.timeWindow30d')).toBeDefined();
+    expect(screen.getByText('metrics.timeWindowAll')).toBeDefined();
   });
 
   it('highlights current time window', () => {
     render(<MetricsDashboard {...defaultProps} timeWindow="7d" />);
-    const btn7d = screen.getByText('7 days');
+    const btn7d = screen.getByText('metrics.timeWindow7d');
     expect(btn7d.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('calls onTimeWindowChange', () => {
     const onChange = vi.fn();
     render(<MetricsDashboard {...defaultProps} onTimeWindowChange={onChange} />);
-    fireEvent.click(screen.getByText('All time'));
+    fireEvent.click(screen.getByText('metrics.timeWindowAll'));
     expect(onChange).toHaveBeenCalledWith('all');
   });
 

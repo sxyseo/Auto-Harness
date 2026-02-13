@@ -6,9 +6,9 @@ import { renderHook } from '@testing-library/react';
 import { useEnrichedIssueFiltering } from '../useEnrichedIssueFiltering';
 import { useIssuesStore } from '../../../../stores/github/issues-store';
 import { useEnrichmentStore } from '../../../../stores/github/enrichment-store';
-import { createDefaultEnrichment } from '../../../../../shared/types/enrichment';
-import type { GitHubIssue } from '../../../../../shared/types/integrations';
-import type { IssueEnrichment } from '../../../../../shared/types/enrichment';
+import { createDefaultEnrichment } from '@shared/types/enrichment';
+import type { GitHubIssue } from '@shared/types/integrations';
+import type { IssueEnrichment } from '@shared/types/enrichment';
 
 function mockIssue(number: number, overrides?: Partial<GitHubIssue>): GitHubIssue {
   return {

@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ProgressiveTrustSettings } from '../ProgressiveTrustSettings';
-import { createDefaultProgressiveTrust } from '../../../../../shared/types/ai-triage';
+import { createDefaultProgressiveTrust } from '@shared/types/ai-triage';
 
 // Mock i18n
 vi.mock('react-i18next', () => ({

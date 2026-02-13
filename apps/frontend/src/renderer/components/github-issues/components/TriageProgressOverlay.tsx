@@ -3,7 +3,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import type { EnrichmentProgress } from '../../../../shared/types/ai-triage';
+import type { EnrichmentProgress } from '@shared/types/ai-triage';
 
 interface TriageProgressOverlayProps {
   progress: EnrichmentProgress;

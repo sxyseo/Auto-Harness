@@ -4,7 +4,7 @@ import type {
   WorkflowState,
   Resolution,
   EnrichmentFile,
-} from '../../../shared/types/enrichment';
+} from '@shared/types/enrichment';
 
 interface EnrichmentState {
   // Data
@@ -122,7 +122,7 @@ export async function transitionWorkflowState(
 
 export async function bootstrapEnrichment(
   projectId: string,
-  issues: import('../../../shared/types/integrations').GitHubIssue[],
+  issues: import('@shared/types/integrations').GitHubIssue[],
 ): Promise<void> {
   const store = useEnrichmentStore.getState();
   try {
@@ -138,7 +138,7 @@ export async function bootstrapEnrichment(
 
 export async function reconcileEnrichment(
   projectId: string,
-  issues: import('../../../shared/types/integrations').GitHubIssue[],
+  issues: import('@shared/types/integrations').GitHubIssue[],
 ): Promise<void> {
   const store = useEnrichmentStore.getState();
   try {

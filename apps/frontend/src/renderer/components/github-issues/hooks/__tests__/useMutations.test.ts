@@ -6,7 +6,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useMutations } from '../useMutations';
 import { useMutationStore } from '../../../../stores/github/mutation-store';
 import { useIssuesStore } from '../../../../stores/github/issues-store';
-import type { GitHubIssue } from '../../../../../shared/types';
+import type { GitHubIssue } from '@shared/types';
 
 // Mock electronAPI.github
 const mockGitHub = {

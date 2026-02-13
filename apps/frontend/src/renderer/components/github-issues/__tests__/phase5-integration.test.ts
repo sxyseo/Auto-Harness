@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import enCommon from '../../../../shared/i18n/locales/en/common.json';
-import frCommon from '../../../../shared/i18n/locales/fr/common.json';
+import enCommon from '@shared/i18n/locales/en/common.json';
+import frCommon from '@shared/i18n/locales/fr/common.json';
 
 const PHASE5_KEYS = [
   'triageMode',

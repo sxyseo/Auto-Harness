@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { IssueDetail } from '../IssueDetail';
-import type { GitHubIssue } from '../../../../../shared/types';
+import type { GitHubIssue } from '@shared/types';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -106,14 +106,14 @@ describe('IssueDetail integration', () => {
   it('renders InlineEditor for title when onEditTitle is provided', () => {
     render(<IssueDetail {...baseProps} onEditTitle={vi.fn()} />);
     // InlineEditor renders an edit button with "Edit <ariaLabel>" pattern
-    expect(screen.getByRole('button', { name: 'Edit mutations.editTitle' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'accessibility.editAriaLabel' })).toBeDefined();
     // Title text should still be visible in display mode
     expect(screen.getByText('Test Issue')).toBeDefined();
   });
 
   it('does not render title InlineEditor when onEditTitle is not provided', () => {
     render(<IssueDetail {...baseProps} />);
-    expect(screen.queryByRole('button', { name: 'Edit mutations.editTitle' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'accessibility.editAriaLabel' })).toBeNull();
     // Title renders as plain heading
     expect(screen.getByText('Test Issue')).toBeDefined();
   });
@@ -123,7 +123,7 @@ describe('IssueDetail integration', () => {
     render(<IssueDetail {...baseProps} onEditTitle={onEditTitle} />);
 
     // Click edit button
-    fireEvent.click(screen.getByRole('button', { name: 'Edit mutations.editTitle' }));
+    fireEvent.click(screen.getByRole('button', { name: 'accessibility.editAriaLabel' }));
 
     // Input should appear with current title
     const input = screen.getByRole('textbox');
@@ -141,12 +141,12 @@ describe('IssueDetail integration', () => {
   // GAP-03: InlineEditor for body editing
   it('renders InlineEditor for body when onEditBody is provided', () => {
     render(<IssueDetail {...baseProps} onEditBody={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Edit mutations.editBody' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'accessibility.editAriaLabel' })).toBeDefined();
   });
 
   it('does not render body InlineEditor when onEditBody is not provided', () => {
     render(<IssueDetail {...baseProps} />);
-    expect(screen.queryByRole('button', { name: 'Edit mutations.editBody' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'accessibility.editAriaLabel' })).toBeNull();
     // Body renders as plain markdown
     expect(screen.getByText('Issue body text')).toBeDefined();
   });
@@ -156,7 +156,7 @@ describe('IssueDetail integration', () => {
     render(<IssueDetail {...baseProps} onEditBody={onEditBody} />);
 
     // Click edit button
-    fireEvent.click(screen.getByRole('button', { name: 'Edit mutations.editBody' }));
+    fireEvent.click(screen.getByRole('button', { name: 'accessibility.editAriaLabel' }));
 
     // Textarea should appear with current body
     const textarea = screen.getByRole('textbox');
@@ -174,7 +174,7 @@ describe('IssueDetail integration', () => {
   it('body InlineEditor renders empty state when body is null', () => {
     const issueNoBody = { ...baseIssue, body: undefined } as GitHubIssue;
     render(<IssueDetail {...baseProps} issue={issueNoBody} onEditBody={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Edit mutations.editBody' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'accessibility.editAriaLabel' })).toBeDefined();
   });
 
   // GAP-04: LabelManager integration
@@ -273,7 +273,7 @@ describe('IssueDetail integration', () => {
     );
     // CreateSpecButton renders a section with aria-label "Create spec from issue"
     expect(screen.getByLabelText('Create spec from issue')).toBeDefined();
-    expect(screen.getByText('Create Spec')).toBeDefined();
+    expect(screen.getByText('spec.createFromIssue')).toBeDefined();
   });
 
   it('does not render CreateSpecButton when onCreateSpec is not provided', () => {
@@ -297,7 +297,7 @@ describe('IssueDetail integration', () => {
         onCreateSpec={vi.fn()}
       />,
     );
-    const createBtn = screen.getByText('Create Spec');
+    const createBtn = screen.getByText('spec.createFromIssue');
     expect(createBtn.hasAttribute('disabled')).toBe(true);
   });
 });

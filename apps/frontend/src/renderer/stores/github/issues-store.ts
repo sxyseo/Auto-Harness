@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GitHubIssue } from '../../../shared/types';
+import type { GitHubIssue } from '@shared/types';
 
 export type IssueFilterState = 'open' | 'closed' | 'all';
 

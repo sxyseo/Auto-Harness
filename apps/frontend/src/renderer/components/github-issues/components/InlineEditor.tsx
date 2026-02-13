@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pencil } from 'lucide-react';
 import { Button } from '../../ui/button';
 
@@ -25,6 +26,7 @@ export function InlineEditor({
   ariaLabel,
   multiline,
 }: InlineEditorProps) {
+  const { t } = useTranslation('common');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export function InlineEditor({
 
   async function save() {
     if (required && draft.trim() === '') {
-      setError('This field is required');
+      setError(t('errors.fieldRequired'));
       return;
     }
     setSaving(true);
@@ -89,7 +91,7 @@ export function InlineEditor({
           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={startEditing}
           disabled={disabled}
-          aria-label={`Edit ${ariaLabel}`}
+          aria-label={t('accessibility.editAriaLabel', { field: ariaLabel })}
         >
           <Pencil className="h-3.5 w-3.5" />
         </Button>

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GitHubSyncStatus } from '../../../shared/types';
+import type { GitHubSyncStatus } from '@shared/types';
 
 interface SyncStatusState {
   // Sync status

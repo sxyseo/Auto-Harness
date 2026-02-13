@@ -5,7 +5,7 @@ import { Button } from '../../ui/button';
 import {
   GITHUB_ISSUE_STATE_COLORS,
   GITHUB_ISSUE_STATE_LABELS
-} from '../../../../shared/constants';
+} from '@shared/constants';
 import { WorkflowStateBadge } from './WorkflowStateBadge';
 import { CompletenessIndicator } from './CompletenessIndicator';
 import type { IssueListItemProps } from '../types';

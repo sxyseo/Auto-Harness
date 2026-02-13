@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { IssueEnrichment, WorkflowState } from '../../../../shared/types/enrichment';
+import type { IssueEnrichment, WorkflowState } from '@shared/types/enrichment';
 
 /**
  * Unit tests for the workflow filter logic extracted from GitHubIssues container.

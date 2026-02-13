@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Wand2, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Progress } from '../../ui/progress';
-import type { GitHubIssue } from '../../../../shared/types';
+import type { GitHubIssue } from '@shared/types';
 import type { AutoFixConfig, AutoFixProgress, AutoFixQueueItem } from '../../../../preload/api/modules/github-api';
 
 interface AutoFixButtonProps {

@@ -4,8 +4,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { WorkflowStateBadge } from '../WorkflowStateBadge';
-import { WORKFLOW_STATE_COLORS } from '../../../../../shared/constants/enrichment';
-import type { WorkflowState } from '../../../../../shared/types/enrichment';
+import { WORKFLOW_STATE_COLORS } from '@shared/constants/enrichment';
+import type { WorkflowState } from '@shared/types/enrichment';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({

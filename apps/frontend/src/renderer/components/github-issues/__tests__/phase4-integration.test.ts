@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 // Integration test: verify Phase 4 types, stores, and constants are consistent
 
-import { IPC_CHANNELS } from '../../../../shared/constants/ipc';
+import { IPC_CHANNELS } from '@shared/constants/ipc';
 import {
   LABEL_PREFIX,
   WORKFLOW_LABEL_MAP,
@@ -13,11 +13,11 @@ import {
   isAutoClaudeLabel,
   SYNC_DEBOUNCE_MS,
   TRIAGE_MODE_MIN_WIDTH,
-} from '../../../../shared/constants/label-sync';
-import { createDefaultLabelSyncConfig } from '../../../../shared/types/label-sync';
-import { createEmptyDependencies, hasDependencies, totalDependencyCount } from '../../../../shared/types/dependencies';
-import { createEmptyMetrics, getCompletenessCategory, formatDuration } from '../../../../shared/types/metrics';
-import type { WorkflowState } from '../../../../shared/types/enrichment';
+} from '@shared/constants/label-sync';
+import { createDefaultLabelSyncConfig } from '@shared/types/label-sync';
+import { createEmptyDependencies, hasDependencies, totalDependencyCount } from '@shared/types/dependencies';
+import { createEmptyMetrics, getCompletenessCategory, formatDuration } from '@shared/types/metrics';
+import type { WorkflowState } from '@shared/types/enrichment';
 
 describe('Phase 4 integration: types + constants consistency', () => {
   it('every WorkflowState has a label, color, and IPC coverage', () => {

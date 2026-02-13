@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SplitSuggestion, SplitProgress } from '../../../../shared/types/ai-triage';
+import type { SplitSuggestion, SplitProgress } from '@shared/types/ai-triage';
 
 interface IssueSplitDialogProps {
   suggestion: SplitSuggestion;

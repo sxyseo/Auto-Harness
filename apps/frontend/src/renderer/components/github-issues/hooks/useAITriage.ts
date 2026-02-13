@@ -7,8 +7,8 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useAITriageStore } from '../../../stores/github/ai-triage-store';
-import type { CreateIssueParams } from '../../../../shared/types/ai-triage';
-import { createDefaultEnrichment } from '../../../../shared/types/enrichment';
+import type { CreateIssueParams } from '@shared/types/ai-triage';
+import { createDefaultEnrichment } from '@shared/types/enrichment';
 
 export function useAITriage(projectId: string) {
   const store = useAITriageStore();
@@ -191,6 +191,7 @@ export function useAITriage(projectId: string) {
         return { success: true, createdIssues };
       } catch (error) {
         store.clearSplitProgress();
+        store.clearSplitSuggestion();
         store.endTriage();
         return {
           success: false,

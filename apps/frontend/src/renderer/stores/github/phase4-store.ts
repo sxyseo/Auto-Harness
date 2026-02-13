@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import type { IssueDependencies } from '../../../shared/types/dependencies';
-import type { TriageMetrics, MetricsTimeWindow } from '../../../shared/types/metrics';
-import { createEmptyDependencies } from '../../../shared/types/dependencies';
-import { createEmptyMetrics } from '../../../shared/types/metrics';
+import type { IssueDependencies } from '@shared/types/dependencies';
+import type { TriageMetrics, MetricsTimeWindow } from '@shared/types/metrics';
+import { createEmptyDependencies } from '@shared/types/dependencies';
+import { createEmptyMetrics } from '@shared/types/metrics';
 
 interface Phase4State {
   // Dependencies (per-issue cache)

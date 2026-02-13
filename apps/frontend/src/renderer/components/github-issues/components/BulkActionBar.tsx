@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { BulkActionType, BulkOperationProgress } from '../../../../shared/types/mutations';
-import { estimateBatchCost } from '../../../../shared/constants/ai-triage';
+import type { BulkActionType, BulkOperationProgress } from '@shared/types/mutations';
+import { estimateBatchCost } from '@shared/constants/ai-triage';
 
 interface BulkActionBarProps {
   selectedCount: number;

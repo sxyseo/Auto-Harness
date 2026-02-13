@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TriageResultCard } from '../TriageResultCard';
-import type { TriageReviewItem } from '../../../../../shared/types/ai-triage';
+import type { TriageReviewItem } from '@shared/types/ai-triage';
 
 // Mock i18n
 vi.mock('react-i18next', () => ({

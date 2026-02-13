@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Check, Circle, ChevronDown, ChevronRight } from 'lucide-react';
-import type { IssueEnrichment } from '../../../../shared/types/enrichment';
-import { COMPLETENESS_WEIGHTS } from '../../../../shared/constants/enrichment';
+import type { IssueEnrichment } from '@shared/types/enrichment';
+import { COMPLETENESS_WEIGHTS } from '@shared/constants/enrichment';
 
 interface CompletenessBreakdownProps {
   enrichment: IssueEnrichment['enrichment'];

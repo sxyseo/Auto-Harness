@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, X, ChevronDown, ChevronRight } from 'lucide-react';
-import type { BulkOperationResult } from '../../../../shared/types/mutations';
+import type { BulkOperationResult } from '@shared/types/mutations';
 
 interface BulkResultsPanelProps {
   result: BulkOperationResult;

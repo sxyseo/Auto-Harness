@@ -1,4 +1,4 @@
-import type { GitHubIssue } from '../../../../shared/types';
+import type { GitHubIssue } from '@shared/types';
 
 export function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('en-US', {

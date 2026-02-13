@@ -9,8 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../ui/dropdown-menu';
-import { WORKFLOW_STATE_COLORS } from '../../../../shared/constants/enrichment';
-import type { WorkflowState } from '../../../../shared/types/enrichment';
+import { WORKFLOW_STATE_COLORS } from '@shared/constants/enrichment';
+import type { WorkflowState } from '@shared/types/enrichment';
 
 const ALL_STATES: WorkflowState[] = [
   'new',

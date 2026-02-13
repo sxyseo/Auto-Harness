@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BulkResultsPanel } from '../BulkResultsPanel';
-import type { BulkOperationResult } from '../../../../../shared/types/mutations';
+import type { BulkOperationResult } from '@shared/types/mutations';
 
 const resultWithFailures: BulkOperationResult = {
   action: 'close',

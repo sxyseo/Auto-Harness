@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { getWorkflowLabels } from '../../../../shared/constants/label-sync';
+import { getWorkflowLabels } from '@shared/constants/label-sync';
 
 interface LabelSyncSettingsProps {
   enabled: boolean;

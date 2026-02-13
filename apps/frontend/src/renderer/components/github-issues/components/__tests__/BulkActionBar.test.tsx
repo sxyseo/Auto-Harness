@@ -11,7 +11,7 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
-vi.mock('../../../../../shared/constants/ai-triage', () => ({
+vi.mock('@shared/constants/ai-triage', () => ({
   estimateBatchCost: (count: number) => `~$${(count * 0.0035).toFixed(2)}`,
 }));
 

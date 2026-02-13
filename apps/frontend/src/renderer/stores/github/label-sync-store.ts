@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { LabelSyncConfig, LabelSyncResult } from '../../../shared/types/label-sync';
-import { createDefaultLabelSyncConfig } from '../../../shared/types/label-sync';
+import type { LabelSyncConfig, LabelSyncResult } from '@shared/types/label-sync';
+import { createDefaultLabelSyncConfig } from '@shared/types/label-sync';
 
 interface LabelSyncState {
   // Data

@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBulkOperations } from '../useBulkOperations';
 import { useMutationStore } from '../../../../stores/github/mutation-store';
-import type { BulkOperationResult } from '../../../../../shared/types/mutations';
+import type { BulkOperationResult } from '@shared/types/mutations';
 
 // Mock electronAPI.github
 const mockGitHub = {

@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CompletenessBreakdown } from '../CompletenessBreakdown';
-import type { IssueEnrichment } from '../../../../../shared/types/enrichment';
+import type { IssueEnrichment } from '@shared/types/enrichment';
 
 const fullEnrichment: IssueEnrichment['enrichment'] = {
   problem: 'A problem description',

@@ -5,7 +5,7 @@ import {
   investigateGitHubIssue
 } from '../../../stores/github';
 import { loadTasks } from '../../../stores/task-store';
-import type { GitHubIssue } from '../../../../shared/types';
+import type { GitHubIssue } from '@shared/types';
 
 export function useGitHubInvestigation(projectId: string | undefined) {
   const {

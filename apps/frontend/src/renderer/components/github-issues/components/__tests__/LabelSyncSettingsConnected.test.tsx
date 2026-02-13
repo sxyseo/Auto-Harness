@@ -15,8 +15,8 @@ vi.mock('react-i18next', () => ({
 
 // Mock project store
 vi.mock('../../../../stores/project-store', () => ({
-  useProjectStore: vi.fn((selector: (s: { activeProject: { id: string } | null }) => unknown) =>
-    selector({ activeProject: { id: 'proj-1' } }),
+  useProjectStore: vi.fn((selector: (s: { activeProjectId: string | null }) => unknown) =>
+    selector({ activeProjectId: 'proj-1' }),
   ),
 }));
 

@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ENRICHMENT_COMMENT_FOOTER } from '../../../../shared/constants/ai-triage';
+import { ENRICHMENT_COMMENT_FOOTER } from '@shared/constants/ai-triage';
 
 interface EnrichmentCommentPreviewProps {
   content: string;

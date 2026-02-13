@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { ProgressiveTrustSettingsConnected } from '../ProgressiveTrustSettingsConnected';
-import { createDefaultProgressiveTrust } from '../../../../../shared/types/ai-triage';
+import { createDefaultProgressiveTrust } from '@shared/types/ai-triage';
 
 // Mock i18n
 vi.mock('react-i18next', () => ({
@@ -15,8 +15,8 @@ vi.mock('react-i18next', () => ({
 
 // Mock project store
 vi.mock('../../../../stores/project-store', () => ({
-  useProjectStore: vi.fn((selector: (s: { activeProject: { id: string } | null }) => unknown) =>
-    selector({ activeProject: { id: 'proj-1' } }),
+  useProjectStore: vi.fn((selector: (s: { activeProjectId: string | null }) => unknown) =>
+    selector({ activeProjectId: 'proj-1' }),
   ),
 }));
 

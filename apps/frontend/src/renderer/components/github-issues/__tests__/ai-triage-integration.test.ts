@@ -15,12 +15,12 @@ import {
   isValidThreshold,
   clampThreshold,
   estimateBatchCost,
-} from '../../../../shared/constants/ai-triage';
+} from '@shared/constants/ai-triage';
 import {
   createDefaultProgressiveTrust,
   mapTriageCategory,
-} from '../../../../shared/types/ai-triage';
-import type { TriageReviewItem } from '../../../../shared/types/ai-triage';
+} from '@shared/types/ai-triage';
+import type { TriageReviewItem } from '@shared/types/ai-triage';
 
 function createItem(
   issueNumber: number,

@@ -3,8 +3,8 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { getConfidenceLevel } from '../../../../shared/constants/ai-triage';
-import type { TriageReviewItem } from '../../../../shared/types/ai-triage';
+import { getConfidenceLevel } from '@shared/constants/ai-triage';
+import type { TriageReviewItem } from '@shared/types/ai-triage';
 
 const CONFIDENCE_COLORS = {
   high: 'bg-green-500/20 text-green-400',

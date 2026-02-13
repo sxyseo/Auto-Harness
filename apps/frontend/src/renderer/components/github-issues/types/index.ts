@@ -1,8 +1,8 @@
-import type { GitHubIssue, GitHubInvestigationResult } from '../../../../shared/types';
+import type { GitHubIssue, GitHubInvestigationResult } from '@shared/types';
 import type { AutoFixConfig, AutoFixQueueItem } from '../../../../preload/api/modules/github-api';
-import type { WorkflowState, Resolution, IssueEnrichment } from '../../../../shared/types/enrichment';
-import type { IssueDependencies } from '../../../../shared/types/dependencies';
-import type { TriageMetrics, MetricsTimeWindow } from '../../../../shared/types/metrics';
+import type { WorkflowState, Resolution, IssueEnrichment } from '@shared/types/enrichment';
+import type { IssueDependencies } from '@shared/types/dependencies';
+import type { TriageMetrics, MetricsTimeWindow } from '@shared/types/metrics';
 
 export type FilterState = 'open' | 'closed' | 'all';
 

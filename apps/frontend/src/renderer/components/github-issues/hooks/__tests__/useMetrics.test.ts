@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useMetrics } from '../useMetrics';
 import { usePhase4Store } from '../../../../stores/github/phase4-store';
-import { createEmptyMetrics } from '../../../../../shared/types/metrics';
+import { createEmptyMetrics } from '@shared/types/metrics';
 
 // Mock project store
 vi.mock('../../../../stores/project-store', () => ({
