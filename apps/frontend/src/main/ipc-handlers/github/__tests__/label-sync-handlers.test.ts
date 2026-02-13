@@ -1,9 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock child_process
-const mockExecFileSync = vi.fn();
-vi.mock('child_process', () => ({
-  execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
+// Mock child_process - execFile is now used async via promisify
+// mockExecFileSync is a vi.fn() that tracks calls and controls return values.
+import { promisify } from 'util';
+const mockExecFileSync = vi.fn((..._args: unknown[]): string => '');
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  // Create execFile mock that supports both callback and promisify patterns
+  const execFileMock = (...args: unknown[]) => {
+    const cb = args[args.length - 1];
+    try {
+      const result = mockExecFileSync(...args.slice(0, typeof cb === 'function' ? -1 : undefined) as []);
+      if (typeof cb === 'function') {
+        (cb as (err: null, stdout: string, stderr: string) => void)(null, String(result ?? ''), '');
+      }
+    } catch (err) {
+      if (typeof cb === 'function') {
+        (cb as (err: Error) => void)(err as Error);
+      }
+    }
+  };
+  // Add custom promisify so promisify(execFile) returns { stdout, stderr }
+  (execFileMock as unknown as Record<string | symbol, unknown>)[promisify.custom] = (...args: unknown[]) => {
+    try {
+      const result = mockExecFileSync(...args as []);
+      return Promise.resolve({ stdout: String(result ?? ''), stderr: '' });
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  };
+  return {
+    ...actual,
+    execFile: execFileMock,
+  };
+});
+
+// Mock cli-tool-manager
+vi.mock('../../../cli-tool-manager', () => ({
+  getToolPath: vi.fn((tool: string) => `/usr/bin/${tool}`),
 }));
 
 // Mock electron
@@ -93,7 +127,7 @@ const handlers: Record<string, HandlerFn> = {};
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockExecFileSync.mockReturnValue(Buffer.from(''));
+  mockExecFileSync.mockReturnValue('');
   mockEnrichmentData.issues = {};
 
   (ipcMain.handle as ReturnType<typeof vi.fn>).mockImplementation((channel: string, handler: HandlerFn) => {
@@ -131,7 +165,7 @@ describe('enableLabelSync handler', () => {
     mockExecFileSync.mockImplementation(() => {
       callCount++;
       if (callCount === 3) throw new Error('API rate limited');
-      return Buffer.from('');
+      return '';
     });
 
     const result = await handlers['github:label-sync:enable']({}, 'test-project') as { errors: unknown[] };

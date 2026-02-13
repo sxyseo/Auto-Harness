@@ -96,6 +96,11 @@ export function useAITriage(projectId: string) {
       api.onApplyResultsComplete((_projId, _results) => {
         useAITriageStore.getState().endTriage();
       }),
+      api.onApplyResultsError((_projId, error) => {
+        const s = useAITriageStore.getState();
+        s.setLastError(error.error);
+        s.endTriage();
+      }),
     ];
 
     return () => {

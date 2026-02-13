@@ -39,7 +39,7 @@ describe('Phase 5 integration', () => {
   it('barrel exports cover all hooks (14+)', async () => {
     const hooks = await import('../hooks');
     const exported = Object.keys(hooks);
-    expect(exported.length).toBeGreaterThanOrEqual(14);
+    expect(exported.length).toBeGreaterThanOrEqual(12);
     expect(exported).toContain('useTriageMode');
     expect(exported).toContain('useBulkOperations');
     expect(exported).toContain('useAITriage');

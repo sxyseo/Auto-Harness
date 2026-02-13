@@ -150,7 +150,7 @@ function getCommitsSinceTag(projectPath: string, tag: string | null): GitCommit[
 
     if (!output) return [];
 
-    return output.split('\n').map(line => {
+    return output.split(/\r?\n/).map(line => {
       const [fullHash, subject, authorName, authorEmail, date] = line.split('|');
       return {
         hash: fullHash.substring(0, 7),

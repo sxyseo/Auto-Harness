@@ -13,6 +13,21 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: ({ count }: { count: number }) => ({
+    getVirtualItems: () =>
+      Array.from({ length: count }, (_, i) => ({
+        index: i,
+        key: i,
+        start: i * 80,
+        size: 80,
+        end: (i + 1) * 80,
+      })),
+    getTotalSize: () => count * 80,
+    measureElement: () => {},
+  }),
+}));
+
 function makeIssue(num: number): GitHubIssue {
   return {
     id: num,

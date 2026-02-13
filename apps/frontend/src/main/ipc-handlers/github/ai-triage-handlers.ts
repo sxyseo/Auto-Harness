@@ -30,6 +30,8 @@ import {
   buildRunnerArgs,
   parseJSONFromOutput,
 } from './utils/subprocess-runner';
+import { getToolPath } from '../../cli-tool-manager';
+import { killProcessGracefully } from '../../platform';
 import { MAX_SPLIT_SUB_ISSUES } from '../../../shared/constants/ai-triage';
 import { createDefaultProgressiveTrust } from '../../../shared/types/ai-triage';
 import { readEnrichmentFile, writeEnrichmentFile, withEnrichmentFileLock, appendTransition } from './enrichment-persistence';
@@ -86,7 +88,7 @@ export function registerAITriageHandlers(
       let cancelled = false;
       for (const [key, proc] of activeTriageProcesses) {
         if (!proc.killed) {
-          proc.kill('SIGTERM');
+          killProcessGracefully(proc);
           cancelled = true;
         }
         activeTriageProcesses.delete(key);
@@ -352,7 +354,7 @@ export function registerAITriageHandlers(
                   (label: string) => /^[\w\s\-.:]+$/.test(label),
                 );
                 if (safeLabels.length > 0) {
-                  execFileSync('gh', [
+                  execFileSync(getToolPath('gh'), [
                     'issue', 'edit', String(item.issueNumber),
                     '--add-label', safeLabels.join(','),
                   ], {
@@ -368,7 +370,7 @@ export function registerAITriageHandlers(
                   (label: string) => /^[\w\s\-.:]+$/.test(label),
                 );
                 if (safeLabels.length > 0) {
-                  execFileSync('gh', [
+                  execFileSync(getToolPath('gh'), [
                     'issue', 'edit', String(item.issueNumber),
                     '--remove-label', safeLabels.join(','),
                   ], {

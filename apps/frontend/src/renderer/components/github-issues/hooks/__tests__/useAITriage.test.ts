@@ -21,6 +21,7 @@ const mockGitHub = {
   closeIssue: vi.fn(),
   applyTriageResults: vi.fn(),
   onApplyResultsProgress: vi.fn(() => vi.fn()),
+  onApplyResultsError: vi.fn(() => vi.fn()),
   onApplyResultsComplete: vi.fn(() => vi.fn()),
   saveProgressiveTrust: vi.fn(),
   getProgressiveTrust: vi.fn(),

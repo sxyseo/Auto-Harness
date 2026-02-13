@@ -111,7 +111,6 @@ export function useGitHubIssues(projectId: string | undefined) {
     filterState,
     hasMore: !isSearchActive && hasMore, // No "load more" when search is active
     selectIssue,
-    getFilteredIssues: useIssuesStore.getState().getFilteredIssues,
     getOpenIssuesCount: useIssuesStore.getState().getOpenIssuesCount,
     handleRefresh,
     handleFilterChange,

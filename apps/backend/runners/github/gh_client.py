@@ -334,7 +334,8 @@ class GHClient:
         try:
             return json.loads(result.stdout) if result.stdout.strip() else []
         except json.JSONDecodeError:
-            logger.warning(f"Failed to parse PR list response: {result.stdout[:200]}")
+            logger.warning("Failed to parse PR list response as JSON")
+            logger.debug("Raw stdout (truncated): %s", result.stdout[:200])
             return []
 
     async def pr_get(
@@ -378,7 +379,8 @@ class GHClient:
         try:
             return json.loads(result.stdout) if result.stdout.strip() else {}
         except json.JSONDecodeError:
-            logger.warning(f"Failed to parse PR #{pr_number} response: {result.stdout[:200]}")
+            logger.warning("Failed to parse PR #%d response as JSON", pr_number)
+            logger.debug("Raw stdout (truncated): %s", result.stdout[:200])
             return {}
 
     async def pr_diff(self, pr_number: int) -> str:
@@ -490,7 +492,8 @@ class GHClient:
         try:
             return json.loads(result.stdout) if result.stdout.strip() else []
         except json.JSONDecodeError:
-            logger.warning(f"Failed to parse issue list response: {result.stdout[:200]}")
+            logger.warning("Failed to parse issue list response as JSON")
+            logger.debug("Raw stdout (truncated): %s", result.stdout[:200])
             return []
 
     async def issue_get(
@@ -532,7 +535,8 @@ class GHClient:
         try:
             return json.loads(result.stdout) if result.stdout.strip() else {}
         except json.JSONDecodeError:
-            logger.warning(f"Failed to parse issue #{issue_number} response: {result.stdout[:200]}")
+            logger.warning("Failed to parse issue #%d response as JSON", issue_number)
+            logger.debug("Raw stdout (truncated): %s", result.stdout[:200])
             return {}
 
     async def issue_comment(self, issue_number: int, body: str) -> None:
@@ -611,7 +615,8 @@ class GHClient:
         try:
             return json.loads(result.stdout) if result.stdout.strip() else {}
         except json.JSONDecodeError:
-            logger.warning(f"Failed to parse API response for {endpoint}: {result.stdout[:200]}")
+            logger.warning("Failed to parse API response for %s as JSON", endpoint)
+            logger.debug("Raw stdout (truncated): %s", result.stdout[:200])
             return {}
 
     async def pr_merge(
@@ -665,7 +670,9 @@ class GHClient:
             comment_id: The ID of the review comment to reply to
             body: Reply body text
         """
-        endpoint = f"repos/{{owner}}/{{repo}}/pulls/{pr_number}/comments/{comment_id}/replies"
+        endpoint = (
+            f"repos/{{owner}}/{{repo}}/pulls/{pr_number}/comments/{comment_id}/replies"
+        )
         args = ["api", "--method", "POST", endpoint, "-f", f"body={body}"]
         await self.run(args)
 
@@ -731,7 +738,8 @@ class GHClient:
         try:
             return json.loads(result.stdout) if result.stdout.strip() else {}
         except json.JSONDecodeError:
-            logger.warning(f"Failed to parse commit comparison response: {result.stdout[:200]}")
+            logger.warning("Failed to parse commit comparison response as JSON")
+            logger.debug("Raw stdout (truncated): %s", result.stdout[:200])
             return {}
 
     async def get_comments_since(

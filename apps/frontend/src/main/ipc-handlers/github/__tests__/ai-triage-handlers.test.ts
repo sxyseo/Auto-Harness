@@ -2,9 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock child_process
 const mockExecFileSync = vi.fn();
-vi.mock('child_process', () => ({
-  execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
-}));
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
+  };
+});
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -27,6 +31,17 @@ vi.mock('../../../env-utils', () => ({
   getAugmentedEnv: vi.fn(() => ({ PATH: '/usr/bin', GH_TOKEN: 'test-token' })),
 }));
 
+// Mock cli-tool-manager
+vi.mock('../../../cli-tool-manager', () => ({
+  getToolPath: vi.fn((tool: string) => `/usr/bin/${tool}`),
+}));
+
+// Mock platform
+vi.mock('../../../platform', () => ({
+  killProcessGracefully: vi.fn(),
+  isWindows: vi.fn(() => false),
+}));
+
 // Mock enrichment-persistence
 const mockEnrichmentData = {
   schemaVersion: 1,
@@ -36,6 +51,7 @@ vi.mock('../enrichment-persistence', () => ({
   readEnrichmentFile: vi.fn(() => Promise.resolve(mockEnrichmentData)),
   writeEnrichmentFile: vi.fn(() => Promise.resolve()),
   appendTransition: vi.fn(() => Promise.resolve()),
+  withEnrichmentFileLock: vi.fn(async (_path: string, fn: () => Promise<void>) => fn()),
 }));
 
 // Mock subprocess-runner

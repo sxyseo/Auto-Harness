@@ -26,7 +26,7 @@ export function IssueList({
   compact,
 }: IssueListProps) {
   const { t } = useTranslation('common');
-  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
   const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(null);
 
   const itemHeight = compact ? ITEM_HEIGHT_COMPACT : ITEM_HEIGHT_NORMAL;
@@ -41,14 +41,18 @@ export function IssueList({
   // Trigger load-more when the user scrolls near the bottom of the virtual list
   const virtualItems = virtualizer.getVirtualItems();
   useEffect(() => {
-    if (!onLoadMore || !hasMore || isLoadingMore || isLoading) return;
+    if (!onLoadMore || !hasMore || isLoadingMore || isLoading || loadingMoreRef.current) return;
     if (virtualItems.length === 0) return;
 
     const lastVirtualItem = virtualItems[virtualItems.length - 1];
     if (lastVirtualItem && lastVirtualItem.index >= issues.length - 5) {
+      loadingMoreRef.current = true;
       onLoadMore();
     }
   }, [virtualItems, onLoadMore, hasMore, isLoadingMore, isLoading, issues.length]);
+
+  // Reset the ref guard when isLoadingMore goes back to false
+  useEffect(() => { if (!isLoadingMore) loadingMoreRef.current = false; }, [isLoadingMore]);
 
   // Only show blocking error view when no issues are loaded
   // Load-more errors are shown inline near the load-more trigger
@@ -124,7 +128,7 @@ export function IssueList({
         </div>
       )}
       {onLoadMore && (
-        <div ref={loadMoreTriggerRef} className="py-4 flex flex-col items-center gap-2">
+        <div className="py-4 flex flex-col items-center gap-2">
           {isLoadingMore ? (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />

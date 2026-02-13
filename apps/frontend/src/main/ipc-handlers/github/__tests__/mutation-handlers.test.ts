@@ -38,6 +38,7 @@ vi.mock('../enrichment-persistence', () => ({
   readEnrichmentFile: vi.fn(() => Promise.resolve(mockEnrichmentData)),
   writeEnrichmentFile: vi.fn(() => Promise.resolve()),
   appendTransition: vi.fn(() => Promise.resolve()),
+  withEnrichmentFileLock: vi.fn(async (_path: string, fn: () => Promise<void>) => fn()),
 }));
 
 // Mock logger

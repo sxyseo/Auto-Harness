@@ -194,8 +194,10 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   const lastBatchSnapshot = useAITriageStore((s) => s.lastBatchSnapshot);
 
   // FE-11 fix: Apply progressive trust auto-apply when review items are loaded
+  const lastAppliedLengthRef = useRef(0);
   useEffect(() => {
-    if (aiTriage.reviewItems.length > 0) {
+    if (aiTriage.reviewItems.length > 0 && aiTriage.reviewItems.length !== lastAppliedLengthRef.current) {
+      lastAppliedLengthRef.current = aiTriage.reviewItems.length;
       aiTriage.applyProgressiveTrust();
     }
   }, [aiTriage.reviewItems.length, aiTriage.applyProgressiveTrust]);

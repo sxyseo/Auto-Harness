@@ -17,6 +17,7 @@ import type {
 } from '../../../shared/types/mutations';
 import { withProject } from './utils/project-middleware';
 import { getAugmentedEnv } from '../../env-utils';
+import { getToolPath } from '../../cli-tool-manager';
 import { createContextLogger } from './utils/logger';
 
 const execFileAsync = promisify(execFile);
@@ -110,7 +111,7 @@ export function registerBulkHandlers(
             skipped++;
           } else {
             try {
-              await execFileAsync('gh', args, {
+              await execFileAsync(getToolPath('gh'), args, {
                 cwd: project.path,
                 env: getAugmentedEnv(),
               });
