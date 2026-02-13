@@ -471,3 +471,57 @@ export interface FileNode {
   name: string;
   isDirectory: boolean;
 }
+
+// ============================================
+// Observer Memory System Types
+// ============================================
+
+export type ObservationCategory =
+  | 'architecture_pattern'
+  | 'code_quality'
+  | 'performance'
+  | 'security'
+  | 'testing_gap'
+  | 'dependency_risk'
+  | 'convention_violation'
+  | 'technical_debt'
+  | 'documentation_gap'
+  | 'error_pattern'
+  | 'integration_issue'
+  | 'improvement_opportunity';
+
+export type ObservationPriority = 'critical' | 'high' | 'medium' | 'low';
+
+export type ObservationStatus = 'active' | 'archived' | 'merged' | 'invalidated';
+
+export interface Observation {
+  id: string;
+  timestamp: string;
+  observation_date: string;
+  referenced_date?: string;
+  relative_offset?: string;
+  category: ObservationCategory;
+  priority: ObservationPriority;
+  content: string;
+  evidence?: string;
+  spec_id?: string;
+  project_id?: string;
+  subtask_id?: string;
+  phase?: string;
+  session_num?: number;
+  agent_type?: string;
+  terminal_id?: string;
+  status: ObservationStatus;
+  merged_into?: string;
+  validated_at?: string;
+  staleness_score?: number;
+  pin?: boolean;
+}
+
+export interface ObservationStats {
+  total: number;
+  by_category: Record<ObservationCategory, number>;
+  by_priority: Record<ObservationPriority, number>;
+  active_count: number;
+  archived_count: number;
+}
