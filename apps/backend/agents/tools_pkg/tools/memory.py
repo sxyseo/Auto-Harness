@@ -353,4 +353,118 @@ def create_memory_tools(spec_dir: Path, project_dir: Path) -> list:
 
     tools.append(get_session_context)
 
+    # -------------------------------------------------------------------------
+    # Tool: search_memory
+    # -------------------------------------------------------------------------
+    @tool(
+        "search_memory",
+        "Search project memory for relevant observations and knowledge. Returns up to 10 ranked results.",
+        {"query": str, "category": str, "scope": str},
+    )
+    async def search_memory(args: dict[str, Any]) -> dict[str, Any]:
+        """Search observations and Graphiti memory for relevant knowledge."""
+        query = args.get("query", "")
+        category = args.get("category", "")
+        scope = args.get("scope", "project")
+
+        if not query:
+            return {
+                "content": [
+                    {"type": "text", "text": "Error: query parameter is required."}
+                ]
+            }
+
+        results = []
+
+        # PRIMARY: Search file-based ObservationStore
+        try:
+            import hashlib
+
+            from observer.store import ObservationStore
+
+            project_id = str(project_dir)
+            project_hash = hashlib.sha256(project_id.encode()).hexdigest()[:12]
+            base_dir = Path.home() / ".auto-claude" / "observations" / project_hash
+
+            if base_dir.exists():
+                store = ObservationStore(base_dir)
+                observations = store.search(
+                    query=query,
+                    category=category if category else None,
+                    scope=scope,
+                )
+                for obs in observations[:10]:
+                    results.append(
+                        {
+                            "id": obs.id,
+                            "content": obs.content,
+                            "category": obs.category.value
+                            if hasattr(obs.category, "value")
+                            else str(obs.category),
+                            "priority": obs.priority.value
+                            if hasattr(obs.priority, "value")
+                            else str(obs.priority),
+                            "source": obs.source,
+                            "tags": obs.tags,
+                            "created_at": obs.created_at
+                            if isinstance(obs.created_at, str)
+                            else obs.created_at.isoformat()
+                            if obs.created_at
+                            else None,
+                        }
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to search ObservationStore: {e}")
+
+        # SECONDARY: Also search Graphiti if enabled
+        graphiti_results = []
+        try:
+            from memory.graphiti_helpers import get_graphiti_memory
+
+            memory = await get_graphiti_memory(spec_dir, project_dir)
+            if memory is not None:
+                try:
+                    search_results = await memory.search(query)
+                    if search_results:
+                        for item in search_results[:10]:
+                            if isinstance(item, dict):
+                                graphiti_results.append(item)
+                            else:
+                                graphiti_results.append({"content": str(item)})
+                finally:
+                    try:
+                        await memory.close()
+                    except Exception:
+                        logger.debug(
+                            "Failed to close Graphiti memory connection", exc_info=True
+                        )
+        except Exception as e:
+            logger.warning(f"Failed to search Graphiti: {e}")
+
+        # Combine and format
+        combined = results[:10]
+        if graphiti_results and len(combined) < 10:
+            combined.extend(graphiti_results[: 10 - len(combined)])
+
+        if not combined:
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"No results found for query: '{query}'",
+                    }
+                ]
+            }
+
+        return {
+            "content": [
+                {
+                    "type": "text",
+                    "text": json.dumps(combined[:10], indent=2, default=str),
+                }
+            ]
+        }
+
+    tools.append(search_memory)
+
     return tools
