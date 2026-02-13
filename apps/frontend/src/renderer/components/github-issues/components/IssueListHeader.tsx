@@ -18,6 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../../ui/tooltip';
+import { WorkflowFilter } from './WorkflowFilter';
 import type { IssueListHeaderProps } from '../types';
 
 export function IssueListHeader({
@@ -35,6 +36,12 @@ export function IssueListHeader({
   onAutoFixToggle,
   onAnalyzeAndGroup,
   isAnalyzing,
+  workflowFilter,
+  onWorkflowFilterChange,
+  stateCounts,
+  onToggleTriageMode,
+  isTriageModeEnabled,
+  isTriageModeAvailable,
 }: IssueListHeaderProps) {
   const { t } = useTranslation('common');
 
@@ -47,7 +54,7 @@ export function IssueListHeader({
           </div>
           <div>
             <h2 className="text-lg font-semibold text-foreground">
-              GitHub Issues
+              {t('issues.title')}
             </h2>
             <p className="text-xs text-muted-foreground">
               {repoFullName}
@@ -56,8 +63,29 @@ export function IssueListHeader({
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">
-            {openIssuesCount} open
+            {t('issues.openCount', { count: openIssuesCount })}
           </Badge>
+          {onToggleTriageMode && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={isTriageModeEnabled ? 'secondary' : 'ghost'}
+                    size="icon"
+                    onClick={onToggleTriageMode}
+                    disabled={!isTriageModeAvailable}
+                    aria-label={t('phase5.triageMode')}
+                    aria-pressed={isTriageModeEnabled}
+                  >
+                    <Layers className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('phase5.triageModeTooltip')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -89,11 +117,11 @@ export function IssueListHeader({
                   ) : (
                     <Layers className="h-4 w-4 mr-2" />
                   )}
-                  Analyze & Group Issues
+                  {t('issues.analyzeGroup')}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs">
-                <p>Analyze up to 200 open issues, group similar ones, and review proposed batches before creating tasks.</p>
+                <p>{t('issues.analyzeGroupTooltip')}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -112,7 +140,7 @@ export function IssueListHeader({
                       <Wand2 className="h-4 w-4 text-muted-foreground" />
                     )}
                     <Label htmlFor="auto-fix-toggle" className="text-sm cursor-pointer whitespace-nowrap">
-                      Auto-Fix New
+                      {t('issues.autoFixNew')}
                     </Label>
                     <Switch
                       id="auto-fix-toggle"
@@ -123,9 +151,9 @@ export function IssueListHeader({
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
-                  <p>Automatically fix new issues as they come in.</p>
+                  <p>{t('issues.autoFixTooltip')}</p>
                   {autoFixRunning && autoFixProcessing !== undefined && autoFixProcessing > 0 && (
-                    <p className="mt-1 text-primary">Processing {autoFixProcessing} issue{autoFixProcessing > 1 ? 's' : ''}...</p>
+                    <p className="mt-1 text-primary">{t('issues.autoFixProcessing', { count: autoFixProcessing })}</p>
                   )}
                 </TooltipContent>
               </Tooltip>
@@ -139,7 +167,7 @@ export function IssueListHeader({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search issues..."
+            placeholder={t('issues.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"
@@ -151,11 +179,18 @@ export function IssueListHeader({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="open">{t('issues.filterOpen')}</SelectItem>
+            <SelectItem value="closed">{t('issues.filterClosed')}</SelectItem>
+            <SelectItem value="all">{t('issues.filterAll')}</SelectItem>
           </SelectContent>
         </Select>
+        {onWorkflowFilterChange && (
+          <WorkflowFilter
+            selectedStates={workflowFilter ?? []}
+            onChange={onWorkflowFilterChange}
+            stateCounts={stateCounts}
+          />
+        )}
       </div>
     </div>
   );

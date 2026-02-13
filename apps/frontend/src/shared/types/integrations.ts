@@ -478,3 +478,9 @@ export interface RoadmapProviderConfig {
  * Canny-specific status values
  */
 export type CannyStatus = 'open' | 'under review' | 'planned' | 'in progress' | 'complete' | 'closed';
+
+// ============================================
+// Re-export enrichment types for convenience
+// ============================================
+
+export type { WorkflowState, Resolution, IssueEnrichment } from './enrichment';

@@ -14,6 +14,7 @@ import fs from 'fs';
 import { IPC_CHANNELS, MODEL_ID_MAP, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING } from '../../../shared/constants';
 import type { AuthFailureInfo } from '../../../shared/types/terminal';
 import { getGitHubConfig } from './utils';
+import { writeJsonWithRetry } from '../../utils/atomic-file';
 import { readSettingsFile } from '../../settings-utils';
 import { getAugmentedEnv } from '../../env-utils';
 import type { Project, AppSettings } from '../../../shared/types';
@@ -118,7 +119,7 @@ function getTriageConfig(project: Project): TriageConfig {
 /**
  * Save triage config for a project
  */
-function saveTriageConfig(project: Project, config: TriageConfig): void {
+async function saveTriageConfig(project: Project, config: TriageConfig): Promise<void> {
   const githubDir = getGitHubDir(project);
   fs.mkdirSync(githubDir, { recursive: true });
 
@@ -140,7 +141,7 @@ function saveTriageConfig(project: Project, config: TriageConfig): void {
     enable_triage_comments: config.enableComments,
   };
 
-  fs.writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2), 'utf-8');
+  await writeJsonWithRetry(configPath, updatedConfig, { indent: 2 });
 }
 
 /**
@@ -323,7 +324,7 @@ export function registerTriageHandlers(
     async (_, projectId: string, config: TriageConfig): Promise<boolean> => {
       debugLog('saveTriageConfig handler called', { projectId, enabled: config.enabled });
       const result = await withProjectOrNull(projectId, async (project) => {
-        saveTriageConfig(project, config);
+        await saveTriageConfig(project, config);
         debugLog('Triage config saved');
         return true;
       });

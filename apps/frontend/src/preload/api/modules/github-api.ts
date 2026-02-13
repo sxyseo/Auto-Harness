@@ -12,6 +12,22 @@ import type {
   PRStatusUpdate,
   PollingMetadata
 } from '../../../shared/types';
+import type { EnrichmentFile, IssueEnrichment, WorkflowState, Resolution } from '../../../shared/types/enrichment';
+import type { LabelSyncConfig, LabelSyncResult } from '../../../shared/types/label-sync';
+import type { IssueDependencies } from '../../../shared/types/dependencies';
+import type { TriageMetrics, MetricsTimeWindow } from '../../../shared/types/metrics';
+import type { MutationResult, BulkExecuteParams, BulkOperationProgress, BulkOperationResult } from '../../../shared/types/mutations';
+import type {
+  CreateIssueParams,
+  CreateIssueResult,
+  TriageReviewItem,
+  AIEnrichmentResult,
+  SplitSuggestion,
+  EnrichmentProgress,
+  SplitProgress,
+  ApplyResultsProgress,
+  ProgressiveTrustConfig,
+} from '../../../shared/types/ai-triage';
 import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
 
 /**
@@ -325,6 +341,76 @@ export interface GitHubAPI {
   onPRStatusUpdate: (
     callback: (update: PRStatusUpdate) => void
   ) => IpcListenerCleanup;
+
+  // Enrichment operations
+  getAllEnrichment: (projectId: string) => Promise<EnrichmentFile>;
+  getEnrichment: (projectId: string, issueNumber: number) => Promise<IssueEnrichment | null>;
+  saveEnrichment: (projectId: string, enrichment: IssueEnrichment) => Promise<boolean>;
+  transitionWorkflowState: (projectId: string, issueNumber: number, to: WorkflowState, resolution?: Resolution) => Promise<IssueEnrichment>;
+  bootstrapEnrichment: (projectId: string, issues: GitHubIssue[]) => Promise<EnrichmentFile>;
+  reconcileEnrichment: (projectId: string, issues: GitHubIssue[]) => Promise<EnrichmentFile>;
+  gcEnrichment: (projectId: string, issueNumbers: number[]) => Promise<{ pruned: number; orphaned: number }>;
+
+  // Issue Mutations
+  editIssueTitle: (projectId: string, issueNumber: number, title: string) => Promise<MutationResult>;
+  editIssueBody: (projectId: string, issueNumber: number, body: string | null) => Promise<MutationResult>;
+  addIssueLabels: (projectId: string, issueNumber: number, labels: string[]) => Promise<MutationResult>;
+  removeIssueLabels: (projectId: string, issueNumber: number, labels: string[]) => Promise<MutationResult>;
+  addIssueAssignees: (projectId: string, issueNumber: number, assignees: string[]) => Promise<MutationResult>;
+  removeIssueAssignees: (projectId: string, issueNumber: number, assignees: string[]) => Promise<MutationResult>;
+  closeIssue: (projectId: string, issueNumber: number) => Promise<MutationResult>;
+  reopenIssue: (projectId: string, issueNumber: number) => Promise<MutationResult>;
+  addIssueComment: (projectId: string, issueNumber: number, body: string) => Promise<MutationResult>;
+
+  // Bulk Operations
+  executeBulk: (params: BulkExecuteParams) => Promise<BulkOperationResult>;
+  onBulkProgress: (callback: (progress: BulkOperationProgress) => void) => IpcListenerCleanup;
+  onBulkComplete: (callback: (result: BulkOperationResult) => void) => IpcListenerCleanup;
+
+  // Repository Data
+  getRepoLabels: (projectId: string) => Promise<{ success: boolean; data?: Array<{ name: string; color: string; description: string }>; error?: string }>;
+  getRepoCollaborators: (projectId: string) => Promise<{ success: boolean; data?: string[]; error?: string }>;
+
+  // Spec from Issue
+  createSpecFromIssue: (projectId: string, issueNumber: number) => Promise<MutationResult>;
+
+  // AI Triage (Phase 3)
+  cancelTriage: () => Promise<{ cancelled: boolean }>;
+  runEnrichment: (projectId: string, issueNumber: number) => void;
+  onEnrichmentProgress: (callback: (projectId: string, progress: EnrichmentProgress) => void) => IpcListenerCleanup;
+  onEnrichmentError: (callback: (projectId: string, error: { error: string }) => void) => IpcListenerCleanup;
+  onEnrichmentComplete: (callback: (projectId: string, result: AIEnrichmentResult) => void) => IpcListenerCleanup;
+
+  runSplitSuggestion: (projectId: string, issueNumber: number) => void;
+  onSplitProgress: (callback: (projectId: string, progress: SplitProgress) => void) => IpcListenerCleanup;
+  onSplitError: (callback: (projectId: string, error: { error: string }) => void) => IpcListenerCleanup;
+  onSplitComplete: (callback: (projectId: string, result: SplitSuggestion) => void) => IpcListenerCleanup;
+
+  createIssue: (projectId: string, params: CreateIssueParams) => Promise<CreateIssueResult>;
+
+  applyTriageResults: (projectId: string, items: TriageReviewItem[]) => void;
+  onApplyResultsProgress: (callback: (projectId: string, progress: ApplyResultsProgress) => void) => IpcListenerCleanup;
+  onApplyResultsComplete: (callback: (projectId: string, results: { succeeded: number; failed: number; skipped: number }) => void) => IpcListenerCleanup;
+
+  savePendingReview: (projectId: string, items: TriageReviewItem[]) => Promise<boolean>;
+  loadPendingReview: (projectId: string) => Promise<TriageReviewItem[]>;
+  saveProgressiveTrust: (projectId: string, config: ProgressiveTrustConfig) => Promise<boolean>;
+  getProgressiveTrust: (projectId: string) => Promise<ProgressiveTrustConfig>;
+
+  // Label Sync (Phase 4)
+  enableLabelSync: (projectId: string) => Promise<LabelSyncResult>;
+  disableLabelSync: (projectId: string, cleanup: boolean) => Promise<{ success: boolean }>;
+  syncIssueLabel: (projectId: string, issueNumber: number, newState: string, oldState: string | null) => Promise<{ synced?: boolean; skipped?: boolean; error?: string }>;
+  getLabelSyncStatus: (projectId: string) => Promise<LabelSyncConfig>;
+  saveLabelSyncConfig: (projectId: string, config: LabelSyncConfig) => Promise<{ success: boolean }>;
+  bulkLabelSync: (projectId: string, issueNumbers: number[]) => Promise<{ synced: number; errors: number }>;
+
+  // Dependencies (Phase 4)
+  fetchDependencies: (projectId: string, issueNumber: number) => Promise<IssueDependencies & { error?: string; unavailable?: boolean }>;
+
+  // Metrics (Phase 4)
+  computeMetrics: (projectId: string, timeWindow: MetricsTimeWindow) => Promise<TriageMetrics>;
+  getStateCounts: (projectId: string) => Promise<Record<WorkflowState, number>>;
 }
 
 /**
@@ -793,5 +879,158 @@ export const createGitHubAPI = (): GitHubAPI => ({
   onPRStatusUpdate: (
     callback: (update: PRStatusUpdate) => void
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.GITHUB_PR_STATUS_UPDATE, callback)
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_STATUS_UPDATE, callback),
+
+  // Enrichment operations
+  getAllEnrichment: (projectId: string): Promise<EnrichmentFile> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ENRICHMENT_GET_ALL, projectId),
+
+  getEnrichment: (projectId: string, issueNumber: number): Promise<IssueEnrichment | null> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ENRICHMENT_GET, projectId, issueNumber),
+
+  saveEnrichment: (projectId: string, enrichment: IssueEnrichment): Promise<boolean> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ENRICHMENT_SAVE, projectId, enrichment),
+
+  transitionWorkflowState: (projectId: string, issueNumber: number, to: WorkflowState, resolution?: Resolution): Promise<IssueEnrichment> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ENRICHMENT_TRANSITION, projectId, issueNumber, to, resolution),
+
+  bootstrapEnrichment: (projectId: string, issues: GitHubIssue[]): Promise<EnrichmentFile> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ENRICHMENT_BOOTSTRAP, projectId, issues),
+
+  reconcileEnrichment: (projectId: string, issues: GitHubIssue[]): Promise<EnrichmentFile> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ENRICHMENT_RECONCILE, projectId, issues),
+
+  gcEnrichment: (projectId: string, issueNumbers: number[]): Promise<{ pruned: number; orphaned: number }> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ENRICHMENT_GC, projectId, issueNumbers),
+
+  // Issue Mutations
+  editIssueTitle: (projectId: string, issueNumber: number, title: string): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_EDIT_TITLE, projectId, issueNumber, title),
+
+  editIssueBody: (projectId: string, issueNumber: number, body: string | null): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_EDIT_BODY, projectId, issueNumber, body),
+
+  addIssueLabels: (projectId: string, issueNumber: number, labels: string[]): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_ADD_LABELS, projectId, issueNumber, labels),
+
+  removeIssueLabels: (projectId: string, issueNumber: number, labels: string[]): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_REMOVE_LABELS, projectId, issueNumber, labels),
+
+  addIssueAssignees: (projectId: string, issueNumber: number, assignees: string[]): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_ADD_ASSIGNEES, projectId, issueNumber, assignees),
+
+  removeIssueAssignees: (projectId: string, issueNumber: number, assignees: string[]): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_REMOVE_ASSIGNEES, projectId, issueNumber, assignees),
+
+  closeIssue: (projectId: string, issueNumber: number): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_CLOSE, projectId, issueNumber),
+
+  reopenIssue: (projectId: string, issueNumber: number): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_REOPEN, projectId, issueNumber),
+
+  addIssueComment: (projectId: string, issueNumber: number, body: string): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_COMMENT, projectId, issueNumber, body),
+
+  // Bulk Operations
+  executeBulk: (params: BulkExecuteParams): Promise<BulkOperationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_BULK_EXECUTE, params),
+
+  onBulkProgress: (callback: (progress: BulkOperationProgress) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_BULK_PROGRESS, callback),
+
+  onBulkComplete: (callback: (result: BulkOperationResult) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_BULK_COMPLETE, callback),
+
+  // Repository Data
+  getRepoLabels: (projectId: string) =>
+    invokeIpc(IPC_CHANNELS.GITHUB_REPO_GET_LABELS, projectId),
+
+  getRepoCollaborators: (projectId: string) =>
+    invokeIpc(IPC_CHANNELS.GITHUB_REPO_GET_COLLABORATORS, projectId),
+
+  // Spec from Issue
+  createSpecFromIssue: (projectId: string, issueNumber: number): Promise<MutationResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_CREATE_SPEC, projectId, issueNumber),
+
+  // AI Triage (Phase 3)
+  cancelTriage: (): Promise<{ cancelled: boolean }> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_CANCEL),
+
+  runEnrichment: (projectId: string, issueNumber: number): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_TRIAGE_ENRICH, projectId, issueNumber),
+
+  onEnrichmentProgress: (callback: (projectId: string, progress: EnrichmentProgress) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_ENRICH_PROGRESS, callback),
+
+  onEnrichmentError: (callback: (projectId: string, error: { error: string }) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_ENRICH_ERROR, callback),
+
+  onEnrichmentComplete: (callback: (projectId: string, result: AIEnrichmentResult) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_ENRICH_COMPLETE, callback),
+
+  runSplitSuggestion: (projectId: string, issueNumber: number): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_TRIAGE_SPLIT, projectId, issueNumber),
+
+  onSplitProgress: (callback: (projectId: string, progress: SplitProgress) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_SPLIT_PROGRESS, callback),
+
+  onSplitError: (callback: (projectId: string, error: { error: string }) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_SPLIT_ERROR, callback),
+
+  onSplitComplete: (callback: (projectId: string, result: SplitSuggestion) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_SPLIT_COMPLETE, callback),
+
+  createIssue: (projectId: string, params: CreateIssueParams): Promise<CreateIssueResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_ISSUE_CREATE, projectId, params),
+
+  applyTriageResults: (projectId: string, items: TriageReviewItem[]): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_TRIAGE_APPLY_RESULTS, projectId, items),
+
+  onApplyResultsProgress: (callback: (projectId: string, progress: ApplyResultsProgress) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_APPLY_RESULTS_PROGRESS, callback),
+
+  onApplyResultsComplete: (callback: (projectId: string, results: { succeeded: number; failed: number; skipped: number }) => void): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_TRIAGE_APPLY_RESULTS_COMPLETE, callback),
+
+  savePendingReview: (projectId: string, items: TriageReviewItem[]): Promise<boolean> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_SAVE_PENDING_REVIEW, projectId, items),
+
+  loadPendingReview: (projectId: string): Promise<TriageReviewItem[]> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_LOAD_PENDING_REVIEW, projectId),
+
+  saveProgressiveTrust: (projectId: string, config: ProgressiveTrustConfig): Promise<boolean> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_SAVE_TRUST, projectId, config),
+
+  getProgressiveTrust: (projectId: string): Promise<ProgressiveTrustConfig> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_GET_TRUST, projectId),
+
+  // Label Sync (Phase 4)
+  enableLabelSync: (projectId: string): Promise<LabelSyncResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_LABEL_SYNC_ENABLE, projectId),
+
+  disableLabelSync: (projectId: string, cleanup: boolean): Promise<{ success: boolean }> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_LABEL_SYNC_DISABLE, projectId, cleanup),
+
+  syncIssueLabel: (projectId: string, issueNumber: number, newState: string, oldState: string | null) =>
+    invokeIpc(IPC_CHANNELS.GITHUB_LABEL_SYNC_ISSUE, projectId, issueNumber, newState, oldState),
+
+  getLabelSyncStatus: (projectId: string): Promise<LabelSyncConfig> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_LABEL_SYNC_STATUS, projectId),
+
+  saveLabelSyncConfig: (projectId: string, config: LabelSyncConfig): Promise<{ success: boolean }> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_LABEL_SYNC_SAVE, projectId, config),
+
+  bulkLabelSync: (projectId: string, issueNumbers: number[]): Promise<{ synced: number; errors: number }> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_LABEL_SYNC_BULK, projectId, issueNumbers),
+
+  // Dependencies (Phase 4)
+  fetchDependencies: (projectId: string, issueNumber: number) =>
+    invokeIpc(IPC_CHANNELS.GITHUB_DEPS_FETCH, projectId, issueNumber),
+
+  // Metrics (Phase 4)
+  computeMetrics: (projectId: string, timeWindow: MetricsTimeWindow): Promise<TriageMetrics> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_METRICS_COMPUTE, projectId, timeWindow),
+
+  getStateCounts: (projectId: string): Promise<Record<WorkflowState, number>> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_METRICS_STATE_COUNTS, projectId),
 });

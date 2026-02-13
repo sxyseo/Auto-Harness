@@ -568,6 +568,10 @@ export function validateRunner(backendPath: string | null): { valid: boolean; er
   return { valid: true };
 }
 
+// Validation cache: avoids redundant gh CLI / filesystem checks within a short window
+const VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let validationCache: { result: GitHubModuleValidation; projectPath: string; cachedAt: number } | null = null;
+
 /**
  * Comprehensive async validation of GitHub automation module
  *
@@ -577,10 +581,21 @@ export function validateRunner(backendPath: string | null): { valid: boolean; er
  * 3. gh CLI is authenticated
  * 4. Python virtual environment is set up
  *
+ * Results are cached for 5 minutes per project to avoid redundant checks.
+ *
  * @param project - The project to validate
  * @returns Detailed validation result with specific error messages
  */
 export async function validateGitHubModule(project: Project): Promise<GitHubModuleValidation> {
+  // Return cached result if valid and for the same project
+  if (
+    validationCache &&
+    validationCache.projectPath === project.path &&
+    Date.now() - validationCache.cachedAt < VALIDATION_CACHE_TTL_MS
+  ) {
+    return validationCache.result;
+  }
+
   const result: GitHubModuleValidation = {
     valid: false,
     runnerAvailable: false,
@@ -658,6 +673,9 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
 
   // All checks passed
   result.valid = true;
+
+  // Cache successful validation
+  validationCache = { result, projectPath: project.path, cachedAt: Date.now() };
   return result;
 }
 

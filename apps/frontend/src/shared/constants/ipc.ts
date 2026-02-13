@@ -443,6 +443,72 @@ export const IPC_CHANNELS = {
   GITHUB_TRIAGE_COMPLETE: 'github:triage:complete',
   GITHUB_TRIAGE_ERROR: 'github:triage:error',
 
+  // AI Triage (Phase 3)
+  GITHUB_TRIAGE_ENRICH: 'github:triage:enrich',
+  GITHUB_TRIAGE_ENRICH_PROGRESS: 'github:triage:enrich:progress',
+  GITHUB_TRIAGE_ENRICH_ERROR: 'github:triage:enrich:error',
+  GITHUB_TRIAGE_ENRICH_COMPLETE: 'github:triage:enrich:complete',
+  GITHUB_TRIAGE_SPLIT: 'github:triage:split',
+  GITHUB_TRIAGE_SPLIT_PROGRESS: 'github:triage:split:progress',
+  GITHUB_TRIAGE_SPLIT_ERROR: 'github:triage:split:error',
+  GITHUB_TRIAGE_SPLIT_COMPLETE: 'github:triage:split:complete',
+  GITHUB_ISSUE_CREATE: 'github:issue:create',
+  GITHUB_TRIAGE_APPLY_RESULTS: 'github:triage:applyResults',
+  GITHUB_TRIAGE_APPLY_RESULTS_PROGRESS: 'github:triage:applyResults:progress',
+  GITHUB_TRIAGE_APPLY_RESULTS_COMPLETE: 'github:triage:applyResults:complete',
+  GITHUB_TRIAGE_CANCEL: 'github:triage:cancel',
+  GITHUB_TRIAGE_SAVE_PENDING_REVIEW: 'github:triage:savePendingReview',
+  GITHUB_TRIAGE_LOAD_PENDING_REVIEW: 'github:triage:loadPendingReview',
+  GITHUB_TRIAGE_SAVE_TRUST: 'github:triage:saveTrust',
+  GITHUB_TRIAGE_GET_TRUST: 'github:triage:getTrust',
+
+  // GitHub Enrichment operations
+  GITHUB_ENRICHMENT_GET_ALL: 'github:enrichment:getAll',
+  GITHUB_ENRICHMENT_GET: 'github:enrichment:get',
+  GITHUB_ENRICHMENT_SAVE: 'github:enrichment:save',
+  GITHUB_ENRICHMENT_TRANSITION: 'github:enrichment:transition',
+  GITHUB_ENRICHMENT_BOOTSTRAP: 'github:enrichment:bootstrap',
+  GITHUB_ENRICHMENT_RECONCILE: 'github:enrichment:reconcile',
+  GITHUB_ENRICHMENT_GC: 'github:enrichment:gc',
+
+  // Issue Mutations
+  GITHUB_ISSUE_EDIT_TITLE: 'github:issue:editTitle',
+  GITHUB_ISSUE_EDIT_BODY: 'github:issue:editBody',
+  GITHUB_ISSUE_ADD_LABELS: 'github:issue:addLabels',
+  GITHUB_ISSUE_REMOVE_LABELS: 'github:issue:removeLabels',
+  GITHUB_ISSUE_ADD_ASSIGNEES: 'github:issue:addAssignees',
+  GITHUB_ISSUE_REMOVE_ASSIGNEES: 'github:issue:removeAssignees',
+  GITHUB_ISSUE_CLOSE: 'github:issue:close',
+  GITHUB_ISSUE_REOPEN: 'github:issue:reopen',
+  GITHUB_ISSUE_COMMENT: 'github:issue:comment',
+
+  // Bulk Operations
+  GITHUB_BULK_EXECUTE: 'github:bulk:execute',
+  GITHUB_BULK_PROGRESS: 'github:bulk:progress',
+  GITHUB_BULK_COMPLETE: 'github:bulk:complete',
+
+  // Repository Data
+  GITHUB_REPO_GET_LABELS: 'github:repo:getLabels',
+  GITHUB_REPO_GET_COLLABORATORS: 'github:repo:getCollaborators',
+
+  // Spec from Issue
+  GITHUB_ISSUE_CREATE_SPEC: 'github:issue:createSpec',
+
+  // Label Sync (Phase 4)
+  GITHUB_LABEL_SYNC_ENABLE: 'github:label-sync:enable',
+  GITHUB_LABEL_SYNC_DISABLE: 'github:label-sync:disable',
+  GITHUB_LABEL_SYNC_ISSUE: 'github:label-sync:issue',
+  GITHUB_LABEL_SYNC_STATUS: 'github:label-sync:status',
+  GITHUB_LABEL_SYNC_SAVE: 'github:label-sync:save',
+  GITHUB_LABEL_SYNC_BULK: 'github:label-sync:bulk',
+
+  // Dependencies (Phase 4)
+  GITHUB_DEPS_FETCH: 'github:deps:fetch',
+
+  // Metrics (Phase 4)
+  GITHUB_METRICS_COMPUTE: 'github:metrics:compute',
+  GITHUB_METRICS_STATE_COUNTS: 'github:metrics:state-counts',
+
   // Memory Infrastructure status (LadybugDB - no Docker required)
   MEMORY_STATUS: 'memory:status',
   MEMORY_LIST_DATABASES: 'memory:listDatabases',

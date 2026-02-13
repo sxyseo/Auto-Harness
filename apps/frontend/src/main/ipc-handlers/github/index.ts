@@ -25,6 +25,16 @@ import { registerGithubOAuthHandlers } from './oauth-handlers';
 import { registerAutoFixHandlers } from './autofix-handlers';
 import { registerPRHandlers } from './pr-handlers';
 import { registerTriageHandlers } from './triage-handlers';
+import { registerEnrichmentHandlers } from './enrichment-handlers';
+import { registerMutationHandlers } from './mutation-handlers';
+import { registerRepoDataHandlers } from './repo-data-handlers';
+import { registerBulkHandlers } from './bulk-handlers';
+import { registerCreateSpecHandler } from './create-spec-handler';
+import { registerAITriageHandlers } from './ai-triage-handlers';
+import { registerIssueCreateHandler } from './issue-create-handler';
+import { registerLabelSyncHandlers } from './label-sync-handlers';
+import { registerDependencyHandlers } from './dependency-handlers';
+import { registerMetricsHandlers } from './metrics-handlers';
 
 /**
  * Register all GitHub-related IPC handlers
@@ -42,6 +52,16 @@ export function registerGithubHandlers(
   registerAutoFixHandlers(agentManager, getMainWindow);
   registerPRHandlers(getMainWindow);
   registerTriageHandlers(getMainWindow);
+  registerEnrichmentHandlers(getMainWindow);
+  registerMutationHandlers(getMainWindow);
+  registerRepoDataHandlers(getMainWindow);
+  registerBulkHandlers(getMainWindow);
+  registerCreateSpecHandler(getMainWindow);
+  registerAITriageHandlers(getMainWindow);
+  registerIssueCreateHandler(getMainWindow);
+  registerLabelSyncHandlers(getMainWindow);
+  registerDependencyHandlers(getMainWindow);
+  registerMetricsHandlers(getMainWindow);
 }
 
 // Re-export utilities for potential external use
