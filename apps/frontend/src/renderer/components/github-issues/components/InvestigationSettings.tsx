@@ -8,16 +8,18 @@
  *  4. Auto-post to GitHub (toggle, default off)
  *  5. Auto-close issues (toggle, default off)
  *  6. Max parallel investigations (number 1-10, default 3)
- *  7. Label include filter (multi-select)
- *  8. Label exclude filter (multi-select)
+ *  7. Label include filter (multi-select dropdown)
+ *  8. Label exclude filter (multi-select dropdown)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Brain, Loader2 } from 'lucide-react';
+import { Brain, Loader2, Plus, X, Check } from 'lucide-react';
 import { Switch } from '../../ui/switch';
 import { Label } from '../../ui/label';
 import { Input } from '../../ui/input';
+import { Button } from '../../ui/button';
+import { Badge } from '../../ui/badge';
 import { Separator } from '../../ui/separator';
 import {
   Select,
@@ -40,6 +42,18 @@ const DEFAULT_SETTINGS: InvestigationSettingsType = {
   labelExcludeFilter: [],
 };
 
+/**
+ * Returns white or dark text color for readable contrast against a hex background.
+ */
+function getContrastTextColor(hexColor: string): string {
+  const hex = hexColor.replace('#', '');
+  const r = Number.parseInt(hex.substring(0, 2), 16);
+  const g = Number.parseInt(hex.substring(2, 4), 16);
+  const b = Number.parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? '#24292f' : '#ffffff';
+}
+
 interface InvestigationSettingsProps {
   projectId: string;
 }
@@ -52,8 +66,22 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
     storeSettings ?? DEFAULT_SETTINGS,
   );
   const [isLoading, setIsLoading] = useState(false);
-  const [labelIncludeInput, setLabelIncludeInput] = useState('');
-  const [labelExcludeInput, setLabelExcludeInput] = useState('');
+
+  // Repo labels fetched from GitHub
+  const [repoLabels, setRepoLabels] = useState<Array<{ name: string; color: string }>>([]);
+  const [labelsLoading, setLabelsLoading] = useState(false);
+
+  // Fetch repo labels on mount
+  useEffect(() => {
+    if (!projectId) return;
+    setLabelsLoading(true);
+    window.electronAPI.github.getRepoLabels(projectId)
+      .then((res) => {
+        if (res.success && res.data) setRepoLabels(res.data);
+      })
+      .catch(() => { /* silently handle */ })
+      .finally(() => setLabelsLoading(false));
+  }, [projectId]);
 
   // Load settings from store on mount / projectId change
   useEffect(() => {
@@ -92,8 +120,6 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
     const key = type === 'include' ? 'labelIncludeFilter' : 'labelExcludeFilter';
     if (settings[key].includes(trimmed)) return;
     persist({ ...settings, [key]: [...settings[key], trimmed] });
-    if (type === 'include') setLabelIncludeInput('');
-    else setLabelExcludeInput('');
   };
 
   const removeLabelFilter = (type: 'include' | 'exclude', label: string) => {
@@ -228,80 +254,32 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
       <Separator />
 
       {/* 7. Label include filter */}
-      <div className="space-y-2">
-        <div className="space-y-0.5">
-          <Label className="font-normal text-foreground">
-            {t('settings:investigationSettings.labelIncludeFilter', 'Label include filter')}
-          </Label>
-          <p className="text-xs text-muted-foreground">
-            {t(
-              'settings:investigationSettings.labelIncludeFilterDescription',
-              'Only auto-create tasks for issues with these labels',
-            )}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {settings.labelIncludeFilter.map((label) => (
-            <LabelChip
-              key={label}
-              label={label}
-              onRemove={() => removeLabelFilter('include', label)}
-            />
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Input
-            placeholder={t('settings:investigationSettings.labelPlaceholder', 'Add label...')}
-            value={labelIncludeInput}
-            onChange={(e) => setLabelIncludeInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addLabelFilter('include', labelIncludeInput);
-              }
-            }}
-            className="h-7 text-xs flex-1"
-          />
-        </div>
-      </div>
+      <LabelFilterDropdown
+        title={t('settings:investigationSettings.labelIncludeFilter', 'Label include filter')}
+        description={t(
+          'settings:investigationSettings.labelIncludeFilterDescription',
+          'Only auto-create tasks for issues with these labels',
+        )}
+        selectedLabels={settings.labelIncludeFilter}
+        repoLabels={repoLabels}
+        isLoading={labelsLoading}
+        onAdd={(label) => addLabelFilter('include', label)}
+        onRemove={(label) => removeLabelFilter('include', label)}
+      />
 
       {/* 8. Label exclude filter */}
-      <div className="space-y-2">
-        <div className="space-y-0.5">
-          <Label className="font-normal text-foreground">
-            {t('settings:investigationSettings.labelExcludeFilter', 'Label exclude filter')}
-          </Label>
-          <p className="text-xs text-muted-foreground">
-            {t(
-              'settings:investigationSettings.labelExcludeFilterDescription',
-              'Never auto-create tasks for issues with these labels',
-            )}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {settings.labelExcludeFilter.map((label) => (
-            <LabelChip
-              key={label}
-              label={label}
-              onRemove={() => removeLabelFilter('exclude', label)}
-            />
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Input
-            placeholder={t('settings:investigationSettings.labelPlaceholder', 'Add label...')}
-            value={labelExcludeInput}
-            onChange={(e) => setLabelExcludeInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addLabelFilter('exclude', labelExcludeInput);
-              }
-            }}
-            className="h-7 text-xs flex-1"
-          />
-        </div>
-      </div>
+      <LabelFilterDropdown
+        title={t('settings:investigationSettings.labelExcludeFilter', 'Label exclude filter')}
+        description={t(
+          'settings:investigationSettings.labelExcludeFilterDescription',
+          'Never auto-create tasks for issues with these labels',
+        )}
+        selectedLabels={settings.labelExcludeFilter}
+        repoLabels={repoLabels}
+        isLoading={labelsLoading}
+        onAdd={(label) => addLabelFilter('exclude', label)}
+        onRemove={(label) => removeLabelFilter('exclude', label)}
+      />
     </section>
   );
 }
@@ -327,23 +305,146 @@ function SettingToggle({ label, description, checked, onCheckedChange }: Setting
   );
 }
 
-interface LabelChipProps {
-  label: string;
-  onRemove: () => void;
+interface LabelFilterDropdownProps {
+  title: string;
+  description: string;
+  selectedLabels: string[];
+  repoLabels: Array<{ name: string; color: string }>;
+  isLoading: boolean;
+  onAdd: (label: string) => void;
+  onRemove: (label: string) => void;
 }
 
-function LabelChip({ label, onRemove }: LabelChipProps) {
+function LabelFilterDropdown({
+  title,
+  description,
+  selectedLabels,
+  repoLabels,
+  isLoading,
+  onAdd,
+  onRemove,
+}: LabelFilterDropdownProps) {
+  const { t } = useTranslation('common');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredLabels = repoLabels.filter((label) =>
+    label.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+        setSearch('');
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownOpen]);
+
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-muted text-muted-foreground">
-      {label}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="ml-0.5 hover:text-destructive transition-colors"
-        aria-label={`Remove ${label}`}
-      >
-        &times;
-      </button>
-    </span>
+    <div className="space-y-2">
+      <div className="space-y-0.5">
+        <Label className="font-normal text-foreground">{title}</Label>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+
+      {/* Selected label chips */}
+      <div className="flex flex-wrap gap-1.5">
+        {selectedLabels.map((label) => {
+          const repoLabel = repoLabels.find((rl) => rl.name === label);
+          const bgColor = repoLabel ? `#${repoLabel.color}` : undefined;
+          const textColor = repoLabel ? getContrastTextColor(repoLabel.color) : undefined;
+          return (
+            <Badge
+              key={label}
+              variant="outline"
+              className="gap-1 text-xs border-transparent"
+              style={bgColor ? {
+                backgroundColor: bgColor,
+                borderColor: bgColor,
+                color: textColor,
+              } : undefined}
+            >
+              {label}
+              <button
+                type="button"
+                className="ml-0.5 opacity-70 hover:opacity-100"
+                onClick={() => onRemove(label)}
+                aria-label={`Remove label ${label}`}
+                style={textColor ? { color: textColor } : undefined}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          );
+        })}
+      </div>
+
+      {/* Add label button + dropdown */}
+      <div className="relative" ref={dropdownRef}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs gap-1"
+          onClick={() => { setDropdownOpen((prev) => !prev); setSearch(''); }}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Plus className="h-3 w-3" />
+          )}
+          {t('labels.add')}
+        </Button>
+
+        {dropdownOpen && (
+          <div className="absolute z-50 mt-1 w-64 border border-border rounded-md bg-popover shadow-md p-1 max-h-48 overflow-y-auto">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('labels.filter')}
+              className="w-full px-2 py-1 text-xs border-b border-border bg-transparent focus:outline-none"
+              aria-label="Filter labels"
+            />
+            <div role="listbox" aria-label="Available labels">
+              {filteredLabels.map((label) => {
+                const isSelected = selectedLabels.includes(label.name);
+                return (
+                  <button
+                    key={label.name}
+                    type="button"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"
+                    onClick={() => {
+                      if (isSelected) {
+                        onRemove(label.name);
+                      } else {
+                        onAdd(label.name);
+                      }
+                    }}
+                  >
+                    <span
+                      className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: `#${label.color}` }}
+                    />
+                    <span className="flex-1">{label.name}</span>
+                    {isSelected && <Check className="h-3 w-3 text-primary" />}
+                  </button>
+                );
+              })}
+              {filteredLabels.length === 0 && (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  {t('labels.noMatch')}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

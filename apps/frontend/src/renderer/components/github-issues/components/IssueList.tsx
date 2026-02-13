@@ -118,6 +118,7 @@ export function IssueList({
                 investigationProgress={invState?.progress}
                 linkedTaskId={invState?.linkedTaskId}
                 onViewTask={onViewTask}
+                isStale={invState?.isStale}
               />
             </div>
           );

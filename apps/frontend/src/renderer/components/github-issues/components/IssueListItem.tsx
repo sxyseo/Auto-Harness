@@ -7,6 +7,7 @@ import {
   GITHUB_ISSUE_STATE_LABELS
 } from '@shared/constants';
 import { InvestigationProgressBar } from './InvestigationProgressBar';
+import { useTranslation } from 'react-i18next';
 import type { IssueListItemProps } from '../types';
 
 export const IssueListItem = memo(function IssueListItem({
@@ -22,13 +23,18 @@ export const IssueListItem = memo(function IssueListItem({
   investigationProgress,
   linkedTaskId,
   onViewTask,
+  isStale,
 }: IssueListItemProps) {
+  const { t } = useTranslation('common');
+
   return (
     <div
       role="option"
       aria-selected={isSelected}
       tabIndex={0}
       className={`group p-3 rounded-lg cursor-pointer transition-colors ${
+        isStale ? 'opacity-60 ' : ''
+      }${
         isSelected
           ? 'bg-accent/50 border border-accent'
           : 'hover:bg-muted/50 border border-transparent'
@@ -64,6 +70,11 @@ export const IssueListItem = memo(function IssueListItem({
               {GITHUB_ISSUE_STATE_LABELS[issue.state]}
             </Badge>
             <span className="text-xs text-muted-foreground">#{issue.number}</span>
+            {isStale && (
+              <Badge variant="outline" className="text-[10px] px-1 py-0 text-muted-foreground border-muted-foreground/40">
+                {t('investigation.states.stale', 'Stale')}
+              </Badge>
+            )}
           </div>
           <h4 className="text-sm font-medium text-foreground truncate">
             {issue.title}
@@ -137,5 +148,6 @@ export const IssueListItem = memo(function IssueListItem({
     && prev.linkedTaskId === next.linkedTaskId
     && prev.isChecked === next.isChecked
     && prev.isSelectable === next.isSelectable
-    && prev.compact === next.compact;
+    && prev.compact === next.compact
+    && prev.isStale === next.isStale;
 });

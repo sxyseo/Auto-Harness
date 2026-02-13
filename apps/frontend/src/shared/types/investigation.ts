@@ -207,6 +207,8 @@ export interface InvestigationSettings {
   maxParallelInvestigations: number;
   labelIncludeFilter: string[];
   labelExcludeFilter: string[];
+  /** Whether user has consented to auto-claude label creation on the repo */
+  labelConsentGiven?: boolean;
 }
 
 // ============================================
