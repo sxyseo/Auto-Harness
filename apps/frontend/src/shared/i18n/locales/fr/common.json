@@ -1121,7 +1121,8 @@
       "agentFailed": "{{agent}} échoué",
       "buildingReport": "Construction du rapport...",
       "complete": "Investigation terminée",
-      "failed": "Investigation échouée"
+      "failed": "Investigation échouée",
+      "interrupted": "L'investigation a été interrompue par le redémarrage de l'application"
     },
     "dismiss": {
       "wontFix": "Ne sera pas corrigé",

@@ -7,7 +7,8 @@ import type {
   InvestigationReport,
   InvestigationDismissReason,
   InvestigationSettings,
-  InvestigationState
+  InvestigationState,
+  PersistedInvestigationState,
 } from '@shared/types';
 
 // ============================================
@@ -40,6 +41,8 @@ export interface IssueInvestigationState {
   startedAt: string | null;
   /** Timestamp when investigation completed */
   completedAt: string | null;
+  /** Linked task status (synced from task store for building/done states) */
+  linkedTaskStatus: string | null;
 }
 
 // ============================================
@@ -69,6 +72,8 @@ interface InvestigationStoreState {
   dismiss: (projectId: string, issueNumber: number, reason: InvestigationDismissReason) => void;
   clearIssueInvestigation: (projectId: string, issueNumber: number) => void;
   setSettings: (projectId: string, settings: InvestigationSettings) => void;
+  syncTaskState: (projectId: string, issueNumber: number, taskStatus: string) => void;
+  loadPersistedInvestigations: (projectId: string, states: PersistedInvestigationState[]) => void;
 
   // ---- Selectors ----
   getInvestigationState: (projectId: string, issueNumber: number) => IssueInvestigationState | null;
@@ -118,7 +123,8 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
           dismissReason: null, // clear dismiss on re-investigation
           githubCommentId: existing?.githubCommentId ?? null,
           startedAt: new Date().toISOString(),
-          completedAt: null
+          completedAt: null,
+          linkedTaskStatus: existing?.linkedTaskStatus ?? null
         }
       }
     };
@@ -142,7 +148,8 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
           dismissReason: existing?.dismissReason ?? null,
           githubCommentId: existing?.githubCommentId ?? null,
           startedAt: existing?.startedAt ?? null,
-          completedAt: null
+          completedAt: null,
+          linkedTaskStatus: existing?.linkedTaskStatus ?? null
         }
       }
     };
@@ -166,7 +173,8 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
           dismissReason: existing?.dismissReason ?? null,
           githubCommentId: result.githubCommentId ?? existing?.githubCommentId ?? null,
           startedAt: existing?.startedAt ?? null,
-          completedAt: result.completedAt
+          completedAt: result.completedAt,
+          linkedTaskStatus: existing?.linkedTaskStatus ?? null
         }
       }
     };
@@ -190,7 +198,8 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
           dismissReason: existing?.dismissReason ?? null,
           githubCommentId: existing?.githubCommentId ?? null,
           startedAt: existing?.startedAt ?? null,
-          completedAt: null
+          completedAt: null,
+          linkedTaskStatus: existing?.linkedTaskStatus ?? null
         }
       }
     };
@@ -224,6 +233,83 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
     }
   })),
 
+  syncTaskState: (projectId: string, issueNumber: number, taskStatus: string) => set((state) => {
+    const key = `${projectId}:${issueNumber}`;
+    const existing = state.investigations[key];
+    if (!existing) return state;
+
+    // Only update if there's a linked task (specId set)
+    if (!existing.specId) return state;
+
+    // Define state ordering to prevent backward transitions
+    const stateOrder: Record<string, number> = {
+      'task_created': 0,
+      'building': 1,
+      'done': 2,
+    };
+
+    // Map task status to a linked task status value
+    let newLinkedStatus: string | null = null;
+    if (taskStatus === 'in_progress' || taskStatus === 'ai_review') {
+      newLinkedStatus = 'building';
+    } else if (taskStatus === 'done' || taskStatus === 'pr_created') {
+      newLinkedStatus = 'done';
+    } else if (taskStatus === 'error') {
+      newLinkedStatus = 'failed';
+    }
+
+    if (!newLinkedStatus) return state;
+
+    // Prevent backward transitions (don't go from "done" back to "building")
+    const currentOrder = stateOrder[existing.linkedTaskStatus ?? 'task_created'] ?? -1;
+    const newOrder = stateOrder[newLinkedStatus] ?? -1;
+    if (newOrder <= currentOrder && newLinkedStatus !== 'failed') return state;
+
+    return {
+      investigations: {
+        ...state.investigations,
+        [key]: {
+          ...existing,
+          linkedTaskStatus: newLinkedStatus,
+        }
+      }
+    };
+  }),
+
+  loadPersistedInvestigations: (projectId: string, states: PersistedInvestigationState[]) => set((state) => {
+    const newInvestigations = { ...state.investigations };
+
+    for (const persisted of states) {
+      const key = `${projectId}:${persisted.issueNumber}`;
+
+      // Don't overwrite investigations that are already in-memory
+      // (e.g., currently running or already loaded)
+      if (newInvestigations[key]?.isInvestigating) continue;
+
+      const isError = persisted.status === 'failed' || persisted.wasInterrupted;
+
+      newInvestigations[key] = {
+        issueNumber: persisted.issueNumber,
+        projectId,
+        isInvestigating: false,
+        progress: null,
+        report: (persisted.report as InvestigationReport) ?? null,
+        previousReport: null,
+        error: isError
+          ? (persisted.wasInterrupted ? 'investigation.interrupted' : null)
+          : null,
+        specId: persisted.specId ?? null,
+        dismissReason: null,
+        githubCommentId: persisted.githubCommentId ?? null,
+        startedAt: null,
+        completedAt: persisted.completedAt ?? null,
+        linkedTaskStatus: null,
+      };
+    }
+
+    return { investigations: newInvestigations };
+  }),
+
   // ---- Selectors ----
 
   getInvestigationState: (projectId: string, issueNumber: number) => {
@@ -235,7 +321,7 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
   /**
    * Compute the derived investigation state for an issue.
    * This is the 8-state machine from the design doc, fully derived
-   * from investigation data (never manually set).
+   * from investigation data + linked task status (never manually set).
    */
   getDerivedState: (projectId: string, issueNumber: number): InvestigationState => {
     const { investigations } = get();
@@ -244,10 +330,15 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
 
     if (!inv) return 'new';
     if (inv.isInvestigating) return 'investigating';
-    if (inv.error) return 'failed';
-    if (inv.report?.likelyResolved) return 'resolved';
+    if (inv.error && !inv.specId) return 'failed';
+    if (inv.report?.likelyResolved && !inv.specId) return 'resolved';
     if (inv.report && !inv.specId) return 'findings_ready';
-    if (inv.specId) return 'task_created';
+    if (inv.specId) {
+      // Task has been created — check linked task status for advanced states
+      if (inv.linkedTaskStatus === 'done') return 'done';
+      if (inv.linkedTaskStatus === 'building') return 'building';
+      return 'task_created';
+    }
     return 'new';
   },
 
@@ -374,6 +465,28 @@ export function cancelIssueInvestigation(
   // Mark as not investigating immediately
   store.setError(projectId, issueNumber, 'Investigation cancelled');
   window.electronAPI.github.cancelInvestigation(projectId, issueNumber);
+}
+
+/**
+ * Load persisted investigation state from disk.
+ * Call this when the GitHub Issues view mounts with a selected project
+ * to restore completed/failed investigations from a previous session.
+ */
+export async function loadPersistedInvestigations(projectId: string): Promise<void> {
+  if (!window.electronAPI?.github?.loadPersistedInvestigations) {
+    return;
+  }
+
+  try {
+    const result = await window.electronAPI.github.loadPersistedInvestigations(projectId);
+    if (result.success && result.data && result.data.length > 0) {
+      const store = useInvestigationStore.getState();
+      store.loadPersistedInvestigations(projectId, result.data);
+      console.log(`[InvestigationStore] Loaded ${result.data.length} persisted investigations for project ${projectId}`);
+    }
+  } catch (error) {
+    console.warn('[InvestigationStore] Failed to load persisted investigations:', error);
+  }
 }
 
 /**

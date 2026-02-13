@@ -7,6 +7,7 @@ import {
   useInvestigationStore,
   startIssueInvestigation,
   cancelIssueInvestigation,
+  loadPersistedInvestigations,
 } from "../stores/github";
 import { loadTasks } from "../stores/task-store";
 import {
@@ -263,6 +264,12 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     });
   }, [selectedProject?.id]);
 
+  // Load persisted investigation state from disk on project change
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    loadPersistedInvestigations(selectedProject.id);
+  }, [selectedProject?.id]);
+
   // Clear selection when filters change
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset on filter/search change
   useEffect(() => {
@@ -288,6 +295,69 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     }
     return map;
   }, [tasks]);
+
+  // Sync investigation state with linked task status changes
+  // When a task linked to an issue changes status, update the investigation store
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    const projectId = selectedProject.id;
+
+    for (const task of tasks) {
+      const issueNumber = task.metadata?.githubIssueNumber;
+      if (!issueNumber || !task.status) continue;
+
+      // Only sync if there's a corresponding investigation with a specId
+      const inv = investigationStore.getInvestigationState(projectId, issueNumber);
+      if (!inv?.specId) continue;
+
+      investigationStore.syncTaskState(projectId, issueNumber, task.status);
+    }
+  }, [tasks, selectedProject?.id, investigationStore]);
+
+  // Auto-close GitHub issues when linked task reaches "done" and autoCloseIssues is enabled
+  const autoClosedRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    const projectId = selectedProject.id;
+    const settings = investigationStore.getSettings(projectId);
+    if (!settings?.autoCloseIssues) return;
+
+    for (const task of tasks) {
+      const issueNumber = task.metadata?.githubIssueNumber;
+      if (!issueNumber) continue;
+
+      // Only auto-close when task reaches done/pr_created
+      if (task.status !== 'done' && task.status !== 'pr_created') continue;
+
+      // Skip if already auto-closed in this session
+      if (autoClosedRef.current.has(issueNumber)) continue;
+
+      // Check that there's an investigation for this issue (auto-close only applies to investigated issues)
+      const state = investigationStore.getDerivedState(projectId, issueNumber);
+      if (state !== 'done') continue;
+
+      // Mark as auto-closed to prevent duplicate close attempts
+      autoClosedRef.current.add(issueNumber);
+
+      // Close the issue via GitHub API
+      window.electronAPI.github.closeIssue(projectId, issueNumber).then((result) => {
+        if (result.success) {
+          // Update the local issue state to reflect closure
+          useIssuesStore.getState().updateIssue(issueNumber, { state: 'closed' });
+          console.log(`[GitHubIssues] Auto-closed issue #${issueNumber} (linked task completed)`);
+        } else {
+          // Remove from auto-closed set so it can be retried
+          autoClosedRef.current.delete(issueNumber);
+          console.warn(`[GitHubIssues] Failed to auto-close issue #${issueNumber}:`, result.error);
+        }
+      });
+    }
+  }, [tasks, selectedProject?.id, investigationStore]);
+
+  // Clear auto-closed tracking on project change
+  useEffect(() => {
+    autoClosedRef.current = new Set();
+  }, [selectedProject?.id]);
 
   // Reset local state on project change
   useEffect(() => {

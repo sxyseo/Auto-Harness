@@ -1121,7 +1121,8 @@
       "agentFailed": "{{agent}} failed",
       "buildingReport": "Building report...",
       "complete": "Investigation complete",
-      "failed": "Investigation failed"
+      "failed": "Investigation failed",
+      "interrupted": "Investigation was interrupted by app restart"
     },
     "dismiss": {
       "wontFix": "Won't fix",

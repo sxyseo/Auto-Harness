@@ -210,6 +210,25 @@ export interface InvestigationSettings {
 }
 
 // ============================================
+// Persisted Investigation (for app restart recovery)
+// ============================================
+
+/**
+ * Persisted investigation data loaded from disk on app restart.
+ * Used to restore completed/failed investigation state into the store.
+ */
+export interface PersistedInvestigationState {
+  issueNumber: number;
+  status: 'findings_ready' | 'resolved' | 'failed' | 'task_created';
+  report?: InvestigationReport;
+  completedAt?: string;
+  specId?: string;
+  githubCommentId?: number;
+  /** True if the investigation was in-progress when the app shut down */
+  wasInterrupted?: boolean;
+}
+
+// ============================================
 // Batch Staging
 // ============================================
 
