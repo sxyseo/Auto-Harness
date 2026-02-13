@@ -40,7 +40,7 @@ import {
 import { GitHubSetupModal } from "./GitHubSetupModal";
 import { useMutationStore } from "../stores/github/mutation-store";
 import { useAITriageStore } from "../stores/github/ai-triage-store";
-import { formatEnrichmentComment } from "../../shared/constants/ai-triage";
+import { formatEnrichmentComment, ENRICHMENT_COMMENT_FOOTER } from "../../shared/constants/ai-triage";
 import type { GitHubIssue } from "../../shared/types";
 import type { GitHubIssuesProps } from "./github-issues/types";
 import type { WorkflowState, Resolution } from "../../shared/types/enrichment";
@@ -182,6 +182,29 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   // AI Triage
   const aiTriage = useAITriage(selectedProject?.id ?? '');
   const lastBatchSnapshot = useAITriageStore((s) => s.lastBatchSnapshot);
+
+  // Check for existing AI comment when enrichment result is available
+  const [hasExistingAIComment, setHasExistingAIComment] = useState(false);
+  useEffect(() => {
+    if (!aiTriage.enrichmentResult || !selectedIssue || !selectedProject?.id) {
+      setHasExistingAIComment(false);
+      return;
+    }
+    let cancelled = false;
+    window.electronAPI.github.getIssueComments(selectedProject.id, selectedIssue.number)
+      .then((result) => {
+        if (cancelled) return;
+        const comments = result?.data ?? [];
+        const hasAI = comments.some((c: { body?: string }) =>
+          c.body?.includes(ENRICHMENT_COMMENT_FOOTER),
+        );
+        setHasExistingAIComment(hasAI);
+      })
+      .catch(() => {
+        if (!cancelled) setHasExistingAIComment(false);
+      });
+    return () => { cancelled = true; };
+  }, [aiTriage.enrichmentResult, selectedIssue, selectedProject?.id]);
 
   // Triage mode (3-panel layout)
   const { isEnabled: triageModeEnabled, isAvailable: triageModeAvailable, toggle: toggleTriageMode } = useTriageMode();
@@ -547,6 +570,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
             aiTriage.clearEnrichmentResult();
           }}
           onCancel={aiTriage.clearEnrichmentResult}
+          hasExistingAIComment={hasExistingAIComment}
         />
       )}
 

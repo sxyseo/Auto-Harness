@@ -3,7 +3,7 @@
 **Branch:** `terminal/enhancement-issues-tab`
 **Created:** 2026-02-13
 **Total Gaps:** 46 confirmed (from 9-agent triple-verified audit)
-**Status:** 14 / 17 complete
+**Status:** 15 / 17 complete
 
 ---
 
@@ -229,18 +229,17 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 - **Commit:** VGAP-14
 
 ### VGAP-15: No enrichment comment duplicate detection (Phase 3 GAP-5)
-- **Status:** `PENDING`
+- **Status:** `DONE`
 - **Priority:** NICE-TO-HAVE
 - **Scope:** Medium
 - **Verified by:** Phase3 agent + Verifier-1 (CONFIRMED)
 - **Doc ref:** Phase 3 PRD > US-5 > AC5.11; Phase 3 audit > GAP-5
-- **Files to modify:** `renderer/components/github-issues/components/EnrichmentCommentPreview.tsx`, `renderer/components/github-issues/hooks/useAITriage.ts`
-- **Problem:** No check for existing AI comments (containing `ENRICHMENT_COMMENT_FOOTER`) before showing preview. Can double-post enrichment comments.
-- **Fix:** Before showing preview, check issue comments for `ENRICHMENT_COMMENT_FOOTER` string. Show warning banner if existing comment found.
-- **Tests:** Test warning displays when existing AI comment detected
-- **Test status:** —
+- **Files modified:** `renderer/components/github-issues/components/EnrichmentCommentPreview.tsx`, `renderer/components/GitHubIssues.tsx`, `shared/i18n/locales/en/common.json`, `shared/i18n/locales/fr/common.json`, `__tests__/EnrichmentCommentPreview.test.tsx`
+- **Fix:** Added `hasExistingAIComment` prop to EnrichmentCommentPreview that shows a yellow warning banner with `role="alert"`. GitHubIssues.tsx fetches issue comments via `getIssueComments` IPC when enrichment result is available, checks for `ENRICHMENT_COMMENT_FOOTER`, and passes result as prop. Added `duplicateWarning` i18n key to EN + FR.
+- **Tests:** 3 new tests: warning shown when true, hidden when false, hidden when undefined. All pass.
+- **Test status:** `PASS`
 - **Depends on:** None
-- **Commit:** —
+- **Commit:** VGAP-15
 
 ### VGAP-16: No cancel mechanism for batch triage subprocess (Phase 3 GAP-7)
 - **Status:** `PENDING`
@@ -280,7 +279,7 @@ Each gap has: ID, description, status, files to modify, verification source, tes
 | 2 | i18n Hardcoded Strings | 5 | 5 | 0 |
 | 3 | Accessibility Keyboard | 2 | 2 | 0 |
 | 4 | IPC Consistency | 3 | 3 | 0 |
-| 5 | Phase 3 Audit Gaps | 5 | 2 | 3 |
-| **Total** | | **17** | **14** | **3** |
+| 5 | Phase 3 Audit Gaps | 5 | 3 | 2 |
+| **Total** | | **17** | **15** | **2** |
 
 Note: VGAP-03 through VGAP-07 contain 28+ individual hardcoded strings grouped by component file. The 17 gap count represents work units (one per component/file), not individual string count.

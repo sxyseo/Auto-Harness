@@ -63,4 +63,20 @@ describe('EnrichmentCommentPreview', () => {
     const postedContent = defaultProps.onPost.mock.calls[0][0];
     expect(postedContent).toContain('Auto-Claude');
   });
+
+  it('shows duplicate warning when hasExistingAIComment is true', () => {
+    render(<EnrichmentCommentPreview {...defaultProps} hasExistingAIComment={true} />);
+    expect(screen.getByRole('alert')).toBeDefined();
+    expect(screen.getByText('common:enrichmentComment.duplicateWarning')).toBeDefined();
+  });
+
+  it('does not show duplicate warning when hasExistingAIComment is false', () => {
+    render(<EnrichmentCommentPreview {...defaultProps} hasExistingAIComment={false} />);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('does not show duplicate warning when hasExistingAIComment is not provided', () => {
+    render(<EnrichmentCommentPreview {...defaultProps} />);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });

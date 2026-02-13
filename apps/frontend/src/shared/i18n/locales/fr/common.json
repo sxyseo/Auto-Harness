@@ -626,7 +626,8 @@
     "content": "Contenu du commentaire",
     "characters": "caractères",
     "post": "Publier le commentaire",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "duplicateWarning": "Un commentaire d'enrichissement IA existe déjà sur cette issue. La publication créera un doublon."
   },
   "progressiveTrust": {
     "title": "Paramètres de confiance progressive",

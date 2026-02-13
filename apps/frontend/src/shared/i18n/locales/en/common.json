@@ -626,7 +626,8 @@
     "content": "Comment content",
     "characters": "characters",
     "post": "Post Comment",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "duplicateWarning": "An AI enrichment comment already exists on this issue. Posting will create a duplicate."
   },
   "progressiveTrust": {
     "title": "Progressive Trust Settings",

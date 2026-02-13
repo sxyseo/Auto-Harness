@@ -10,9 +10,10 @@ interface EnrichmentCommentPreviewProps {
   content: string;
   onPost: (content: string) => void;
   onCancel: () => void;
+  hasExistingAIComment?: boolean;
 }
 
-export function EnrichmentCommentPreview({ content: initialContent, onPost, onCancel }: EnrichmentCommentPreviewProps) {
+export function EnrichmentCommentPreview({ content: initialContent, onPost, onCancel, hasExistingAIComment }: EnrichmentCommentPreviewProps) {
   const { t } = useTranslation(['common']);
   const [content, setContent] = useState(initialContent);
 
@@ -23,6 +24,11 @@ export function EnrichmentCommentPreview({ content: initialContent, onPost, onCa
 
   return (
     <section className="space-y-3" aria-label={t('common:enrichmentComment.title')}>
+      {hasExistingAIComment && (
+        <div role="alert" className="rounded-md border border-yellow-500/50 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-600 dark:text-yellow-400">
+          {t('common:enrichmentComment.duplicateWarning')}
+        </div>
+      )}
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
