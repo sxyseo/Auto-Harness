@@ -7,8 +7,8 @@ import { EmptyState } from './EmptyStates';
 import type { IssueListProps } from '../types';
 import { useTranslation } from 'react-i18next';
 
-const ITEM_GAP = 6;
-const ITEM_HEIGHT_NORMAL = 80 + ITEM_GAP;
+const ITEM_GAP = 4;
+const ITEM_HEIGHT_NORMAL = 56 + ITEM_GAP;
 const ITEM_HEIGHT_COMPACT = 56 + ITEM_GAP;
 
 export function IssueList({
@@ -37,6 +37,7 @@ export function IssueList({
     count: issues.length,
     getScrollElement: () => viewportElement,
     estimateSize: () => itemHeight,
+    measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 5,
   });
 
@@ -95,6 +96,8 @@ export function IssueList({
           return (
             <div
               key={issue.id}
+              ref={virtualizer.measureElement}
+              data-index={virtualRow.index}
               style={{
                 position: 'absolute',
                 top: 0,

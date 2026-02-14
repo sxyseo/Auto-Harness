@@ -16,7 +16,9 @@
  */
 export type InvestigationState =
   | 'new'
+  | 'queued'
   | 'investigating'
+  | 'interrupted'
   | 'findings_ready'
   | 'resolved'
   | 'failed'

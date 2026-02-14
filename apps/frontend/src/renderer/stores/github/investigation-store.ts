@@ -419,7 +419,9 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
     const inv = investigations[key];
 
     if (!inv) return 'new';
+    if (inv.isInvestigating && inv.progress?.phase === 'queued') return 'queued';
     if (inv.isInvestigating) return 'investigating';
+    if (inv.error === 'investigation.interrupted' && !inv.specId) return 'interrupted';
     if (inv.error && !inv.specId) return 'failed';
     if (inv.report?.likelyResolved && !inv.specId) return 'resolved';
     if (inv.report && !inv.specId) return 'findings_ready';

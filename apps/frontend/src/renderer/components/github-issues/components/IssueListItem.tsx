@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { User, MessageCircle, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import {
@@ -9,6 +9,20 @@ import {
 import { InvestigationProgressBar } from './InvestigationProgressBar';
 import { useTranslation } from 'react-i18next';
 import type { IssueListItemProps } from '../types';
+import type { InvestigationState } from '@shared/types';
+
+const INVESTIGATION_BORDER_COLORS: Record<InvestigationState, string | null> = {
+  new: null,
+  queued: '#6b7280',
+  investigating: '#3b82f6',
+  interrupted: '#f97316',
+  findings_ready: '#f59e0b',
+  resolved: '#22c55e',
+  failed: '#ef4444',
+  task_created: '#a855f7',
+  building: '#a855f7',
+  done: '#22c55e',
+};
 
 export const IssueListItem = memo(function IssueListItem({
   issue,
@@ -18,7 +32,6 @@ export const IssueListItem = memo(function IssueListItem({
   isSelectable,
   isChecked,
   onToggleSelect,
-  compact,
   investigationState,
   investigationProgress,
   linkedTaskId,
@@ -26,6 +39,9 @@ export const IssueListItem = memo(function IssueListItem({
   isStale,
 }: IssueListItemProps) {
   const { t } = useTranslation('common');
+  const borderColor = investigationState
+    ? INVESTIGATION_BORDER_COLORS[investigationState]
+    : null;
 
   return (
     <div
@@ -39,6 +55,7 @@ export const IssueListItem = memo(function IssueListItem({
           ? 'bg-accent/50 border border-accent'
           : 'hover:bg-muted/50 border border-transparent'
       }`}
+      style={borderColor ? { borderLeft: `3px solid ${borderColor}` } : undefined}
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -74,6 +91,16 @@ export const IssueListItem = memo(function IssueListItem({
               {GITHUB_ISSUE_STATE_LABELS[issue.state]}
             </Badge>
             <span className="text-xs text-muted-foreground">#{issue.number}</span>
+            {investigationState === 'queued' && (
+              <span className="text-[10px] text-gray-500 italic">
+                {t('investigation.states.queued', 'Queued')}
+              </span>
+            )}
+            {investigationState === 'interrupted' && (
+              <span className="text-[10px] text-orange-500 italic">
+                {t('investigation.states.interrupted', 'Interrupted')}
+              </span>
+            )}
             {isStale && (
               <Badge variant="outline" className="text-[10px] px-1 py-0 text-muted-foreground border-muted-foreground/40">
                 {t('investigation.states.stale', 'Stale')}
@@ -83,46 +110,11 @@ export const IssueListItem = memo(function IssueListItem({
           <h4 className="text-sm font-medium text-foreground truncate">
             {issue.title}
           </h4>
-          {!compact && (
-            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground overflow-hidden">
-              <div className="flex items-center gap-1 shrink-0">
-                <User className="h-3 w-3" />
-                <span className="truncate max-w-[80px]">{issue.author.login}</span>
-              </div>
-              {issue.commentsCount > 0 && (
-                <div className="flex items-center gap-1 shrink-0">
-                  <MessageCircle className="h-3 w-3" />
-                  {issue.commentsCount}
-                </div>
-              )}
-              {issue.labels.length > 0 && (
-                <div className="flex items-center gap-1 overflow-hidden">
-                  {issue.labels.slice(0, 3).map((label) => {
-                    const color = `#${label.color}`;
-                    return (
-                      <span
-                        key={label.id}
-                        className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium leading-none border"
-                        style={{ backgroundColor: `${color}20`, borderColor: `${color}40`, color }}
-                      >
-                        {label.name}
-                      </span>
-                    );
-                  })}
-                  {issue.labels.length > 3 && (
-                    <span className="text-[10px] text-muted-foreground">+{issue.labels.length - 3}</span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          {/* Investigation progress bar */}
-          {investigationState && (
+          {/* Progress bar only during active investigation — border stripe handles other states */}
+          {investigationState === 'investigating' && (
             <InvestigationProgressBar
               state={investigationState}
               progress={investigationProgress}
-              linkedTaskId={linkedTaskId}
-              onViewTask={onViewTask}
             />
           )}
         </div>
@@ -148,6 +140,5 @@ export const IssueListItem = memo(function IssueListItem({
     && prev.linkedTaskId === next.linkedTaskId
     && prev.isChecked === next.isChecked
     && prev.isSelectable === next.isSelectable
-    && prev.compact === next.compact
     && prev.isStale === next.isStale;
 });

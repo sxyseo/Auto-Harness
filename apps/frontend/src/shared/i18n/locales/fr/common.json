@@ -1105,7 +1105,9 @@
     },
     "states": {
       "new": "Nouveau",
+      "queued": "En attente",
       "investigating": "En investigation",
+      "interrupted": "Interrompu",
       "findingsReady": "Résultats prêts",
       "resolved": "Résolu",
       "failed": "Échoué",
@@ -1118,7 +1120,9 @@
     "stateFilters": {
       "all": "Tous",
       "new": "Nouveau",
+      "queued": "En attente",
       "investigating": "En investigation",
+      "interrupted": "Interrompu",
       "findingsReady": "Résultats prêts",
       "resolved": "Résolu",
       "failed": "Échoué",

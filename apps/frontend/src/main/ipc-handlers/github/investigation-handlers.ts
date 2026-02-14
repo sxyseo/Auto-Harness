@@ -1845,6 +1845,21 @@ export function registerInvestigationHandlers(
             }
           }
 
+          // Clean stale entries from activeInvestigations for interrupted issues.
+          // After CTRL+R the main process keeps stale map entries for killed subprocesses
+          // whose finally blocks never ran. Remove them so auto-resume isn't blocked.
+          for (const issueNum of interruptedIssues) {
+            const processKey = `${projectId}:${issueNum}`;
+            const staleProcess = activeInvestigations.get(processKey);
+            if (staleProcess) {
+              debugLog('Cleaning stale activeInvestigation entry', { processKey, killed: staleProcess.killed });
+              if (!staleProcess.killed) {
+                try { staleProcess.kill(); } catch { /* already dead */ }
+              }
+              activeInvestigations.delete(processKey);
+            }
+          }
+
           // Schedule auto-resume for interrupted investigations after a delay.
           // Route through the queue to respect the parallel limit.
           if (interruptedIssues.length > 0) {
