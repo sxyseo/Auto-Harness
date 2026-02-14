@@ -56,7 +56,7 @@ interface InvestigationNeedsAttentionProps {
   issueState: 'open' | 'closed';
 }
 
-type StepStatus = 'completed' | 'current' | 'pending' | 'failed';
+type StepStatus = 'completed' | 'current' | 'pending' | 'failed' | 'actionable';
 
 export function InvestigationNeedsAttention({
   state, progress, report, error, startedAt, completedAt,
@@ -207,7 +207,7 @@ export function InvestigationNeedsAttention({
       label: githubCommentId
         ? t('investigation.timeline.posted', 'Posted to GitHub')
         : t('investigation.timeline.pendingPost', 'Post to GitHub'),
-      status: githubCommentId ? 'completed' : 'pending',
+      status: githubCommentId ? 'completed' : 'actionable',
     });
   }
 
@@ -216,7 +216,7 @@ export function InvestigationNeedsAttention({
     steps.push({
       id: 'task',
       label: t('investigation.timeline.pendingTask', 'Create Task'),
-      status: 'pending',
+      status: 'actionable',
     });
   } else if (specId) {
     steps.push({
@@ -287,11 +287,13 @@ export function InvestigationNeedsAttention({
                 step.status === 'completed' && 'border-success text-success',
                 step.status === 'current' && 'border-primary text-primary animate-pulse',
                 step.status === 'failed' && 'border-destructive text-destructive',
+                step.status === 'actionable' && 'border-warning text-warning',
                 step.status === 'pending' && 'border-muted-foreground text-muted-foreground',
               )}>
                 {step.status === 'completed' ? <CheckCircle className="h-3 w-3" /> :
                   step.status === 'current' ? <CircleDot className="h-3 w-3" /> :
                   step.status === 'failed' ? <XCircle className="h-3 w-3" /> :
+                  step.status === 'actionable' ? <CircleDot className="h-3 w-3" /> :
                   <Circle className="h-3 w-3" />}
               </div>
 
@@ -301,6 +303,7 @@ export function InvestigationNeedsAttention({
                   step.status === 'completed' && 'text-foreground',
                   step.status === 'current' && 'text-primary',
                   step.status === 'failed' && 'text-destructive',
+                  step.status === 'actionable' && 'text-warning',
                   step.status === 'pending' && 'text-muted-foreground',
                 )}>
                   {step.label}
