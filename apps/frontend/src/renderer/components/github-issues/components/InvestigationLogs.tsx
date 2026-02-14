@@ -255,20 +255,30 @@ function AgentLogEntries({ agentLog, isActive, maxVisible = 20 }: AgentLogEntrie
   const { t } = useTranslation('common');
   const [showAll, setShowAll] = useState(false);
   const entriesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isUserNearBottom = useRef(true);
 
   const entries = agentLog.entries;
   const hasMore = entries.length > maxVisible;
   const visibleEntries = showAll ? entries : entries.slice(-maxVisible);
 
-  // Auto-scroll to latest entry when active
+  // Track whether user has scrolled away from the bottom
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const threshold = 40; // px tolerance
+    isUserNearBottom.current = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold;
+  }, []);
+
+  // Auto-scroll to latest entry only if user is near the bottom
   useEffect(() => {
-    if (isActive && entriesEndRef.current) {
+    if (isActive && isUserNearBottom.current && entriesEndRef.current) {
       entriesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [entries.length, isActive]);
 
   return (
-    <div className="border-t border-border/30 max-h-[300px] overflow-y-auto">
+    <div ref={scrollContainerRef} onScroll={handleScroll} className="border-t border-border/30 max-h-[300px] overflow-y-auto">
       <div className="p-2 space-y-0.5">
         {hasMore && !showAll && (
           <button
