@@ -1155,7 +1155,8 @@
       "toolStart": "{{detail}}",
       "toolEnd": "{{tool}} {{status}}",
       "toolDone": "done",
-      "toolFailed": "failed"
+      "toolFailed": "failed",
+      "agentsRunning": "Running: {{agents}}"
     },
     "dismiss": {
       "wontFix": "Won't fix",
@@ -1230,6 +1231,43 @@
       "showMore": "Show more ({{count}} more)",
       "showLess": "Show less",
       "logEntries": "{{count}} log entries"
+    },
+    "timeline": {
+      "started": "Investigation Started",
+      "specialists": "Specialists Running",
+      "specialistsDone": "Specialists Complete",
+      "failed": "Failed",
+      "analysisComplete": "Analysis Complete",
+      "findingCount": "{{count}} findings",
+      "posted": "Posted to GitHub",
+      "pendingPost": "Post to GitHub",
+      "pendingTask": "Create Task",
+      "taskCreated": "Task Created"
+    },
+    "needsAttention": {
+      "title": "Needs Attention",
+      "investigating": "AI Investigation in Progress",
+      "failed": "Investigation Failed",
+      "complete": "Investigation Complete"
+    },
+    "actions": {
+      "postToGitHub": "Post Findings",
+      "createTask": "Create Task",
+      "retry": "Re-investigate"
+    },
+    "logs": {
+      "title": "Investigation Logs",
+      "contextGathering": "Context Gathering",
+      "analysis": "Analysis",
+      "synthesis": "Synthesis",
+      "pending": "Pending",
+      "running": "Running",
+      "complete": "Complete",
+      "failed": "Failed",
+      "noLogs": "No logs yet"
+    },
+    "results": {
+      "title": "Investigation Results"
     }
   }
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ExternalLink, User, Clock, MessageCircle, CheckCircle2, Eye, X, RotateCcw, XCircle, AlertTriangle } from 'lucide-react';
+import { ExternalLink, User, Clock, MessageCircle, CheckCircle2, Eye, X, RotateCcw, XCircle, AlertTriangle, SearchCode } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../ui/dropdown-menu';
@@ -20,7 +20,10 @@ import { InlineEditor } from './InlineEditor';
 import { LabelManager } from './LabelManager';
 import { AssigneeManager } from './AssigneeManager';
 import { InvestigateButton } from './InvestigateButton';
-import { InvestigationStatusTree } from './InvestigationStatusTree';
+import { InvestigationNeedsAttention } from './InvestigationNeedsAttention';
+import { InvestigationPanel, SEVERITY_COLORS } from './InvestigationPanel';
+import { InvestigationLogs } from './InvestigationLogs';
+import { CollapsibleCard } from '../../github-prs/components/CollapsibleCard';
 import type { IssueDetailProps } from '../types';
 
 export function IssueDetail({
@@ -101,7 +104,7 @@ export function IssueDetail({
     }
   };
 
-  // Show InvestigationStatusTree for any non-new investigation state
+  // Show investigation cards for any non-new investigation state
   const showStatusTree = derivedState !== 'new';
 
   return (
@@ -289,32 +292,57 @@ export function IssueDetail({
           )}
         </div>
 
-        {/* Investigation Status Tree — replaces separate error card + results card */}
+        {/* Investigation Panel — 3 collapsible cards */}
         {showStatusTree && projectId && (
-          <InvestigationStatusTree
-            state={derivedState}
-            progress={investigationProgressData ?? null}
-            report={investigationReport ?? null}
-            error={investigationError ?? null}
-            startedAt={investigationStartedAt ?? null}
-            completedAt={investigationCompletedAt ?? null}
-            githubCommentId={githubCommentId ?? null}
-            specId={investigationSpecId ?? null}
-            issueNumber={issue.number}
-            projectId={projectId}
-            onCancel={onCancelInvestigation ?? (() => {})}
-            onInvestigate={onInvestigate}
-            onCreateTask={onCreateTask ?? (() => {})}
-            onPostToGitHub={onPostToGitHub}
-            onAcceptLabel={onAcceptLabel}
-            onRejectLabel={onRejectLabel}
-            isPostingToGitHub={isPostingToGitHub}
-            activityLog={investigationActivityLog}
-            onCloseIssue={issue.state === 'open' && onClose ? handleClose : undefined}
-            isClosingIssue={isClosing}
-            showOriginal={showOriginal}
-            onToggleOriginal={() => setShowOriginal(!showOriginal)}
-          />
+          <>
+            <InvestigationNeedsAttention
+              state={derivedState}
+              progress={investigationProgressData ?? null}
+              report={investigationReport ?? null}
+              error={investigationError ?? null}
+              startedAt={investigationStartedAt ?? null}
+              completedAt={investigationCompletedAt ?? null}
+              githubCommentId={githubCommentId ?? null}
+              specId={investigationSpecId ?? null}
+              issueNumber={issue.number}
+              projectId={projectId}
+              onCancel={onCancelInvestigation ?? (() => {})}
+              onInvestigate={onInvestigate}
+              onCreateTask={onCreateTask ?? (() => {})}
+              onPostToGitHub={onPostToGitHub}
+              isPostingToGitHub={isPostingToGitHub}
+            />
+
+            {investigationReport && (
+              <CollapsibleCard
+                title={t('investigation.results.title', 'Investigation Results')}
+                icon={<SearchCode className="h-4 w-4" />}
+                badge={investigationReport.severity ? (
+                  <Badge className={SEVERITY_COLORS[investigationReport.severity]}>
+                    {investigationReport.severity.toUpperCase()}
+                  </Badge>
+                ) : undefined}
+                defaultOpen
+              >
+                <InvestigationPanel
+                  report={investigationReport}
+                  state={derivedState}
+                  showOriginal={showOriginal}
+                  onToggleOriginal={() => setShowOriginal(!showOriginal)}
+                  onAcceptLabel={onAcceptLabel}
+                  onRejectLabel={onRejectLabel}
+                  onCloseIssue={issue.state === 'open' && onClose ? handleClose : undefined}
+                  isClosingIssue={isClosing}
+                />
+              </CollapsibleCard>
+            )}
+
+            <InvestigationLogs
+              issueNumber={issue.number}
+              projectId={projectId}
+              isInvestigating={derivedState === 'investigating' || derivedState === 'queued'}
+            />
+          </>
         )}
 
         {/* Task Linked Info */}

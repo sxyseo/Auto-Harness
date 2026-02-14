@@ -3,23 +3,23 @@ import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
   ChevronRight,
-  AlertTriangle,
-  Shield,
+  SearchCode,
+  BarChart3,
   Wrench,
-  TestTube,
-  Send,
+  RotateCcw,
   Tag,
   Check,
   X,
   FileText,
-  Clock,
   CheckCircle2
 } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
+import { cn } from '../../../lib/utils';
 import type {
   InvestigationReport,
   InvestigationAgentResult,
+  InvestigationAgentType,
   InvestigationState,
   SuggestedLabel,
   LinkedPR
@@ -28,43 +28,41 @@ import type {
 interface InvestigationPanelProps {
   report: InvestigationReport;
   state: InvestigationState;
-  /** Show the original issue body instead of AI summary */
   showOriginal?: boolean;
   onToggleOriginal?: () => void;
-  onPostToGitHub?: () => void;
   onAcceptLabel?: (label: SuggestedLabel) => void;
   onRejectLabel?: (label: SuggestedLabel) => void;
-  isPostingToGitHub?: boolean;
-  /** GitHub comment ID if results have been posted already */
-  githubCommentId?: number | null;
-  /** Activity log entries for the investigation lifecycle */
-  activityLog?: Array<{ event: string; timestamp: string }>;
-  /** Callback to close the issue on GitHub (used for resolved suggestion) */
   onCloseIssue?: () => void;
-  /** Whether the close-issue action is in progress */
   isClosingIssue?: boolean;
 }
 
-const SEVERITY_COLORS: Record<string, string> = {
+export const SEVERITY_COLORS: Record<string, string> = {
   critical: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
   high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
   medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
   low: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
 };
 
-const AGENT_ICONS = {
-  root_cause: AlertTriangle,
-  impact: Shield,
+const AGENT_ICONS: Record<InvestigationAgentType, typeof SearchCode> = {
+  root_cause: SearchCode,
+  impact: BarChart3,
   fix_advisor: Wrench,
-  reproducer: TestTube,
-} as const;
+  reproducer: RotateCcw,
+};
 
-const AGENT_LABELS = {
+const AGENT_COLORS: Record<InvestigationAgentType, string> = {
+  root_cause: 'bg-red-500/10 border-l-2 border-red-500',
+  impact: 'bg-orange-500/10 border-l-2 border-orange-500',
+  fix_advisor: 'bg-blue-500/10 border-l-2 border-blue-500',
+  reproducer: 'bg-purple-500/10 border-l-2 border-purple-500',
+};
+
+const AGENT_LABELS: Record<InvestigationAgentType, string> = {
   root_cause: 'investigation.agents.rootCause',
   impact: 'investigation.agents.impact',
   fix_advisor: 'investigation.agents.fixAdvisor',
   reproducer: 'investigation.agents.reproducer',
-} as const;
+};
 
 const AGENT_DEFAULTS: Record<string, string> = {
   root_cause: 'Root Cause Analysis',
@@ -74,7 +72,7 @@ const AGENT_DEFAULTS: Record<string, string> = {
 };
 
 /**
- * Collapsible section for a single agent's results.
+ * Collapsible section for a single agent's results with colored bar styling.
  */
 function AgentSection({ agent, defaultOpen }: { agent: InvestigationAgentResult; defaultOpen?: boolean }) {
   const { t } = useTranslation('common');
@@ -82,20 +80,21 @@ function AgentSection({ agent, defaultOpen }: { agent: InvestigationAgentResult;
   const Icon = AGENT_ICONS[agent.agentType];
   const labelKey = AGENT_LABELS[agent.agentType];
   const defaultLabel = AGENT_DEFAULTS[agent.agentType];
+  const colorClass = AGENT_COLORS[agent.agentType];
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className={cn('rounded-lg overflow-hidden', colorClass)}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-left hover:bg-muted/50 transition-colors"
+        className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-left hover:bg-muted/30 transition-colors"
       >
         {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         <Icon className="h-4 w-4 text-muted-foreground" />
         <span>{t(labelKey, defaultLabel)}</span>
       </button>
       {isOpen && (
-        <div className="px-3 pb-3 space-y-2 border-t">
+        <div className="px-3 pb-3 space-y-2 border-t border-border/30">
           <p className="text-sm text-foreground mt-2">{agent.summary}</p>
           {agent.findings.length > 0 && (
             <div>
@@ -138,29 +137,23 @@ function AgentSection({ agent, defaultOpen }: { agent: InvestigationAgentResult;
 }
 
 /**
- * Investigation results panel — mirrors PR review layout.
- * Shows 4 collapsible agent sections, AI summary, severity badge,
- * suggested labels, and action buttons.
+ * Investigation results panel — shows agent sections, AI summary, severity badge,
+ * suggested labels, and linked PRs. Actions (post/create task) live in NeedsAttention card.
  */
 export function InvestigationPanel({
   report,
   state,
   showOriginal,
   onToggleOriginal,
-  onPostToGitHub,
   onAcceptLabel,
   onRejectLabel,
-  isPostingToGitHub,
-  githubCommentId,
-  activityLog,
   onCloseIssue,
   isClosingIssue,
 }: InvestigationPanelProps) {
   const { t } = useTranslation('common');
-  const [activityOpen, setActivityOpen] = useState(false);
 
   return (
-    <div className="space-y-4">
+    <div className="p-4 space-y-4">
       {/* Resolved suggestion banner */}
       {report.likelyResolved && onCloseIssue && state !== 'done' && (
         <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800">
@@ -222,7 +215,7 @@ export function InvestigationPanel({
         <p className="text-sm text-foreground">{report.summary}</p>
       </div>
 
-      {/* Agent sections */}
+      {/* Agent sections with colored bars */}
       <div className="space-y-2">
         <AgentSection agent={report.rootCause} defaultOpen />
         <AgentSection agent={report.impact} />
@@ -288,58 +281,6 @@ export function InvestigationPanel({
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Actions */}
-      {onPostToGitHub && state !== 'done' && (
-        <div className="flex items-center gap-2 pt-2 border-t">
-          {githubCommentId && (
-            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-              <Check className="h-3 w-3" />
-              {t('investigation.panel.alreadyPosted', 'Posted to GitHub')}
-            </span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onPostToGitHub}
-            disabled={isPostingToGitHub}
-          >
-            <Send className="h-4 w-4 mr-1.5" />
-            {isPostingToGitHub
-              ? t('investigation.panel.posting', 'Posting...')
-              : githubCommentId
-                ? t('investigation.panel.updateOnGitHub', 'Update on GitHub')
-                : t('investigation.panel.postToGitHub', 'Post to GitHub')
-            }
-          </Button>
-        </div>
-      )}
-
-      {/* Activity Log */}
-      {activityLog && activityLog.length > 0 && (
-        <div className="border-t pt-2">
-          <button
-            type="button"
-            onClick={() => setActivityOpen(!activityOpen)}
-            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {activityOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-            <Clock className="h-3 w-3" />
-            {t('investigation.activityLog.title', 'Activity')}
-          </button>
-          {activityOpen && (
-            <ul className="mt-1.5 space-y-1">
-              {activityLog.map((entry, i) => (
-                <li key={i} className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <span className="h-1 w-1 rounded-full bg-muted-foreground shrink-0" />
-                  <span>{entry.event}</span>
-                  <span className="ml-auto text-[10px]">{new Date(entry.timestamp).toLocaleString()}</span>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       )}
     </div>

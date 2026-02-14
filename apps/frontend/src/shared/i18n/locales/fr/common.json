@@ -1155,7 +1155,8 @@
       "toolStart": "{{detail}}",
       "toolEnd": "{{tool}} {{status}}",
       "toolDone": "terminé",
-      "toolFailed": "échoué"
+      "toolFailed": "échoué",
+      "agentsRunning": "En cours : {{agents}}"
     },
     "dismiss": {
       "wontFix": "Ne sera pas corrigé",
@@ -1230,6 +1231,43 @@
       "showMore": "Voir plus ({{count}} de plus)",
       "showLess": "Voir moins",
       "logEntries": "{{count}} entrées de log"
+    },
+    "timeline": {
+      "started": "Enquête démarrée",
+      "specialists": "Spécialistes en cours",
+      "specialistsDone": "Spécialistes terminés",
+      "failed": "Échoué",
+      "analysisComplete": "Analyse terminée",
+      "findingCount": "{{count}} résultats",
+      "posted": "Publié sur GitHub",
+      "pendingPost": "Publier sur GitHub",
+      "pendingTask": "Créer une tâche",
+      "taskCreated": "Tâche créée"
+    },
+    "needsAttention": {
+      "title": "Attention requise",
+      "investigating": "Investigation IA en cours",
+      "failed": "Enquête échouée",
+      "complete": "Enquête terminée"
+    },
+    "actions": {
+      "postToGitHub": "Publier les résultats",
+      "createTask": "Créer une tâche",
+      "retry": "Relancer l'enquête"
+    },
+    "logs": {
+      "title": "Journaux d'enquête",
+      "contextGathering": "Collecte de contexte",
+      "analysis": "Analyse",
+      "synthesis": "Synthèse",
+      "pending": "En attente",
+      "running": "En cours",
+      "complete": "Terminé",
+      "failed": "Échoué",
+      "noLogs": "Aucun journal"
+    },
+    "results": {
+      "title": "Résultats de l'enquête"
     }
   }
 }
