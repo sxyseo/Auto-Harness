@@ -373,6 +373,9 @@ Use Read, Grep, and Glob tools to explore the codebase.
 
                 def _on_tool_use(name, tid, inp, _name=cfg.name, _map=_tool_names):
                     _map[tid] = name
+                    # StructuredOutput is an internal SDK tool — don't show in UI
+                    if name == "StructuredOutput":
+                        return
                     emit_json_event(
                         "tool_start",
                         _name,
@@ -382,6 +385,9 @@ Use Read, Grep, and Glob tools to explore the codebase.
 
                 def _on_tool_result(tid, err, _, _name=cfg.name, _map=_tool_names):
                     tool = _map.pop(tid, None)
+                    # StructuredOutput is an internal SDK tool — don't show in UI
+                    if tool == "StructuredOutput":
+                        return
                     emit_json_event(
                         "tool_end",
                         _name,
