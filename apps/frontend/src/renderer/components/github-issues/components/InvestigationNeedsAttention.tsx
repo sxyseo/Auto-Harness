@@ -381,21 +381,47 @@ export function InvestigationNeedsAttention({
           </Button>
         )}
 
-        {/* Post findings / Create task / Re-investigate — when investigation is complete or failed */}
-        {isComplete && report && onPostToGitHub && !githubCommentId && (
-          <Button size="sm" variant="outline" onClick={onPostToGitHub} disabled={isPostingToGitHub}>
-            <Send className="h-3.5 w-3.5 mr-1.5" />
-            {t('investigation.actions.postToGitHub', 'Post Findings')}
-          </Button>
+        {/* Post findings — yellow when pending, green when done */}
+        {isComplete && report && onPostToGitHub && (
+          githubCommentId ? (
+            <Button size="sm" variant="outline" disabled
+              className="border-success/40 text-success hover:bg-success/10"
+            >
+              <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+              {t('investigation.timeline.posted', 'Posted to GitHub')}
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={onPostToGitHub} disabled={isPostingToGitHub}
+              className="border-warning/40 text-warning hover:bg-warning/10"
+            >
+              <Send className="h-3.5 w-3.5 mr-1.5" />
+              {t('investigation.actions.postToGitHub', 'Post Findings')}
+            </Button>
+          )
         )}
-        {isComplete && report && !specId && (
-          <Button size="sm" variant="outline" onClick={onCreateTask}>
-            <FileText className="h-3.5 w-3.5 mr-1.5" />
-            {t('investigation.actions.createTask', 'Create Task')}
-          </Button>
+        {/* Create task — yellow when pending, green when done */}
+        {isComplete && report && (
+          specId ? (
+            <Button size="sm" variant="outline" disabled
+              className="border-success/40 text-success hover:bg-success/10"
+            >
+              <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+              {t('investigation.timeline.taskCreated', 'Task Created')}
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={onCreateTask}
+              className="border-warning/40 text-warning hover:bg-warning/10"
+            >
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              {t('investigation.actions.createTask', 'Create Task')}
+            </Button>
+          )
         )}
+        {/* Re-investigate — orange */}
         {(isComplete || isFailed) && (
-          <Button size="sm" variant="outline" onClick={onInvestigate}>
+          <Button size="sm" variant="outline" onClick={onInvestigate}
+            className="border-orange-500/40 text-orange-500 hover:bg-orange-500/10"
+          >
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
             {t('investigation.actions.retry', 'Re-investigate')}
           </Button>
