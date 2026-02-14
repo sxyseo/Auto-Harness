@@ -186,7 +186,7 @@ function parseInvestigationLogLine(line: string): {
         } else if (event.event === 'tool_start') {
           content = event.detail ?? `Using ${event.tool}`;
         } else if (event.event === 'tool_end') {
-          content = `${event.tool} ${event.success ? 'done' : 'failed'}`;
+          content = `${event.tool ?? 'Tool'} ${event.success ? 'done' : 'failed'}`;
         }
 
         return {

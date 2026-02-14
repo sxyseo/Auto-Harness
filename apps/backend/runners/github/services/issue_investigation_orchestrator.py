@@ -365,6 +365,27 @@ Use Read, Grep, and Glob tools to explore the codebase.
                 _resume_id = (
                     resume_sessions.get(cfg.name) if resume_sessions else None
                 )
+                # Track tool_id → tool_name so on_tool_result can include the tool name
+                _tool_names: dict[str, str] = {}
+
+                def _on_tool_use(name, tid, inp, _name=cfg.name, _map=_tool_names):
+                    _map[tid] = name
+                    emit_json_event(
+                        "tool_start",
+                        _name,
+                        tool=name,
+                        detail=_get_tool_detail(name, inp),
+                    )
+
+                def _on_tool_result(tid, err, _, _name=cfg.name, _map=_tool_names):
+                    tool = _map.pop(tid, None)
+                    emit_json_event(
+                        "tool_end",
+                        _name,
+                        tool=tool,
+                        success=not err,
+                    )
+
                 return self._run_specialist_session(
                     config=cfg,
                     prompt=_prompt,
@@ -381,17 +402,8 @@ Use Read, Grep, and Glob tools to explore the codebase.
                         chars=len(text),
                         preview=text[:200].replace("\n", " "),
                     ),
-                    on_tool_use=lambda name, tid, inp, _name=cfg.name: emit_json_event(
-                        "tool_start",
-                        _name,
-                        tool=name,
-                        detail=_get_tool_detail(name, inp),
-                    ),
-                    on_tool_result=lambda tid, err, _, _name=cfg.name: emit_json_event(
-                        "tool_end",
-                        _name,
-                        success=not err,
-                    ),
+                    on_tool_use=_on_tool_use,
+                    on_tool_result=_on_tool_result,
                 )
 
             return factory
