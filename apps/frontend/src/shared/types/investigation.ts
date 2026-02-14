@@ -306,6 +306,8 @@ export interface InvestigationAgentLog {
   agentType: InvestigationAgentType | 'orchestrator';
   status: 'pending' | 'active' | 'completed' | 'failed';
   entries: InvestigationLogEntry[];
+  startedAt?: string;
+  completedAt?: string;
 }
 
 /**
