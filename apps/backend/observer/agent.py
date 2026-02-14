@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .config import ObserverConfig
 from .event_bus import SessionEventBus
+from .fallback import RuleBasedExtractor
 from .models import (
     Observation,
     ObservationCategory,
@@ -39,58 +40,6 @@ _TRIGGER_TYPES = frozenset(
 
 # Minimum interval between LLM calls in seconds
 _MIN_CALL_INTERVAL = 30.0
-
-
-class RuleBasedExtractor:
-    """Fallback extractor using simple heuristics (no LLM)."""
-
-    @staticmethod
-    def extract(events: list[SessionEvent], spec_id: str) -> list[Observation]:
-        """Extract observations from events using keyword heuristics."""
-        observations: list[Observation] = []
-
-        for event in events:
-            data = event.data
-            event_type = event.event_type
-
-            # Extract error resolutions
-            if event_type in ("tool_error", "error"):
-                content = str(data.get("error", data.get("message", "")))[:200]
-                if content:
-                    observations.append(
-                        Observation(
-                            category=ObservationCategory.ERROR_RESOLUTION,
-                            content=content,
-                            source=f"session:{spec_id}",
-                            priority=ObservationPriority.MEDIUM,
-                            file_path=data.get("file"),
-                            metadata={"session_event_type": event_type},
-                        )
-                    )
-
-            # Extract file relationships from multi-file edits
-            if event_type == "file_edit" and data.get("file"):
-                file_path = data["file"]
-                observations.append(
-                    Observation(
-                        category=ObservationCategory.FILE_RELATIONSHIP,
-                        content=f"File modified during session: {file_path}"[:200],
-                        source=f"session:{spec_id}",
-                        priority=ObservationPriority.LOW,
-                        file_path=file_path,
-                        metadata={"session_event_type": event_type},
-                    )
-                )
-
-        # Cap at 7 observations, prioritising higher-priority ones
-        priority_order = {
-            ObservationPriority.CRITICAL: 0,
-            ObservationPriority.HIGH: 1,
-            ObservationPriority.MEDIUM: 2,
-            ObservationPriority.LOW: 3,
-        }
-        observations.sort(key=lambda o: priority_order.get(o.priority, 4))
-        return observations[:7]
 
 
 class ObserverAgent:
@@ -205,7 +154,12 @@ class ObserverAgent:
             observations = await self._extract_via_llm(events_snapshot)
             if observations is None:
                 # LLM failed — fall back to rule-based
-                observations = RuleBasedExtractor.extract(events_snapshot, self.spec_id)
+                observations = RuleBasedExtractor().extract(
+                    events_snapshot,
+                    spec_id=self.spec_id,
+                    project_id=self.project_id,
+                    session_num=self.session_num,
+                )
 
             if not observations:
                 return

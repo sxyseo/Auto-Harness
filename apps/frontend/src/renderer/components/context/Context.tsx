@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FolderTree, Brain, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useContextStore } from '../../stores/context-store';
@@ -19,6 +20,7 @@ import type { ContextProps } from './types';
 import type { Observation } from '../../../shared/types';
 
 export function Context({ projectId }: ContextProps) {
+  const { t } = useTranslation(['common']);
   const {
     projectIndex,
     indexLoading,
@@ -115,7 +117,7 @@ export function Context({ projectId }: ContextProps) {
             </TabsTrigger>
             <TabsTrigger value="observations" className="gap-2">
               <Eye className="h-4 w-4" />
-              Observations
+              {t('common:observations.title')}
             </TabsTrigger>
           </TabsList>
         </div>
