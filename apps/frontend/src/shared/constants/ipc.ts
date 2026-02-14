@@ -585,5 +585,17 @@ export const IPC_CHANNELS = {
   // Queue routing events (main -> renderer)
   QUEUE_PROFILE_SWAPPED: 'queue:profileSwapped',      // Task switched to different profile
   QUEUE_SESSION_CAPTURED: 'queue:sessionCaptured',    // Session ID captured from running task
-  QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles' // All profiles unavailable
+  QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles', // All profiles unavailable
+
+  // Window management (multi-window pop-out support)
+  WINDOW_POP_OUT_PROJECT: 'window:pop-out-project',  // Pop out entire project into new window
+  WINDOW_POP_OUT_VIEW: 'window:pop-out-view',        // Pop out specific view into new window
+  WINDOW_MERGE_WINDOW: 'window:merge-window',        // Merge pop-out window back to main
+  WINDOW_GET_WINDOWS: 'window:get-windows',          // Get list of all open windows
+  WINDOW_GET_CONFIG: 'window:get-config',            // Get current window's configuration
+  WINDOW_FOCUS_WINDOW: 'window:focus-window',        // Focus an existing window
+
+  // Window events (main -> renderer)
+  WINDOW_CONFIG_CHANGED: 'window:config-changed',    // Window configuration changed
+  WINDOW_SYNC_STATE: 'window:sync-state'             // Broadcast state changes to all windows
 } as const;
