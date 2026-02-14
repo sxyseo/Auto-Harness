@@ -14,6 +14,7 @@ infrastructure. Uses structured output via Pydantic model schemas.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -346,6 +347,10 @@ Use Read, Grep, and Glob tools to explore the codebase.
             Dict mapping specialist name → stream result dict
         """
 
+        # Shared completion counter for incremental progress reporting
+        _agents_done = 0
+        _agents_lock = asyncio.Lock()
+
         # Build coroutine factories so failed specialists can be retried
         def _make_specialist_factory(cfg: SpecialistConfig):
             """Create a 0-arg callable that returns a fresh coroutine."""
@@ -416,12 +421,52 @@ Use Read, Grep, and Glob tools to explore the codebase.
 
             return factory
 
+        async def _agent_lifecycle_wrapper(
+            cfg: SpecialistConfig,
+            coro,
+        ):
+            """Wrap a specialist coroutine with agent_started/agent_done events."""
+            nonlocal _agents_done
+
+            emit_json_event("agent_started", cfg.name)
+
+            try:
+                result = await coro
+                success = not (result and result.get("error"))
+                emit_json_event(
+                    "agent_done",
+                    cfg.name,
+                    success=success,
+                    error=result.get("error") if not success else None,
+                )
+            except Exception as e:
+                emit_json_event(
+                    "agent_done",
+                    cfg.name,
+                    success=False,
+                    error=str(e)[:200],
+                )
+                raise
+
+            # Bump incremental progress (thread-safe via asyncio lock)
+            async with _agents_lock:
+                _agents_done += 1
+                # 20% base + 15% per agent = 20→35→50→65→80
+                self._report_progress(
+                    "investigating",
+                    20 + (_agents_done * 15),
+                    f"{cfg.name} complete ({_agents_done}/4)",
+                    issue_number=issue_number,
+                )
+
+            return result
+
         # Create initial coroutines and retry factories
         coroutines = []
         retry_factories = []
         for config in INVESTIGATION_SPECIALISTS:
             factory = _make_specialist_factory(config)
-            coroutines.append(factory())
+            coroutines.append(_agent_lifecycle_wrapper(config, factory()))
             retry_factories.append(factory)
 
         # Run all in parallel (with retry-once on failure)
