@@ -82,7 +82,6 @@ class SpecialistConfig:
     tools: list[str]
     description: str
     max_turns: int = 30
-    thinking_budget_multiplier: float = 1.0
 
 
 class ParallelAgentOrchestrator:

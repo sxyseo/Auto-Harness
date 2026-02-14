@@ -95,7 +95,6 @@ INVESTIGATION_SPECIALISTS: list[SpecialistConfig] = [
         prompt_file="investigation_root_cause.md",
         tools=["Read", "Grep", "Glob", "Bash"],
         description="Trace the bug/issue to its source code paths and identify the root cause",
-        thinking_budget_multiplier=1.5,
     ),
     SpecialistConfig(
         name="impact",
@@ -363,12 +362,6 @@ Use Read, Grep, and Glob tools to explore the codebase.
                 _output_schema = (
                     _schema_class.model_json_schema() if _schema_class else None
                 )
-                # Apply per-specialist thinking multiplier
-                _effective_budget = (
-                    int(thinking_budget * cfg.thinking_budget_multiplier)
-                    if thinking_budget
-                    else None
-                )
                 # Look up resume session ID for this specialist
                 _resume_id = (
                     resume_sessions.get(cfg.name) if resume_sessions else None
@@ -404,7 +397,7 @@ Use Read, Grep, and Glob tools to explore the codebase.
                     prompt=_prompt,
                     project_root=project_root,
                     model=model,
-                    thinking_budget=_effective_budget,
+                    thinking_budget=thinking_budget,
                     output_schema=_output_schema,
                     agent_type="investigation_specialist",
                     context_name=f"Investigation:{cfg.name}",

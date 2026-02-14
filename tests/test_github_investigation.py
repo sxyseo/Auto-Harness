@@ -596,7 +596,6 @@ def _import_orchestrator():
         tools: list
         description: str
         max_turns: int = 30
-        thinking_budget_multiplier: float = 1.0
 
     class ParallelAgentOrchestrator:
         def __init__(self, project_dir, github_dir, config, progress_callback=None):
