@@ -369,7 +369,9 @@ export function InvestigationNeedsAttention({
 
         {/* Close / Reopen issue */}
         {issueState === 'open' && onCloseIssue && (
-          <Button variant="outline" size="sm" onClick={onCloseIssue} disabled={isClosingIssue}>
+          <Button variant="outline" size="sm" onClick={onCloseIssue} disabled={isClosingIssue}
+            className="border-purple-500/40 text-purple-500 hover:bg-purple-500/10"
+          >
             <X className="h-3.5 w-3.5 mr-1.5" />
             {t('phase5.closeIssue')}
           </Button>
