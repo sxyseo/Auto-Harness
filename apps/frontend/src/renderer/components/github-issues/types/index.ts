@@ -4,6 +4,28 @@ import type { IssueDependencies } from '@shared/types/dependencies';
 
 export type FilterState = 'open' | 'closed' | 'all';
 
+export type IssueStatusFilter = 'open' | 'closed';
+
+export type IssueSortOption = 'newest' | 'oldest' | 'most_commented';
+
+export interface IssueFilterState {
+  searchQuery: string;
+  reporters: string[];
+  statuses: IssueStatusFilter[];
+  sortBy: IssueSortOption;
+}
+
+export interface IssueFilterBarProps {
+  filters: IssueFilterState;
+  reporters: string[];
+  hasActiveFilters: boolean;
+  onSearchChange: (query: string) => void;
+  onReportersChange: (reporters: string[]) => void;
+  onStatusesChange: (statuses: IssueStatusFilter[]) => void;
+  onSortChange: (sortBy: IssueSortOption) => void;
+  onClearFilters: () => void;
+}
+
 /**
  * Classification types for GitHub API errors.
  * Used to determine appropriate icon, message, and actions for error display.

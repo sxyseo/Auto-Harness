@@ -470,7 +470,22 @@
     "notConnected": "GitHub Not Connected",
     "configureToken": "Configure your GitHub token and repository in project settings to sync issues.",
     "openSettings": "Open Settings",
-    "selectToView": "Select an issue to view details"
+    "selectToView": "Select an issue to view details",
+    "reporters": "Reporters",
+    "searchReporters": "Search reporters...",
+    "allStatuses": "All statuses",
+    "allReporters": "All reporters",
+    "selectedCount": "{{count}} selected",
+    "noResultsFound": "No results found",
+    "clearFilters": "Clear",
+    "clearSearch": "Clear search",
+    "reset": "Reset",
+    "sort": {
+      "label": "Sort",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "mostCommented": "Most commented"
+    }
   },
   "enrichment": {
     "title": "Enrichment",

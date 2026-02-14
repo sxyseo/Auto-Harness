@@ -470,7 +470,22 @@
     "notConnected": "GitHub non connecté",
     "configureToken": "Configurez votre token GitHub et le dépôt dans les paramètres du projet pour synchroniser les issues.",
     "openSettings": "Ouvrir les paramètres",
-    "selectToView": "Sélectionnez une issue pour voir les détails"
+    "selectToView": "Sélectionnez une issue pour voir les détails",
+    "reporters": "Rapporteurs",
+    "searchReporters": "Rechercher des rapporteurs...",
+    "allStatuses": "Tous les statuts",
+    "allReporters": "Tous les rapporteurs",
+    "selectedCount": "{{count}} sélectionnés",
+    "noResultsFound": "Aucun résultat",
+    "clearFilters": "Effacer",
+    "clearSearch": "Effacer la recherche",
+    "reset": "Réinitialiser",
+    "sort": {
+      "label": "Trier",
+      "newest": "Plus récentes",
+      "oldest": "Plus anciennes",
+      "mostCommented": "Plus commentées"
+    }
   },
   "enrichment": {
     "title": "Enrichissement",
