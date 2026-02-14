@@ -86,3 +86,22 @@ export function buildMemoryEnvVars(settings: AppSettings): Record<string, string
 
   return env;
 }
+
+/**
+ * Build environment variables for Observer memory system configuration from app settings.
+ *
+ * @param settings - App-wide settings from settings.json
+ * @returns Record of environment variables to inject into agent processes
+ */
+export function buildObserverEnvVars(settings: AppSettings): Record<string, string> {
+  if (!settings.observerEnabled) {
+    return {};
+  }
+
+  return {
+    OBSERVER_ENABLED: 'true',
+    OBSERVER_MODEL: settings.observerModel || 'gemini-2.0-flash',
+    OBSERVER_MAX_CALLS_PER_SESSION: String(settings.observerMaxCalls || 20),
+    OBSERVER_TIMEOUT_SECONDS: String(settings.observerTimeout || 30),
+  };
+}
