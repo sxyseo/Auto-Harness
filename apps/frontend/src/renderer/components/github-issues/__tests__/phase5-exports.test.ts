@@ -7,7 +7,6 @@ describe('Phase 5 Barrel Exports', () => {
       const exportNames = Object.keys(hooks);
       expect(exportNames).toContain('useGitHubIssues');
       expect(exportNames).toContain('useGitHubInvestigation');
-      expect(exportNames).toContain('useIssueFiltering');
       expect(exportNames).toContain('useAutoFix');
       expect(exportNames).toContain('useMutations');
       expect(exportNames).toContain('useBulkOperations');
@@ -15,6 +14,7 @@ describe('Phase 5 Barrel Exports', () => {
       expect(exportNames).toContain('useDependencies');
       expect(exportNames).toContain('useMetrics');
       expect(exportNames).toContain('useAnalyzePreview');
+      expect(exportNames).toContain('useIssueListFiltering');
       expect(exportNames.length).toBeGreaterThanOrEqual(10);
     });
   });

@@ -15,7 +15,6 @@ export type {
 export {
   useGitHubIssues,
   useGitHubInvestigation,
-  useIssueFiltering
 } from './hooks';
 
 // Re-export components for external usage if needed
@@ -32,4 +31,4 @@ export {
 } from './components';
 
 // Re-export utils for external usage if needed
-export { formatDate, filterIssuesBySearch } from './utils';
+export { formatDate } from './utils';
