@@ -751,5 +751,50 @@
       "blockedTooltip": "Cette PR ne peut pas être fusionnée en raison de conditions bloquantes",
       "conflictTooltip": "Cette PR a des conflits de fusion qui doivent être résolus"
     }
+  },
+  "observations": {
+    "title": "Observations",
+    "description": "Informations capturées par l'observateur lors des sessions d'agent",
+    "empty": "Aucune observation pour le moment. L'observateur capturera des informations lors des sessions d'agent.",
+    "searchPlaceholder": "Rechercher des observations...",
+    "categories": {
+      "codePattern": "Patron de code",
+      "architecture": "Architecture",
+      "performance": "Performance",
+      "security": "Sécurité",
+      "testing": "Tests",
+      "documentation": "Documentation",
+      "dependency": "Dépendance",
+      "configuration": "Configuration",
+      "workflow": "Flux de travail",
+      "errorPattern": "Patron d'erreur",
+      "bestPractice": "Bonne pratique",
+      "techDebt": "Dette technique"
+    },
+    "priority": {
+      "critical": "Critique",
+      "high": "Haute",
+      "medium": "Moyenne",
+      "low": "Basse"
+    },
+    "status": {
+      "active": "Actif",
+      "pinned": "Épinglé",
+      "dismissed": "Rejeté",
+      "promoted": "Promu"
+    },
+    "actions": {
+      "pin": "Épingler",
+      "unpin": "Désépingler",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "promote": "Promouvoir en mémoire"
+    },
+    "confirmDelete": {
+      "title": "Supprimer l'observation",
+      "description": "Êtes-vous sûr de vouloir supprimer cette observation ? Cette action est irréversible.",
+      "confirm": "Supprimer",
+      "cancel": "Annuler"
+    }
   }
 }

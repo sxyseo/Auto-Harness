@@ -751,5 +751,50 @@
       "blockedTooltip": "This PR cannot be merged due to blocking conditions",
       "conflictTooltip": "This PR has merge conflicts that need to be resolved"
     }
+  },
+  "observations": {
+    "title": "Observations",
+    "description": "Insights captured by the observer during agent sessions",
+    "empty": "No observations yet. The observer will capture insights during agent sessions.",
+    "searchPlaceholder": "Search observations...",
+    "categories": {
+      "codePattern": "Code Pattern",
+      "architecture": "Architecture",
+      "performance": "Performance",
+      "security": "Security",
+      "testing": "Testing",
+      "documentation": "Documentation",
+      "dependency": "Dependency",
+      "configuration": "Configuration",
+      "workflow": "Workflow",
+      "errorPattern": "Error Pattern",
+      "bestPractice": "Best Practice",
+      "techDebt": "Tech Debt"
+    },
+    "priority": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "status": {
+      "active": "Active",
+      "pinned": "Pinned",
+      "dismissed": "Dismissed",
+      "promoted": "Promoted"
+    },
+    "actions": {
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "edit": "Edit",
+      "delete": "Delete",
+      "promote": "Promote to Memory"
+    },
+    "confirmDelete": {
+      "title": "Delete Observation",
+      "description": "Are you sure you want to delete this observation? This action cannot be undone.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    }
   }
 }
