@@ -162,6 +162,8 @@ function parseInvestigationLogLine(line: string): {
   thinkingPreview?: string;
   thinkingChars?: number;
   isStructured?: boolean;
+  lifecycleEvent?: 'started' | 'done' | 'failed';
+  lifecycleError?: string;
 } | null {
   // Try JSON-structured events first (emitted by emit_json_event in investigation_hooks.py)
   if (line.startsWith('{')) {
@@ -182,6 +184,33 @@ function parseInvestigationLogLine(line: string): {
         const isTool = event.event === 'tool_start' || event.event === 'tool_end';
 
         let content = '';
+
+        // Lifecycle events: agent_started, agent_done
+        if (event.event === 'agent_started') {
+          content = 'Agent started';
+          return {
+            agentType: agentType as InvestigationAgentType | 'orchestrator',
+            content,
+            isError: false,
+            isTool: false,
+            isStructured: true,
+            lifecycleEvent: 'started' as const,
+          };
+        }
+        if (event.event === 'agent_done') {
+          const doneSuccess = event.success !== false;
+          content = doneSuccess ? 'Agent completed' : `Agent failed: ${event.error ?? 'unknown'}`;
+          return {
+            agentType: agentType as InvestigationAgentType | 'orchestrator',
+            content,
+            isError: !doneSuccess,
+            isTool: false,
+            isStructured: true,
+            lifecycleEvent: (doneSuccess ? 'done' : 'failed') as 'done' | 'failed',
+            lifecycleError: event.error,
+          };
+        }
+
         if (event.event === 'thinking') {
           content = `Thinking (${event.chars?.toLocaleString() ?? '?'} chars)`;
         } else if (event.event === 'tool_start') {
@@ -301,6 +330,23 @@ class InvestigationLogCollector {
     const parsed = parseInvestigationLogLine(line);
     if (!parsed) return;
 
+    // Handle lifecycle events from backend
+    if (parsed.lifecycleEvent) {
+      const lifecycleAgent = this.logs.agents[parsed.agentType];
+      if (parsed.lifecycleEvent === 'started') {
+        lifecycleAgent.status = 'active';
+        lifecycleAgent.startedAt = new Date().toISOString();
+      } else if (parsed.lifecycleEvent === 'done') {
+        lifecycleAgent.status = 'completed';
+        lifecycleAgent.completedAt = new Date().toISOString();
+      } else if (parsed.lifecycleEvent === 'failed') {
+        lifecycleAgent.status = 'failed';
+        lifecycleAgent.completedAt = new Date().toISOString();
+      }
+      this.save();
+      return; // lifecycle events are metadata, not log entries
+    }
+
     const agent = this.logs.agents[parsed.agentType];
     const wasNotActive = agent.status !== 'active';
 
@@ -364,13 +410,16 @@ class InvestigationLogCollector {
 
   finalize(success: boolean): void {
     for (const agent of Object.values(this.logs.agents)) {
+      // Skip agents already marked by lifecycle events
+      if (agent.status === 'completed' || agent.status === 'failed') {
+        continue;
+      }
       if (success) {
-        // A successful investigation means all agents completed their work.
-        // Mark all agents as completed regardless of current status, since
-        // some agents may not have emitted log lines we could parse.
         agent.status = 'completed';
+        agent.completedAt = new Date().toISOString();
       } else if (agent.status === 'active') {
         agent.status = 'failed';
+        agent.completedAt = new Date().toISOString();
       }
       // On failure, pending agents stay pending (they never started)
     }
