@@ -9,6 +9,8 @@ interface AssigneeManagerProps {
   onAddAssignee: (login: string) => void;
   onRemoveAssignee: (login: string) => void;
   disabled?: boolean;
+  /** Render as a compact inline row (no section wrapper) */
+  inline?: boolean;
 }
 
 export function AssigneeManager({
@@ -17,6 +19,7 @@ export function AssigneeManager({
   onAddAssignee,
   onRemoveAssignee,
   disabled,
+  inline,
 }: AssigneeManagerProps) {
   const { t } = useTranslation('common');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -46,103 +49,118 @@ export function AssigneeManager({
     setSearch('');
   }
 
-  return (
-    <section className="space-y-2" aria-label="Assignee manager">
-      {/* Current assignees */}
-      <div className="flex flex-wrap gap-1.5">
-        {currentAssignees.map((assignee) => (
-          <div
-            key={assignee.login}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-0.5 text-xs"
-          >
-            {assignee.avatarUrl && (
-              <img
-                src={assignee.avatarUrl}
-                alt=""
-                className="w-4 h-4 rounded-full"
-              />
-            )}
-            <span>{assignee.login}</span>
-            {!disabled && (
+  const assigneeChips = currentAssignees.map((assignee) => (
+    <div
+      key={assignee.login}
+      className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-0.5 text-xs"
+    >
+      {assignee.avatarUrl && (
+        <img
+          src={assignee.avatarUrl}
+          alt=""
+          className="w-4 h-4 rounded-full"
+        />
+      )}
+      <span>{assignee.login}</span>
+      {!disabled && (
+        <button
+          type="button"
+          className="hover:text-destructive"
+          onClick={() => onRemoveAssignee(assignee.login)}
+          aria-label={`Remove assignee ${assignee.login}`}
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  ));
+
+  const assignButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      className="h-6 text-xs gap-1 px-2"
+      onClick={toggleDropdown}
+      disabled={disabled}
+      aria-label="Assign"
+    >
+      <Plus className="h-3 w-3" />
+      {t('assignees.assign')}
+    </Button>
+  );
+
+  const dropdown = dropdownOpen && (
+    <div ref={dropdownRef} className="absolute left-0 top-full mt-1 z-10 border border-border rounded-md bg-popover shadow-md p-1 max-h-48 overflow-y-auto min-w-[180px]">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t('assignees.search')}
+        className="w-full px-2 py-1 text-xs border-b border-border bg-transparent focus:outline-none"
+        aria-label="Search collaborators"
+      />
+      <div role="listbox" aria-label="Available collaborators">
+        {filteredCollaborators.map((login) => {
+          const isAssigned = assignedLogins.has(login);
+          return (
+            <div
+              key={login}
+              role="option"
+              tabIndex={0}
+              aria-selected={isAssigned}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (!isAssigned) onAddAssignee(login);
+                } else if (e.key === 'Escape') {
+                  setDropdownOpen(false);
+                  setSearch('');
+                }
+              }}
+            >
               <button
                 type="button"
-                className="hover:text-destructive"
-                onClick={() => onRemoveAssignee(assignee.login)}
-                aria-label={`Remove assignee ${assignee.login}`}
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"
+                onClick={() => {
+                  if (!isAssigned) {
+                    onAddAssignee(login);
+                  }
+                }}
               >
-                <X className="h-3 w-3" />
+                <span className="flex-1">{login}</span>
+                {isAssigned && <Check className="h-3 w-3 text-primary" />}
               </button>
-            )}
+            </div>
+          );
+        })}
+        {filteredCollaborators.length === 0 && (
+          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+            {t('assignees.noMatch')}
           </div>
-        ))}
+        )}
       </div>
+    </div>
+  );
 
-      {/* Assign button */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-7 text-xs gap-1"
-        onClick={toggleDropdown}
-        disabled={disabled}
-        aria-label="Assign"
-      >
-        <Plus className="h-3 w-3" />
-        {t('assignees.assign')}
-      </Button>
+  if (inline) {
+    return (
+      <div className="relative flex items-center gap-1.5" aria-label="Assignee manager">
+        {assigneeChips}
+        {assignButton}
+        {dropdown}
+      </div>
+    );
+  }
 
-      {/* Dropdown */}
-      {dropdownOpen && (
-        <div ref={dropdownRef} className="border border-border rounded-md bg-popover shadow-md p-1 max-h-48 overflow-y-auto">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('assignees.search')}
-            className="w-full px-2 py-1 text-xs border-b border-border bg-transparent focus:outline-none"
-            aria-label="Search collaborators"
-          />
-          <div role="listbox" aria-label="Available collaborators">
-            {filteredCollaborators.map((login) => {
-              const isAssigned = assignedLogins.has(login);
-              return (
-                <div
-                  key={login}
-                  role="option"
-                  tabIndex={0}
-                  aria-selected={isAssigned}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      if (!isAssigned) onAddAssignee(login);
-                    } else if (e.key === 'Escape') {
-                      setDropdownOpen(false);
-                      setSearch('');
-                    }
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"
-                    onClick={() => {
-                      if (!isAssigned) {
-                        onAddAssignee(login);
-                      }
-                    }}
-                  >
-                    <span className="flex-1">{login}</span>
-                    {isAssigned && <Check className="h-3 w-3 text-primary" />}
-                  </button>
-                </div>
-              );
-            })}
-            {filteredCollaborators.length === 0 && (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                {t('assignees.noMatch')}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+  return (
+    <section className="space-y-2" aria-label="Assignee manager">
+      <div className="flex flex-wrap gap-1.5">
+        {assigneeChips}
+      </div>
+      <div className="relative">
+        {assignButton}
+        {dropdown}
+      </div>
     </section>
   );
 }

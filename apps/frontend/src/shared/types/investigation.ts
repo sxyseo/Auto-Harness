@@ -195,6 +195,28 @@ export type InvestigationDismissReason = 'wont_fix' | 'duplicate' | 'cannot_repr
  */
 export type InvestigationPipelineMode = 'full' | 'skip_to_planning' | 'minimal';
 
+// ============================================
+// Investigation Label Customization
+// ============================================
+
+export type InvestigationLabelKey =
+  | 'investigating'
+  | 'findings_ready'
+  | 'task_created'
+  | 'building'
+  | 'done';
+
+export interface CustomInvestigationLabel {
+  suffix: string;
+  color: string; // 6-char hex, no #
+  description: string;
+}
+
+export interface InvestigationLabelCustomization {
+  prefix: string; // default "auto-claude:"
+  labels: Record<InvestigationLabelKey, CustomInvestigationLabel>;
+}
+
 /**
  * Investigation settings (subsection of GitHub settings).
  */
@@ -209,6 +231,8 @@ export interface InvestigationSettings {
   labelExcludeFilter: string[];
   /** Whether user has consented to auto-claude label creation on the repo */
   labelConsentGiven?: boolean;
+  /** Custom investigation label configuration */
+  labelCustomization?: InvestigationLabelCustomization;
 }
 
 // ============================================
@@ -228,6 +252,8 @@ export interface PersistedInvestigationState {
   githubCommentId?: number;
   /** True if the investigation was in-progress when the app shut down */
   wasInterrupted?: boolean;
+  /** Persisted activity log entries */
+  activityLog?: Array<{ event: string; timestamp: string }>;
 }
 
 // ============================================

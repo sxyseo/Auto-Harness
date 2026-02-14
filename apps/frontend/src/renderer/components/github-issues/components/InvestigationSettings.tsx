@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Brain, Loader2, Plus, X, Check } from 'lucide-react';
+import { Brain, Loader2, Plus, X, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { Switch } from '../../ui/switch';
 import { Label } from '../../ui/label';
 import { Input } from '../../ui/input';
@@ -29,7 +29,14 @@ import {
   SelectItem,
 } from '../../ui/select';
 import { useInvestigationStore } from '../../../stores/github/investigation-store';
-import type { InvestigationSettings as InvestigationSettingsType, InvestigationPipelineMode } from '@shared/types';
+import type {
+  InvestigationSettings as InvestigationSettingsType,
+  InvestigationPipelineMode,
+  InvestigationLabelKey,
+  InvestigationLabelCustomization,
+} from '@shared/types';
+import { LabelCustomizationEditor } from './LabelCustomizationEditor';
+import type { LabelRow } from './LabelCustomizationEditor';
 
 const DEFAULT_SETTINGS: InvestigationSettingsType = {
   autoCreateTasks: false,
@@ -41,6 +48,35 @@ const DEFAULT_SETTINGS: InvestigationSettingsType = {
   labelIncludeFilter: [],
   labelExcludeFilter: [],
 };
+
+const INVESTIGATION_LABEL_KEYS: InvestigationLabelKey[] = [
+  'investigating', 'findings_ready', 'task_created', 'building', 'done',
+];
+
+const DEFAULT_INVESTIGATION_CUSTOMIZATION: InvestigationLabelCustomization = {
+  prefix: 'auto-claude:',
+  labels: {
+    investigating: { suffix: 'investigating', color: '1d76db', description: 'Auto-Claude is investigating this issue' },
+    findings_ready: { suffix: 'findings-ready', color: '0e8a16', description: 'Investigation complete, findings available' },
+    task_created: { suffix: 'task-created', color: '5319e7', description: 'Kanban task created from investigation' },
+    building: { suffix: 'building', color: 'd93f0b', description: 'Task is being built by the pipeline' },
+    done: { suffix: 'done', color: '0e8a16', description: 'Investigation complete, issue resolved' },
+  },
+};
+
+function resolveInvestigationCustomization(
+  custom?: InvestigationLabelCustomization,
+): InvestigationLabelCustomization {
+  if (!custom) return DEFAULT_INVESTIGATION_CUSTOMIZATION;
+  const labels = {} as Record<InvestigationLabelKey, { suffix: string; color: string; description: string }>;
+  for (const key of INVESTIGATION_LABEL_KEYS) {
+    labels[key] = {
+      ...DEFAULT_INVESTIGATION_CUSTOMIZATION.labels[key],
+      ...(custom.labels?.[key] ?? {}),
+    };
+  }
+  return { prefix: custom.prefix || DEFAULT_INVESTIGATION_CUSTOMIZATION.prefix, labels };
+}
 
 /**
  * Returns white or dark text color for readable contrast against a hex background.
@@ -280,11 +316,100 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
         onAdd={(label) => addLabelFilter('exclude', label)}
         onRemove={(label) => removeLabelFilter('exclude', label)}
       />
+
+      <Separator />
+
+      {/* 9. Investigation label customization */}
+      <InvestigationLabelSection
+        customization={settings.labelCustomization}
+        onCustomizationChange={(lc) => persist({ ...settings, labelCustomization: lc })}
+      />
     </section>
   );
 }
 
 // ---- Internal sub-components ----
+
+interface InvestigationLabelSectionProps {
+  customization?: InvestigationLabelCustomization;
+  onCustomizationChange: (customization: InvestigationLabelCustomization | undefined) => void;
+}
+
+function InvestigationLabelSection({ customization, onCustomizationChange }: InvestigationLabelSectionProps) {
+  const { t } = useTranslation(['settings', 'common']);
+  const [expanded, setExpanded] = useState(false);
+
+  const resolved = resolveInvestigationCustomization(customization);
+
+  const labelRows: LabelRow[] = INVESTIGATION_LABEL_KEYS.map((key) => ({
+    key,
+    displayName: t(`settings:investigationSettings.labelCustomization.states.${key}`, key),
+    suffix: resolved.labels[key].suffix,
+    color: resolved.labels[key].color,
+    description: resolved.labels[key].description,
+  }));
+
+  const handlePrefixChange = useCallback(
+    (prefix: string) => {
+      onCustomizationChange({ ...resolved, prefix });
+    },
+    [resolved, onCustomizationChange],
+  );
+
+  const handleLabelChange = useCallback(
+    (key: string, field: 'suffix' | 'color' | 'description', value: string) => {
+      const updated = {
+        ...resolved,
+        labels: {
+          ...resolved.labels,
+          [key]: { ...resolved.labels[key as InvestigationLabelKey], [field]: value },
+        },
+      };
+      onCustomizationChange(updated);
+    },
+    [resolved, onCustomizationChange],
+  );
+
+  const handleReset = useCallback(() => {
+    onCustomizationChange(undefined);
+  }, [onCustomizationChange]);
+
+  return (
+    <div>
+      <button
+        type="button"
+        className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setExpanded((prev) => !prev)}
+      >
+        {expanded ? (
+          <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronRight className="h-3 w-3" />
+        )}
+        {t('settings:investigationSettings.labelCustomization.title', 'Investigation Labels')}
+      </button>
+
+      {expanded && (
+        <div className="mt-2 pl-4 border-l-2 border-border">
+          <p className="text-xs text-muted-foreground mb-3">
+            {t(
+              'settings:investigationSettings.labelCustomization.description',
+              'Customize investigation lifecycle label names, colors, and descriptions',
+            )}
+          </p>
+          <LabelCustomizationEditor
+            prefix={resolved.prefix}
+            onPrefixChange={handlePrefixChange}
+            labels={labelRows}
+            onLabelChange={handleLabelChange}
+            onReset={handleReset}
+            i18nPrefix="settings:investigationSettings.labelCustomization"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface SettingToggleProps {
   label: string;

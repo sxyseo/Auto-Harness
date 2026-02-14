@@ -60,7 +60,9 @@ export function registerLabelSyncHandlers(
     IPC_CHANNELS.GITHUB_LABEL_SYNC_ENABLE,
     async (_, projectId: string) => {
       return withProject(projectId, async (project) => {
-        const labels = getWorkflowLabels();
+        const existingConfig = readConfig(project.path);
+        const customization = existingConfig.customization;
+        const labels = getWorkflowLabels(customization);
         const env = getAugmentedEnv();
         const result: LabelSyncResult = { created: 0, updated: 0, removed: 0, errors: [] };
 
@@ -81,10 +83,11 @@ export function registerLabelSyncHandlers(
           }
         }
 
-        // Save config
+        // Save config (preserve customization)
         const config: LabelSyncConfig = {
           enabled: true,
           lastSyncedAt: new Date().toISOString(),
+          customization,
         };
         writeConfig(project.path, config);
 
@@ -99,13 +102,16 @@ export function registerLabelSyncHandlers(
     IPC_CHANNELS.GITHUB_LABEL_SYNC_DISABLE,
     async (_, projectId: string, cleanup: boolean) => {
       return withProject(projectId, async (project) => {
+        const existingConfig = readConfig(project.path);
+        const customization = existingConfig.customization;
+
         if (cleanup) {
           const env = getAugmentedEnv();
           const data = await readEnrichmentFile(project.path);
 
           // Remove ac:* labels from all issues
           for (const [issueNumber, enrichment] of Object.entries(data.issues)) {
-            const label = getLabelForState(enrichment.triageState as WorkflowState);
+            const label = getLabelForState(enrichment.triageState as WorkflowState, customization);
             try {
               await execFileAsync(getToolPath('gh'), [
                 'issue', 'edit', issueNumber,
@@ -117,7 +123,7 @@ export function registerLabelSyncHandlers(
           }
 
           // Delete label definitions
-          const labels = getWorkflowLabels();
+          const labels = getWorkflowLabels(customization);
           for (const label of labels) {
             try {
               await execFileAsync(getToolPath('gh'), [
@@ -140,8 +146,10 @@ export function registerLabelSyncHandlers(
     IPC_CHANNELS.GITHUB_LABEL_SYNC_ISSUE,
     async (_, projectId: string, issueNumber: number, newState: string, _oldState: string | null) => {
       return withProject(projectId, async (project) => {
+        const config = readConfig(project.path);
+        const customization = config.customization;
         const env = getAugmentedEnv();
-        const targetLabel = getLabelForState(newState as WorkflowState);
+        const targetLabel = getLabelForState(newState as WorkflowState, customization);
 
         // Check current labels to avoid unnecessary API calls (GAP-1 fix)
         try {
@@ -162,7 +170,7 @@ export function registerLabelSyncHandlers(
           const args = ['issue', 'edit', String(issueNumber)];
 
           for (const label of currentLabels) {
-            if (isAutoClaudeLabel(label.name) && label.name !== targetLabel) {
+            if (isAutoClaudeLabel(label.name, customization) && label.name !== targetLabel) {
               args.push('--remove-label', label.name);
             }
           }
@@ -198,6 +206,7 @@ export function registerLabelSyncHandlers(
           return { synced: 0, errors: 0 };
         }
 
+        const customization = config.customization;
         const env = getAugmentedEnv();
         const data = await readEnrichmentFile(project.path);
         let synced = 0;
@@ -207,7 +216,7 @@ export function registerLabelSyncHandlers(
           const enrichment = data.issues[String(issueNumber)];
           if (!enrichment?.triageState) continue;
 
-          const targetLabel = getLabelForState(enrichment.triageState as WorkflowState);
+          const targetLabel = getLabelForState(enrichment.triageState as WorkflowState, customization);
 
           try {
             // Get current labels
@@ -225,7 +234,7 @@ export function registerLabelSyncHandlers(
 
             const args = ['issue', 'edit', String(issueNumber)];
             for (const label of currentLabels) {
-              if (isAutoClaudeLabel(label.name) && label.name !== targetLabel) {
+              if (isAutoClaudeLabel(label.name, customization) && label.name !== targetLabel) {
                 args.push('--remove-label', label.name);
               }
             }

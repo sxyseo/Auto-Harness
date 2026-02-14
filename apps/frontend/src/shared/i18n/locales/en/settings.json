@@ -919,6 +919,24 @@
     "labelIncludeFilterDescription": "Only auto-create tasks for issues with these labels (empty = all)",
     "labelExcludeFilter": "Label exclude filter",
     "labelExcludeFilterDescription": "Never auto-create tasks for issues with these labels (empty = none)",
-    "labelPlaceholder": "Add label..."
+    "labelPlaceholder": "Add label...",
+    "labelCustomization": {
+      "title": "Investigation Labels",
+      "description": "Customize investigation lifecycle label names, colors, and descriptions",
+      "prefix": "Prefix",
+      "prefixPlaceholder": "e.g. auto-claude:",
+      "suffix": "Name",
+      "color": "Color",
+      "labelDescription": "Description",
+      "resetDefaults": "Reset to defaults",
+      "preview": "Preview",
+      "states": {
+        "investigating": "Investigating",
+        "findings_ready": "Findings Ready",
+        "task_created": "Task Created",
+        "building": "Building",
+        "done": "Done"
+      }
+    }
   }
 }

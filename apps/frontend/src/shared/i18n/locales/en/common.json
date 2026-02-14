@@ -659,7 +659,27 @@
     "disable": "Disable",
     "syncing": "Syncing...",
     "lastSynced": "Last synced: {{date}}",
-    "disableAndCleanup": "Disable and remove all labels"
+    "disableAndCleanup": "Disable and remove all labels",
+    "customization": {
+      "title": "Label Configuration",
+      "description": "Customize label names, colors, and descriptions",
+      "prefix": "Prefix",
+      "prefixPlaceholder": "e.g. ac:",
+      "suffix": "Name",
+      "color": "Color",
+      "labelDescription": "Description",
+      "resetDefaults": "Reset to defaults",
+      "preview": "Preview",
+      "states": {
+        "new": "New",
+        "triage": "Triage",
+        "ready": "Ready",
+        "in_progress": "In Progress",
+        "review": "Review",
+        "done": "Done",
+        "blocked": "Blocked"
+      }
+    }
   },
   "dependencies": {
     "title": "Dependencies",
@@ -1052,6 +1072,8 @@
       "suggestedLabels": "Suggested Labels",
       "posting": "Posting...",
       "postToGitHub": "Post to GitHub",
+      "updateOnGitHub": "Update on GitHub",
+      "alreadyPosted": "Posted to GitHub",
       "postedToGitHub": "Posted to GitHub",
       "closeIssue": "Close Issue",
       "closingIssue": "Closing...",

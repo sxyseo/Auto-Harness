@@ -81,6 +81,7 @@ interface InvestigationStoreState {
   syncTaskState: (projectId: string, issueNumber: number, taskStatus: string) => void;
   clearLinkedTask: (projectId: string, issueNumber: number) => void;
   loadPersistedInvestigations: (projectId: string, states: PersistedInvestigationState[]) => void;
+  setGithubCommentId: (projectId: string, issueNumber: number, commentId: number) => void;
   cancelAllInvestigations: (projectId: string) => void;
   markStaleInvestigations: (projectId: string, activeIssueNumbers: Set<number>) => void;
 
@@ -314,6 +315,23 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
     };
   }),
 
+  setGithubCommentId: (projectId: string, issueNumber: number, commentId: number) => set((state) => {
+    const key = `${projectId}:${issueNumber}`;
+    const existing = state.investigations[key];
+    if (!existing) return state;
+    const log = [...(existing.activityLog ?? []), { event: 'posted to GitHub', timestamp: new Date().toISOString() }].slice(-50);
+    return {
+      investigations: {
+        ...state.investigations,
+        [key]: {
+          ...existing,
+          githubCommentId: commentId,
+          activityLog: log,
+        }
+      }
+    };
+  }),
+
   loadPersistedInvestigations: (projectId: string, states: PersistedInvestigationState[]) => set((state) => {
     const newInvestigations = { ...state.investigations };
 
@@ -342,7 +360,7 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
         startedAt: null,
         completedAt: persisted.completedAt ?? null,
         linkedTaskStatus: null,
-        activityLog: []
+        activityLog: persisted.activityLog ?? []
       };
     }
 

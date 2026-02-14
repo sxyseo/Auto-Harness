@@ -25,6 +25,7 @@ import type {
   GitHubInvestigationStatus,
   InvestigationProgress,
   InvestigationResult,
+  InvestigationReport,
   InvestigationSettings,
   InvestigationDismissReason,
 } from '../../../shared/types';
@@ -53,6 +54,198 @@ import {
 import { killProcessGracefully } from '../../platform';
 
 const { debug: debugLog } = createContextLogger('Investigation');
+
+// ============================================
+// Activity Log Persistence
+// ============================================
+
+interface ActivityLogEntry {
+  event: string;
+  timestamp: string;
+}
+
+/**
+ * Get the path to an issue's activity log file.
+ */
+function getActivityLogPath(projectPath: string, issueNumber: number): string {
+  return path.join(projectPath, '.auto-claude', 'issues', String(issueNumber), 'activity_log.json');
+}
+
+/**
+ * Append an activity log entry to disk for an issue.
+ * Creates the file if it doesn't exist. Capped at 100 entries.
+ */
+function appendActivityLogEntry(projectPath: string, issueNumber: number, event: string): void {
+  try {
+    const logPath = getActivityLogPath(projectPath, issueNumber);
+    const dir = path.dirname(logPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    let entries: ActivityLogEntry[] = [];
+    if (fs.existsSync(logPath)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(logPath, 'utf-8'));
+        if (Array.isArray(data)) entries = data;
+      } catch {
+        // Corrupt file, start fresh
+      }
+    }
+
+    entries.push({ event, timestamp: new Date().toISOString() });
+
+    // Cap at 100 entries
+    if (entries.length > 100) {
+      entries = entries.slice(-100);
+    }
+
+    fs.writeFileSync(logPath, JSON.stringify(entries, null, 2), 'utf-8');
+  } catch (err) {
+    debugLog('Failed to append activity log entry', {
+      issueNumber,
+      event,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
+ * Load the persisted activity log for an issue.
+ */
+function loadActivityLog(projectPath: string, issueNumber: number): ActivityLogEntry[] {
+  try {
+    const logPath = getActivityLogPath(projectPath, issueNumber);
+    if (!fs.existsSync(logPath)) return [];
+    const data = JSON.parse(fs.readFileSync(logPath, 'utf-8'));
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+// ============================================
+// Python → TypeScript Report Transformation
+// ============================================
+
+/**
+ * Transform a raw Python investigation report (snake_case Pydantic output)
+ * into the TypeScript InvestigationReport shape (camelCase).
+ *
+ * The Python backend uses Pydantic model_dump(mode="json") which outputs
+ * snake_case keys. The frontend types use camelCase. This function bridges
+ * the two schemas.
+ */
+function transformPythonReport(raw: Record<string, unknown>): InvestigationReport {
+  const codePathsToRefs = (paths: unknown[]) =>
+    (paths ?? []).map((p: unknown) => {
+      const cp = p as Record<string, unknown>;
+      return {
+        file: (cp.file as string) ?? '',
+        line: cp.start_line as number | undefined,
+        endLine: cp.end_line as number | undefined,
+        description: (cp.description as string) ?? '',
+      };
+    });
+
+  const confidenceToNumber = (conf: unknown): number => {
+    if (typeof conf === 'number') return conf;
+    const map: Record<string, number> = { high: 90, medium: 60, low: 30 };
+    return map[String(conf)] ?? 50;
+  };
+
+  const transformAgent = (
+    agentType: string,
+    data: unknown,
+  ): { agentType: string; summary: string; findings: string[]; codeReferences: ReturnType<typeof codePathsToRefs>; confidence: number } => {
+    if (!data || typeof data !== 'object') {
+      return { agentType, summary: '', findings: [], codeReferences: [], confidence: 0 };
+    }
+    const d = data as Record<string, unknown>;
+
+    // Each Python specialist has different field structures — extract summary/findings generically
+    let summary = '';
+    const findings: string[] = [];
+
+    if (agentType === 'root_cause') {
+      summary = (d.identified_root_cause as string) ?? '';
+      if (d.evidence) findings.push(d.evidence as string);
+      for (const ri of (d.related_issues as string[]) ?? []) findings.push(ri);
+    } else if (agentType === 'impact') {
+      summary = `Severity: ${d.severity ?? 'unknown'}. ${(d.blast_radius as string) ?? ''}`;
+      if (d.user_impact) findings.push(`User impact: ${d.user_impact}`);
+      if (d.regression_risk) findings.push(`Regression risk: ${d.regression_risk}`);
+      for (const ac of (d.affected_components as Array<Record<string, unknown>>) ?? []) {
+        findings.push(`${ac.component}: ${ac.description}`);
+      }
+    } else if (agentType === 'fix_advisor') {
+      const approaches = (d.approaches as Array<Record<string, unknown>>) ?? [];
+      const recIdx = (d.recommended_approach as number) ?? 0;
+      const rec = approaches[recIdx];
+      summary = rec ? (rec.description as string) ?? '' : '';
+      for (const a of approaches) findings.push(`[${a.complexity}] ${a.description}`);
+      for (const g of (d.gotchas as string[]) ?? []) findings.push(`Gotcha: ${g}`);
+    } else if (agentType === 'reproducer') {
+      summary = `Reproducible: ${d.reproducible ?? 'unknown'}. ${(d.suggested_test_approach as string) ?? ''}`;
+      for (const step of (d.reproduction_steps as string[]) ?? []) findings.push(step);
+      const tc = d.test_coverage as Record<string, unknown> | undefined;
+      if (tc?.coverage_assessment) findings.push(`Coverage: ${tc.coverage_assessment}`);
+    }
+
+    return {
+      agentType,
+      summary,
+      findings,
+      codeReferences: codePathsToRefs((d.code_paths as unknown[]) ?? []),
+      confidence: confidenceToNumber(d.confidence),
+    };
+  };
+
+  const rootCause = transformAgent('root_cause', raw.root_cause);
+  const impact = transformAgent('impact', raw.impact);
+  const fixAdvice = transformAgent('fix_advisor', raw.fix_advice);
+  const reproduction = transformAgent('reproducer', raw.reproduction);
+
+  // Transform suggested labels
+  const suggestedLabels = ((raw.suggested_labels as Array<Record<string, unknown>>) ?? []).map(l => ({
+    name: (l.name as string) ?? '',
+    reason: (l.reason as string) ?? '',
+    accepted: l.accepted as boolean | undefined,
+  }));
+
+  // Transform linked PRs
+  const linkedPRs = ((raw.linked_prs as Array<Record<string, unknown>>) ?? []).map(pr => ({
+    number: (pr.number as number) ?? 0,
+    title: (pr.title as string) ?? '',
+    state: ((pr.status ?? pr.state) as string) ?? 'open',
+    url: (pr.url as string) ?? '',
+  }));
+
+  return {
+    rootCause: { ...rootCause, agentType: 'root_cause', rootCause: rootCause.summary, codePaths: [], relatedIssues: [] },
+    impact: { ...impact, agentType: 'impact', severity: (raw.impact as Record<string, unknown>)?.severity as 'critical' | 'high' | 'medium' | 'low' ?? 'medium', affectedComponents: [], userImpact: '', riskIfUnfixed: '' },
+    fixAdvice: { ...fixAdvice, agentType: 'fix_advisor', suggestedApproaches: [], recommendedApproach: 0, patternsToFollow: [] },
+    reproduction: { ...reproduction, agentType: 'reproducer', reproducible: 'unknown', existingTests: [], testGaps: [], suggestedTests: [] },
+    summary: (raw.ai_summary as string) ?? '',
+    severity: (raw.severity as 'critical' | 'high' | 'medium' | 'low') ?? 'medium',
+    suggestedLabels,
+    likelyResolved: (raw.likely_resolved as boolean) ?? false,
+    linkedPRs,
+    timestamp: (raw.timestamp as string) ?? new Date().toISOString(),
+  } as InvestigationReport;
+}
+
+/**
+ * Check if a report object needs transformation (has snake_case keys from Python).
+ * Returns true if the report appears to be raw Python output rather than
+ * already-transformed TypeScript format.
+ */
+function needsTransformation(report: unknown): boolean {
+  if (!report || typeof report !== 'object') return false;
+  const r = report as Record<string, unknown>;
+  // Python output has root_cause (snake), TypeScript has rootCause (camel)
+  return r.root_cause !== undefined || r.ai_summary !== undefined || r.likely_resolved !== undefined;
+}
 
 // Track active investigation subprocesses, keyed by `${projectId}:${issueNumber}`
 const activeInvestigations = new Map<string, ChildProcess>();
@@ -543,6 +736,8 @@ async function runInvestigation(
 
       const startedAt = new Date().toISOString();
 
+      appendActivityLogEntry(project.path, issueNumber, 'Investigation started');
+
       sendProgress({
         issueNumber,
         phase: 'starting',
@@ -596,17 +791,35 @@ async function runInvestigation(
       }
 
       if (!result.success) {
+        appendActivityLogEntry(project.path, issueNumber, `Investigation failed: ${result.error ?? 'unknown error'}`);
         sendError({ error: result.error ?? 'Investigation failed', issueNumber });
         return;
       }
 
-      const investigationResult = result.data as InvestigationResult;
+      // The Python subprocess outputs a raw InvestigationReport (snake_case Pydantic dict),
+      // NOT an InvestigationResult envelope. We need to wrap it properly so the renderer
+      // store can key on issueNumber and transition state from "investigating" → "findings_ready".
+      const rawReport = result.data as unknown as Record<string, unknown>;
+      const transformedReport = needsTransformation(rawReport)
+        ? transformPythonReport(rawReport)
+        : rawReport as unknown as InvestigationReport;
+
+      const investigationResult: InvestigationResult = {
+        issueNumber,
+        report: transformedReport,
+        completedAt: new Date().toISOString(),
+      };
       sendComplete(investigationResult);
+
+      appendActivityLogEntry(project.path, issueNumber, 'Investigation completed');
 
       // --- Auto-create task if setting is enabled ---
       const settings = getInvestigationSettings(projectId);
       if (settings.autoCreateTasks) {
         const specData = await autoCreateTaskFromInvestigation(projectId, issueNumber);
+        if (specData) {
+          appendActivityLogEntry(project.path, issueNumber, `Task created: ${specData.specId}`);
+        }
         if (specData && settings.autoStartTasks && agentManager) {
           // Auto-start the build pipeline for the newly created task
           try {
@@ -815,10 +1028,13 @@ export function registerInvestigationHandlers(
     (_, projectId: string, issueNumber: number) => {
       debugLog('cancelInvestigation handler called', { projectId, issueNumber });
 
+      const project = projectStore.getProject(projectId);
+
       // First, try to remove from the queue (not yet started)
       const wasQueued = removeFromQueue(projectId, issueNumber);
       if (wasQueued) {
         debugLog('Investigation removed from queue', { projectId, issueNumber });
+        if (project) appendActivityLogEntry(project.path, issueNumber, 'Investigation cancelled (was queued)');
         // Update queue positions for remaining items
         broadcastQueuePositions(getMainWindow);
         return;
@@ -833,6 +1049,7 @@ export function registerInvestigationHandlers(
         debugLog('Investigation process killed', { processKey });
       }
 
+      if (project) appendActivityLogEntry(project.path, issueNumber, 'Investigation cancelled');
       activeInvestigations.delete(processKey);
     },
   );
@@ -989,6 +1206,7 @@ export function registerInvestigationHandlers(
             preAllocatedSpecNumber,
           );
 
+          appendActivityLogEntry(project.path, issueNumber, `Task created: ${specData.specId}`);
           return { success: true, data: { specId: specData.specId } };
         });
 
@@ -1028,6 +1246,8 @@ export function registerInvestigationHandlers(
             reason,
             dismissedAt: new Date().toISOString(),
           }, { indent: 2 });
+
+          appendActivityLogEntry(project.path, issueNumber, `Dismissed: ${reason}`);
 
           // Also close the issue on GitHub with a comment
           try {
@@ -1131,6 +1351,7 @@ export function registerInvestigationHandlers(
           }
 
           const postResult = subResult.data as { commentId: number };
+          appendActivityLogEntry(project.path, issueNumber, 'Results posted to GitHub');
           return { success: true, data: { commentId: postResult.commentId } };
         });
 
@@ -1252,6 +1473,7 @@ export function registerInvestigationHandlers(
             specId?: string;
             githubCommentId?: number;
             wasInterrupted?: boolean;
+            activityLog?: ActivityLogEntry[];
           }> = [];
           const interruptedIssues: number[] = [];
 
@@ -1279,13 +1501,17 @@ export function registerInvestigationHandlers(
                   specId: stateData.spec_id ?? stateData.linked_spec_id ?? undefined,
                   githubCommentId: stateData.github_comment_id ?? undefined,
                   wasInterrupted: true,
+                  activityLog: loadActivityLog(project.path, issueNumber),
                 };
 
                 // Try to load partial report if one exists
                 const reportFile = path.join(issueDir, 'investigation_report.json');
                 if (fs.existsSync(reportFile)) {
                   try {
-                    item.report = JSON.parse(fs.readFileSync(reportFile, 'utf-8'));
+                    const rawReport = JSON.parse(fs.readFileSync(reportFile, 'utf-8'));
+                    item.report = needsTransformation(rawReport)
+                      ? transformPythonReport(rawReport)
+                      : rawReport;
                   } catch {
                     // Ignore corrupt report files
                   }
@@ -1303,13 +1529,16 @@ export function registerInvestigationHandlers(
               // Skip cancelled investigations
               if (status === 'cancelled') continue;
 
-              // For completed states, load the report
+              // For completed states, load and transform the report
               const reportFile = path.join(issueDir, 'investigation_report.json');
               let report: unknown | undefined;
 
               if (fs.existsSync(reportFile)) {
                 try {
-                  report = JSON.parse(fs.readFileSync(reportFile, 'utf-8'));
+                  const rawReport = JSON.parse(fs.readFileSync(reportFile, 'utf-8'));
+                  report = needsTransformation(rawReport)
+                    ? transformPythonReport(rawReport)
+                    : rawReport;
                 } catch {
                   // Ignore corrupt report files
                 }
@@ -1323,6 +1552,7 @@ export function registerInvestigationHandlers(
                 specId: stateData.spec_id ?? stateData.linked_spec_id ?? undefined,
                 githubCommentId: stateData.github_comment_id ?? undefined,
                 wasInterrupted: false,
+                activityLog: loadActivityLog(project.path, issueNumber),
               });
             } catch {
               // Skip issues with corrupt state files

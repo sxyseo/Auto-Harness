@@ -3,6 +3,23 @@
  * Optional one-directional sync of workflow state labels to GitHub.
  */
 
+import type { WorkflowState } from './enrichment';
+
+// ============================================
+// Label Customization
+// ============================================
+
+export interface CustomWorkflowLabel {
+  suffix: string;
+  color: string; // 6-char hex, no #
+  description: string;
+}
+
+export interface WorkflowLabelCustomization {
+  prefix: string; // default "ac:"
+  labels: Record<WorkflowState, CustomWorkflowLabel>;
+}
+
 // ============================================
 // Configuration
 // ============================================
@@ -10,6 +27,7 @@
 export interface LabelSyncConfig {
   enabled: boolean;
   lastSyncedAt: string | null;
+  customization?: WorkflowLabelCustomization;
 }
 
 // ============================================

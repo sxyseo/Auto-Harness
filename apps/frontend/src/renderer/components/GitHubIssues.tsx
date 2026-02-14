@@ -502,8 +502,13 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
 
   const handlePostToGitHub = useCallback(async () => {
     if (!selectedProject?.id || !selectedIssue) return;
-    await window.electronAPI.github.postInvestigationToGitHub(selectedProject.id, selectedIssue.number);
-  }, [selectedProject?.id, selectedIssue]);
+    const result = await window.electronAPI.github.postInvestigationToGitHub(selectedProject.id, selectedIssue.number);
+    if (result?.success) {
+      // Track that we posted — use the comment ID if available, or a timestamp marker
+      const commentId = result.data?.commentId ?? Date.now();
+      investigationStore.setGithubCommentId(selectedProject.id, selectedIssue.number, commentId);
+    }
+  }, [selectedProject?.id, selectedIssue, investigationStore]);
 
   const [isPostingToGitHub, setIsPostingToGitHub] = useState(false);
   const handlePostToGitHubWrapped = useCallback(async () => {
@@ -638,6 +643,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
                 onDismissIssue={handleDismissIssue}
                 onPostToGitHub={handlePostToGitHubWrapped}
                 isPostingToGitHub={isPostingToGitHub}
+                githubCommentId={selectedIssueEntry?.githubCommentId ?? null}
                 investigationActivityLog={selectedIssueEntry?.activityLog}
               />
             ) : (

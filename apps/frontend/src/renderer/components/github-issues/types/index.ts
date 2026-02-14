@@ -153,6 +153,8 @@ export interface IssueDetailProps {
   onRejectLabel?: (label: SuggestedLabel) => void;
   /** Whether posting to GitHub is in progress */
   isPostingToGitHub?: boolean;
+  /** GitHub comment ID if investigation results have been posted */
+  githubCommentId?: number | null;
   /** Activity log entries for the investigation lifecycle */
   investigationActivityLog?: Array<{ event: string; timestamp: string }>;
 }

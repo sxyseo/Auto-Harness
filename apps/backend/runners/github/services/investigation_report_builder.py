@@ -14,7 +14,10 @@ from datetime import datetime, timezone
 try:
     from .investigation_models import InvestigationReport
 except (ImportError, ValueError, SystemError):
-    from investigation_models import InvestigationReport
+    try:
+        from services.investigation_models import InvestigationReport
+    except (ImportError, ModuleNotFoundError):
+        from investigation_models import InvestigationReport
 
 
 def build_github_comment(report: InvestigationReport) -> str:

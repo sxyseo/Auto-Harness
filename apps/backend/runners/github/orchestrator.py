@@ -205,7 +205,9 @@ class GitHubOrchestrator:
             progress_callback=self.progress_callback,
         )
 
-        self.label_manager = InvestigationLabelManager()
+        # Read investigation label customization from config
+        label_customization = self._load_investigation_label_customization()
+        self.label_manager = InvestigationLabelManager(customization=label_customization)
 
     def _report_progress(
         self,
@@ -304,6 +306,24 @@ class GitHubOrchestrator:
     # =========================================================================
     # Helper Methods
     # =========================================================================
+
+    def _load_investigation_label_customization(self) -> dict | None:
+        """Load investigation label customization from GitHub config."""
+        try:
+            config_path = self.github_dir / "config.json"
+            if config_path.exists():
+                import json
+
+                with open(config_path, "r") as f:
+                    config = json.load(f)
+                investigation_settings = config.get("investigation_settings", {})
+                return investigation_settings.get("labelCustomization")
+        except Exception as e:
+            safe_print(
+                f"[DEBUG orchestrator] Could not load label customization: {e}",
+                flush=True,
+            )
+        return None
 
     async def _create_skip_result(
         self, pr_number: int, skip_reason: str

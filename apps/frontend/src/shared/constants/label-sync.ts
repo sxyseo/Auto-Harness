@@ -3,7 +3,7 @@
  * WORKFLOW_LABEL_MAP is the single source of truth for state → GitHub label mapping.
  */
 import type { WorkflowState } from '../types/enrichment';
-import type { WorkflowLabel } from '../types/label-sync';
+import type { WorkflowLabel, WorkflowLabelCustomization, CustomWorkflowLabel } from '../types/label-sync';
 
 // ============================================
 // Label Prefix
@@ -40,6 +40,20 @@ export const WORKFLOW_LABEL_COLORS: Record<WorkflowState, string> = {
 };
 
 // ============================================
+// Default Suffixes (used by factory)
+// ============================================
+
+const DEFAULT_SUFFIXES: Record<WorkflowState, string> = {
+  new: 'new',
+  triage: 'triage',
+  ready: 'ready',
+  in_progress: 'in-progress',
+  review: 'review',
+  done: 'done',
+  blocked: 'blocked',
+};
+
+// ============================================
 // Label Description
 // ============================================
 
@@ -58,28 +72,88 @@ export const SYNC_DEBOUNCE_MS = 2000;
 export const TRIAGE_MODE_MIN_WIDTH = 1200;
 
 // ============================================
+// Customization Factory & Resolver
+// ============================================
+
+export function createDefaultWorkflowCustomization(): WorkflowLabelCustomization {
+  const labels = {} as Record<WorkflowState, CustomWorkflowLabel>;
+  for (const state of Object.keys(WORKFLOW_LABEL_MAP) as WorkflowState[]) {
+    labels[state] = {
+      suffix: DEFAULT_SUFFIXES[state],
+      color: WORKFLOW_LABEL_COLORS[state],
+      description: LABEL_DESCRIPTION,
+    };
+  }
+  return { prefix: LABEL_PREFIX, labels };
+}
+
+export function resolveWorkflowCustomization(
+  custom?: WorkflowLabelCustomization,
+): WorkflowLabelCustomization {
+  if (!custom) return createDefaultWorkflowCustomization();
+  const defaults = createDefaultWorkflowCustomization();
+  const labels = {} as Record<WorkflowState, CustomWorkflowLabel>;
+  for (const state of Object.keys(defaults.labels) as WorkflowState[]) {
+    labels[state] = {
+      ...defaults.labels[state],
+      ...(custom.labels?.[state] ?? {}),
+    };
+  }
+  return { prefix: custom.prefix || defaults.prefix, labels };
+}
+
+// ============================================
 // Utility Functions
 // ============================================
 
-export function getLabelForState(state: WorkflowState): string {
-  return WORKFLOW_LABEL_MAP[state];
+export function getLabelForState(
+  state: WorkflowState,
+  customization?: WorkflowLabelCustomization,
+): string {
+  if (!customization) return WORKFLOW_LABEL_MAP[state];
+  const resolved = resolveWorkflowCustomization(customization);
+  return `${resolved.prefix}${resolved.labels[state].suffix}`;
 }
 
-export function getStateFromLabel(label: string): WorkflowState | null {
-  for (const [state, labelName] of Object.entries(WORKFLOW_LABEL_MAP)) {
-    if (labelName === label) return state as WorkflowState;
+export function getStateFromLabel(
+  label: string,
+  customization?: WorkflowLabelCustomization,
+): WorkflowState | null {
+  if (!customization) {
+    for (const [state, labelName] of Object.entries(WORKFLOW_LABEL_MAP)) {
+      if (labelName === label) return state as WorkflowState;
+    }
+    return null;
+  }
+  const resolved = resolveWorkflowCustomization(customization);
+  for (const [state, cfg] of Object.entries(resolved.labels)) {
+    if (`${resolved.prefix}${cfg.suffix}` === label) return state as WorkflowState;
   }
   return null;
 }
 
-export function getWorkflowLabels(): WorkflowLabel[] {
-  return (Object.keys(WORKFLOW_LABEL_MAP) as WorkflowState[]).map((state) => ({
-    name: WORKFLOW_LABEL_MAP[state],
-    color: WORKFLOW_LABEL_COLORS[state],
-    description: LABEL_DESCRIPTION,
+export function getWorkflowLabels(
+  customization?: WorkflowLabelCustomization,
+): WorkflowLabel[] {
+  if (!customization) {
+    return (Object.keys(WORKFLOW_LABEL_MAP) as WorkflowState[]).map((state) => ({
+      name: WORKFLOW_LABEL_MAP[state],
+      color: WORKFLOW_LABEL_COLORS[state],
+      description: LABEL_DESCRIPTION,
+    }));
+  }
+  const resolved = resolveWorkflowCustomization(customization);
+  return (Object.keys(resolved.labels) as WorkflowState[]).map((state) => ({
+    name: `${resolved.prefix}${resolved.labels[state].suffix}`,
+    color: resolved.labels[state].color,
+    description: resolved.labels[state].description,
   }));
 }
 
-export function isAutoClaudeLabel(label: string): boolean {
-  return label.startsWith(LABEL_PREFIX);
+export function isAutoClaudeLabel(
+  label: string,
+  customization?: WorkflowLabelCustomization,
+): boolean {
+  const prefix = customization?.prefix || LABEL_PREFIX;
+  return label.startsWith(prefix);
 }

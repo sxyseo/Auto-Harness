@@ -71,6 +71,7 @@ export function IssueDetail({
   onAcceptLabel,
   onRejectLabel,
   isPostingToGitHub,
+  githubCommentId,
   investigationActivityLog,
 }: IssueDetailProps) {
   const { t } = useTranslation('common');
@@ -186,6 +187,25 @@ export function IssueDetail({
               {t('phase5.commentCount', { count: issue.commentsCount })}
             </div>
           )}
+          {/* Assignees — inline in meta row */}
+          {onAddAssignees && onRemoveAssignees && collaborators ? (
+            <AssigneeManager
+              currentAssignees={issue.assignees}
+              collaborators={collaborators}
+              onAddAssignee={(login) => onAddAssignees([login])}
+              onRemoveAssignee={(login) => onRemoveAssignees([login])}
+              inline
+            />
+          ) : issue.assignees.length > 0 ? (
+            <div className="flex items-center gap-1">
+              {issue.assignees.map((assignee) => (
+                <Badge key={assignee.login} variant="outline" className="text-xs">
+                  <User className="h-3 w-3 mr-1" />
+                  {assignee.login}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {/* Labels */}
@@ -336,6 +356,7 @@ export function IssueDetail({
                 onAcceptLabel={onAcceptLabel}
                 onRejectLabel={onRejectLabel}
                 isPostingToGitHub={isPostingToGitHub}
+                githubCommentId={githubCommentId}
                 activityLog={investigationActivityLog}
                 onCloseIssue={issue.state === 'open' && onClose ? handleClose : undefined}
                 isClosingIssue={isClosing}
@@ -427,38 +448,6 @@ export function IssueDetail({
           </Card>
         )}
 
-        {/* Assignees */}
-        {onAddAssignees && onRemoveAssignees && collaborators ? (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{t('assignees.title')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AssigneeManager
-                currentAssignees={issue.assignees}
-                collaborators={collaborators}
-                onAddAssignee={(login) => onAddAssignees([login])}
-                onRemoveAssignee={(login) => onRemoveAssignees([login])}
-              />
-            </CardContent>
-          </Card>
-        ) : issue.assignees.length > 0 ? (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{t('assignees.title')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {issue.assignees.map((assignee) => (
-                  <Badge key={assignee.login} variant="outline">
-                    <User className="h-3 w-3 mr-1" />
-                    {assignee.login}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ) : null}
 
         {/* Milestone */}
         {issue.milestone && (

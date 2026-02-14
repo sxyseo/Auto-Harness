@@ -38,18 +38,32 @@ try:
     )
     from .parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
 except (ImportError, ValueError, SystemError):
-    from investigation_models import (
-        FixAdvice,
-        ImpactAssessment,
-        InvestigationReport,
-        ReproductionAnalysis,
-        RootCauseAnalysis,
-    )
-    from investigation_persistence import (
-        save_agent_log,
-        save_investigation_report,
-    )
-    from parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
+    try:
+        from services.investigation_models import (
+            FixAdvice,
+            ImpactAssessment,
+            InvestigationReport,
+            ReproductionAnalysis,
+            RootCauseAnalysis,
+        )
+        from services.investigation_persistence import (
+            save_agent_log,
+            save_investigation_report,
+        )
+        from services.parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
+    except (ImportError, ModuleNotFoundError):
+        from investigation_models import (
+            FixAdvice,
+            ImpactAssessment,
+            InvestigationReport,
+            ReproductionAnalysis,
+            RootCauseAnalysis,
+        )
+        from investigation_persistence import (
+            save_agent_log,
+            save_investigation_report,
+        )
+        from parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
     from phase_config import (
         get_thinking_budget,
         resolve_model_id,

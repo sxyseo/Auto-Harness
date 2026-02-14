@@ -35,6 +35,8 @@ interface InvestigationPanelProps {
   onAcceptLabel?: (label: SuggestedLabel) => void;
   onRejectLabel?: (label: SuggestedLabel) => void;
   isPostingToGitHub?: boolean;
+  /** GitHub comment ID if results have been posted already */
+  githubCommentId?: number | null;
   /** Activity log entries for the investigation lifecycle */
   activityLog?: Array<{ event: string; timestamp: string }>;
   /** Callback to close the issue on GitHub (used for resolved suggestion) */
@@ -152,6 +154,7 @@ export function InvestigationPanel({
   onAcceptLabel,
   onRejectLabel,
   isPostingToGitHub,
+  githubCommentId,
   activityLog,
   onCloseIssue,
   isClosingIssue,
@@ -294,6 +297,12 @@ export function InvestigationPanel({
       {/* Actions */}
       {onPostToGitHub && state !== 'done' && (
         <div className="flex items-center gap-2 pt-2 border-t">
+          {githubCommentId && (
+            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+              <Check className="h-3 w-3" />
+              {t('investigation.panel.alreadyPosted', 'Posted to GitHub')}
+            </span>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -303,7 +312,9 @@ export function InvestigationPanel({
             <Send className="h-4 w-4 mr-1.5" />
             {isPostingToGitHub
               ? t('investigation.panel.posting', 'Posting...')
-              : t('investigation.panel.postToGitHub', 'Post to GitHub')
+              : githubCommentId
+                ? t('investigation.panel.updateOnGitHub', 'Update on GitHub')
+                : t('investigation.panel.postToGitHub', 'Post to GitHub')
             }
           </Button>
         </div>

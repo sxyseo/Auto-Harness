@@ -24,6 +24,38 @@ logger = logging.getLogger(__name__)
 # Debounce window in seconds for label changes per issue
 _LABEL_DEBOUNCE_SECONDS = 5.0
 
+# Default label configuration — can be overridden per-project via config
+DEFAULT_LABEL_CUSTOMIZATION = {
+    "prefix": "auto-claude:",
+    "labels": {
+        "investigating": {
+            "suffix": "investigating",
+            "color": "1d76db",
+            "description": "Auto-Claude is investigating this issue",
+        },
+        "findings_ready": {
+            "suffix": "findings-ready",
+            "color": "0e8a16",
+            "description": "Investigation complete, findings available",
+        },
+        "task_created": {
+            "suffix": "task-created",
+            "color": "5319e7",
+            "description": "Kanban task created from investigation",
+        },
+        "building": {
+            "suffix": "building",
+            "color": "d93f0b",
+            "description": "Task is being built by the pipeline",
+        },
+        "done": {
+            "suffix": "done",
+            "color": "0e8a16",
+            "description": "Investigation complete, issue resolved",
+        },
+    },
+}
+
 
 class InvestigationLabelManager:
     """Manages GitHub lifecycle labels for issue investigations.
@@ -32,42 +64,30 @@ class InvestigationLabelManager:
     are logged but never propagated to callers.
     """
 
-    LABELS = {
-        "investigating": {
-            "name": "auto-claude:investigating",
-            "color": "1d76db",  # blue
-            "description": "Auto-Claude is investigating this issue",
-        },
-        "findings_ready": {
-            "name": "auto-claude:findings-ready",
-            "color": "0e8a16",  # green
-            "description": "Investigation complete, findings available",
-        },
-        "task_created": {
-            "name": "auto-claude:task-created",
-            "color": "5319e7",  # purple
-            "description": "Kanban task created from investigation",
-        },
-        "building": {
-            "name": "auto-claude:building",
-            "color": "d93f0b",  # orange
-            "description": "Task is being built by the pipeline",
-        },
-        "done": {
-            "name": "auto-claude:done",
-            "color": "0e8a16",  # green
-            "description": "Investigation complete, issue resolved",
-        },
-    }
-
-    # All managed label names for easy lookup
-    ALL_LABEL_NAMES = [label["name"] for label in LABELS.values()]
-
     # Terminal states that should never be debounced — these represent
     # important outcomes that must always be reflected on GitHub.
     _TERMINAL_STATES: set[str] = {"findings_ready", "task_created", "done", "completed"}
 
-    def __init__(self) -> None:
+    def __init__(self, customization: dict | None = None) -> None:
+        # Resolve customization from config or defaults
+        custom = customization or {}
+        prefix = custom.get("prefix", DEFAULT_LABEL_CUSTOMIZATION["prefix"])
+        label_overrides = custom.get("labels", {})
+
+        self.labels: dict[str, dict[str, str]] = {}
+        for key, defaults in DEFAULT_LABEL_CUSTOMIZATION["labels"].items():
+            overrides = label_overrides.get(key, {})
+            suffix = overrides.get("suffix", defaults["suffix"])
+            color = overrides.get("color", defaults["color"])
+            description = overrides.get("description", defaults["description"])
+            self.labels[key] = {
+                "name": f"{prefix}{suffix}",
+                "color": color,
+                "description": description,
+            }
+
+        self.all_label_names = [label["name"] for label in self.labels.values()]
+
         # Track last label-change timestamp per issue for debounce
         self._last_label_time: dict[int, float] = {}
         # Track pending (debounced) label state per issue for trailing-edge apply
@@ -89,7 +109,7 @@ class InvestigationLabelManager:
         Called once when an investigation starts. Uses the GitHub API
         to create each label; existing labels are silently skipped.
         """
-        for key, label_def in self.LABELS.items():
+        for key, label_def in self.labels.items():
             try:
                 await gh_client.run(
                     [
@@ -185,7 +205,7 @@ class InvestigationLabelManager:
     ) -> None:
         """Remove all auto-claude: lifecycle labels from an issue."""
         try:
-            await gh_client.issue_remove_labels(issue_number, self.ALL_LABEL_NAMES)
+            await gh_client.issue_remove_labels(issue_number, self.all_label_names)
         except Exception as e:
             logger.debug(
                 "Failed to remove investigation labels from #%d: %s",
@@ -198,4 +218,4 @@ class InvestigationLabelManager:
         key = self._STATE_MAP.get(state)
         if key is None:
             return None
-        return self.LABELS[key]["name"]
+        return self.labels[key]["name"]

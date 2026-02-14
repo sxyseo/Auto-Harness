@@ -919,6 +919,24 @@
     "labelIncludeFilterDescription": "Ne créer automatiquement des tâches que pour les issues avec ces labels (vide = toutes)",
     "labelExcludeFilter": "Filtre d'exclusion de labels",
     "labelExcludeFilterDescription": "Ne jamais créer de tâches pour les issues avec ces labels (vide = aucun)",
-    "labelPlaceholder": "Ajouter un label..."
+    "labelPlaceholder": "Ajouter un label...",
+    "labelCustomization": {
+      "title": "Labels d'investigation",
+      "description": "Personnaliser les noms, couleurs et descriptions des labels du cycle d'investigation",
+      "prefix": "Préfixe",
+      "prefixPlaceholder": "ex. auto-claude:",
+      "suffix": "Nom",
+      "color": "Couleur",
+      "labelDescription": "Description",
+      "resetDefaults": "Réinitialiser les valeurs par défaut",
+      "preview": "Aperçu",
+      "states": {
+        "investigating": "En investigation",
+        "findings_ready": "Résultats prêts",
+        "task_created": "Tâche créée",
+        "building": "En construction",
+        "done": "Terminé"
+      }
+    }
   }
 }

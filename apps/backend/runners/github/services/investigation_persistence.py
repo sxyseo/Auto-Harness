@@ -31,7 +31,10 @@ try:
     from .investigation_models import InvestigationReport, InvestigationState
 except (ImportError, ValueError, SystemError):
     from core.file_utils import write_json_atomic
-    from investigation_models import InvestigationReport, InvestigationState
+    try:
+        from services.investigation_models import InvestigationReport, InvestigationState
+    except (ImportError, ModuleNotFoundError):
+        from investigation_models import InvestigationReport, InvestigationState
 
 logger = logging.getLogger(__name__)
 
