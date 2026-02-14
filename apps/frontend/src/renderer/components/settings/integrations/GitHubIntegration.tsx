@@ -70,10 +70,6 @@ export function GitHubIntegration({
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [branchesError, setBranchesError] = useState<string | null>(null);
 
-  debugLog('Render - authMode:', authMode);
-  debugLog('Render - projectPath:', projectPath);
-  debugLog('Render - envConfig:', envConfig ? { githubEnabled: envConfig.githubEnabled, hasToken: !!envConfig.githubToken, defaultBranch: envConfig.defaultBranch } : null);
-
   // Fetch repos when entering oauth-success mode
   useEffect(() => {
     if (authMode === 'oauth-success') {
@@ -84,12 +80,8 @@ export function GitHubIntegration({
 
   // Fetch branches when GitHub is enabled and project path is available
   useEffect(() => {
-    debugLog(`useEffect[branches] - githubEnabled: ${envConfig?.githubEnabled}, projectPath: ${projectPath}`);
     if (envConfig?.githubEnabled && projectPath) {
-      debugLog('useEffect[branches] - Triggering fetchBranches');
       fetchBranches();
-    } else {
-      debugLog('useEffect[branches] - Skipping fetchBranches (conditions not met)');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [envConfig?.githubEnabled, projectPath]);

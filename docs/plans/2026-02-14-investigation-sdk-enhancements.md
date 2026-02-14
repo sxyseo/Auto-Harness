@@ -19,92 +19,92 @@
 
 | Step | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 1.1 | Add `max_turns` and `thinking_budget_multiplier` fields to `SpecialistConfig` dataclass | `pending` | — |
-| 1.2 | Verify `max_messages` param already exists in `_run_specialist_session` (no-op) | `pending` | — |
-| 1.3 | Set per-specialist values in `INVESTIGATION_SPECIALISTS` | `pending` | — |
-| 1.4 | Apply thinking multiplier in `_make_specialist_factory` | `pending` | — |
-| 1.5 | Run backend tests — verify no regressions | `pending` | — |
-| 1.6 | Commit | `pending` | — |
+| 1.1 | Add `max_turns` and `thinking_budget_multiplier` fields to `SpecialistConfig` dataclass | `done` | 477a9e4a |
+| 1.2 | Verify `max_messages` param already exists in `_run_specialist_session` (no-op) | `done` | 477a9e4a |
+| 1.3 | Set per-specialist values in `INVESTIGATION_SPECIALISTS` | `done` | 477a9e4a |
+| 1.4 | Apply thinking multiplier in `_make_specialist_factory` | `done` | 477a9e4a |
+| 1.5 | Run backend tests — verify no regressions | `done` | 477a9e4a |
+| 1.6 | Commit | `done` | 477a9e4a |
 
 ### Task 2: Create investigation hooks module (Bash guard)
 
 | Step | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 2.1 | Write tests for `investigation_bash_guard` (allowlist + blocklist + edge cases) | `pending` | — |
-| 2.2 | Run tests — verify they fail (ImportError) | `pending` | — |
-| 2.3 | Create `investigation_hooks.py` with `INVESTIGATION_BASH_ALLOWLIST` + `investigation_bash_guard()` | `pending` | — |
-| 2.4 | Run tests — verify all pass | `pending` | — |
-| 2.5 | Commit | `pending` | — |
+| 2.1 | Write tests for `investigation_bash_guard` (allowlist + blocklist + edge cases) | `done` | 37c1f305 |
+| 2.2 | Run tests — verify they fail (ImportError) | `done` | 37c1f305 |
+| 2.3 | Create `investigation_hooks.py` with `INVESTIGATION_BASH_ALLOWLIST` + `investigation_bash_guard()` | `done` | 37c1f305 |
+| 2.4 | Run tests — verify all pass | `done` | 37c1f305 |
+| 2.5 | Commit | `done` | 37c1f305 |
 
 ### Task 3: Wire Bash access + hooks into parallel_agent_base
 
 | Step | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 3.1 | Add `"Bash"` to all 4 specialist tool lists in `INVESTIGATION_SPECIALISTS` | `pending` | — |
-| 3.2 | Add `investigation_bash_guard` import to `parallel_agent_base.py` | `pending` | — |
-| 3.3 | Wire `PreToolUse` `HookMatcher` in `_run_specialist_session` when Bash in tools | `pending` | — |
-| 3.4 | Run backend tests — verify all pass | `pending` | — |
-| 3.5 | Commit | `pending` | — |
+| 3.1 | Add `"Bash"` to all 4 specialist tool lists in `INVESTIGATION_SPECIALISTS` | `done` | 402700d1 |
+| 3.2 | Add `investigation_bash_guard` import to `parallel_agent_base.py` | `done` | 402700d1 |
+| 3.3 | Wire `PreToolUse` `HookMatcher` in `_run_specialist_session` when Bash in tools | `done` | 402700d1 |
+| 3.4 | Run backend tests — verify all pass | `done` | 402700d1 |
+| 3.5 | Commit | `done` | 402700d1 |
 
 ### Task 4: Add structured JSON progress events
 
 | Step | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 4.1 | Add `emit_json_event()` utility to `investigation_hooks.py` | `pending` | — |
-| 4.2 | Wire `on_thinking`/`on_tool_use`/`on_tool_result` callbacks in `_make_specialist_factory` | `pending` | — |
-| 4.3 | Add `on_thinking`/`on_tool_use`/`on_tool_result` params to `_run_specialist_session` signature | `pending` | — |
-| 4.4 | Pass callbacks through to `process_sdk_stream` in `stream_kwargs` | `pending` | — |
-| 4.5 | Extend `InvestigationLogEntry` type with `toolName`, `thinkingPreview`, `thinkingChars`, `isStructured` | `pending` | — |
-| 4.6 | Add JSON parsing path to `parseInvestigationLogLine()` | `pending` | — |
-| 4.7 | Pass new fields through in `InvestigationLogCollector.processLine()` | `pending` | — |
-| 4.8 | Run frontend typecheck | `pending` | — |
-| 4.9 | Run backend tests | `pending` | — |
-| 4.10 | Commit | `pending` | — |
+| 4.1 | Add `emit_json_event()` utility to `investigation_hooks.py` | `done` | af01baca |
+| 4.2 | Wire `on_thinking`/`on_tool_use`/`on_tool_result` callbacks in `_make_specialist_factory` | `done` | af01baca |
+| 4.3 | Add `on_thinking`/`on_tool_use`/`on_tool_result` params to `_run_specialist_session` signature | `done` | af01baca |
+| 4.4 | Pass callbacks through to `process_sdk_stream` in `stream_kwargs` | `done` | af01baca |
+| 4.5 | Extend `InvestigationLogEntry` type with `toolName`, `thinkingPreview`, `thinkingChars`, `isStructured` | `done` | af01baca |
+| 4.6 | Add JSON parsing path to `parseInvestigationLogLine()` | `done` | af01baca |
+| 4.7 | Pass new fields through in `InvestigationLogCollector.processLine()` | `done` | af01baca |
+| 4.8 | Run frontend typecheck | `done` | af01baca |
+| 4.9 | Run backend tests | `done` | af01baca |
+| 4.10 | Commit | `done` | af01baca |
 
 ### Task 5: Add session persistence for resumable investigations
 
 | Step | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 5.1 | Add `sessions: dict[str, str | None]` field to `InvestigationState` model | `pending` | — |
-| 5.2 | Add `save_specialist_session()` to `investigation_persistence.py` | `pending` | — |
-| 5.3 | Add `load_specialist_sessions()` to `investigation_persistence.py` | `pending` | — |
-| 5.4 | Add `resume_session_id` param to `_run_specialist_session` signature | `pending` | — |
-| 5.5 | Wire `resume` into `client_kwargs` when `resume_session_id` is set | `pending` | — |
-| 5.6 | Capture `session_id` from client after `query()` and include in return dict | `pending` | — |
-| 5.7 | Save session IDs after parallel gather in `_run_investigation_specialists` | `pending` | — |
-| 5.8 | Add `issue_number` param to `_run_investigation_specialists` for session saving | `pending` | — |
-| 5.9 | Run backend tests | `pending` | — |
-| 5.10 | Commit | `pending` | — |
+| 5.1 | Add `sessions: dict[str, str | None]` field to `InvestigationState` model | `done` | a89bd759 |
+| 5.2 | Add `save_specialist_session()` to `investigation_persistence.py` | `done` | a89bd759 |
+| 5.3 | Add `load_specialist_sessions()` to `investigation_persistence.py` | `done` | a89bd759 |
+| 5.4 | Add `resume_session_id` param to `_run_specialist_session` signature | `done` | a89bd759 |
+| 5.5 | Wire `resume` into `client_kwargs` when `resume_session_id` is set | `done` | a89bd759 |
+| 5.6 | Capture `session_id` from client after `query()` and include in return dict | `done` | a89bd759 |
+| 5.7 | Save session IDs after parallel gather in `_run_investigation_specialists` | `done` | a89bd759 |
+| 5.8 | Add `issue_number` param to `_run_investigation_specialists` for session saving | `done` | a89bd759 |
+| 5.9 | Run backend tests | `done` | a89bd759 |
+| 5.10 | Commit | `done` | a89bd759 |
 
 ### Task 6: Wire resume into frontend investigation handlers
 
 | Step | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 6.1 | Add `--resume-sessions` CLI arg to `investigate` subparser in `runner.py` | `pending` | — |
-| 6.2 | Parse `--resume-sessions` JSON in `cmd_investigate()` and pass to orchestrator | `pending` | — |
-| 6.3 | Read session IDs from `investigation_state.json` in `runInvestigation()` | `pending` | — |
-| 6.4 | Append `--resume-sessions` arg to subprocess args when resuming | `pending` | — |
-| 6.5 | Run frontend typecheck | `pending` | — |
-| 6.6 | Commit | `pending` | — |
+| 6.1 | Add `--resume-sessions` CLI arg to `investigate` subparser in `runner.py` | `done` | 4d3db8f4 |
+| 6.2 | Parse `--resume-sessions` JSON in `cmd_investigate()` and pass to orchestrator | `done` | 4d3db8f4 |
+| 6.3 | Read session IDs from `investigation_state.json` in `runInvestigation()` | `done` | 4d3db8f4 |
+| 6.4 | Append `--resume-sessions` arg to subprocess args when resuming | `done` | 4d3db8f4 |
+| 6.5 | Run frontend typecheck | `done` | 4d3db8f4 |
+| 6.6 | Commit | `done` | 4d3db8f4 |
 
 ### Task 7: Add i18n keys for structured progress events
 
 | Step | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 7.1 | Add investigation progress keys to `en/common.json` | `pending` | — |
-| 7.2 | Add investigation progress keys to `fr/common.json` | `pending` | — |
-| 7.3 | Run frontend typecheck | `pending` | — |
-| 7.4 | Commit | `pending` | — |
+| 7.1 | Add investigation progress keys to `en/common.json` | `done` | 1723ac01 |
+| 7.2 | Add investigation progress keys to `fr/common.json` | `done` | 1723ac01 |
+| 7.3 | Run frontend typecheck | `done` | 1723ac01 |
+| 7.4 | Commit | `done` | 1723ac01 |
 
 ### Task 8: Final integration verification
 
 | Step | Description | Status | Commit |
 |------|-------------|--------|--------|
-| 8.1 | Run all backend tests (`pytest tests/ -v`) | `pending` | — |
-| 8.2 | Run frontend typecheck (`npm run typecheck`) | `pending` | — |
-| 8.3 | Run frontend lint (`npm run lint`) | `pending` | — |
-| 8.4 | Verify import chain (`python -c "from runners.github.services.investigation_hooks import ..."`) | `pending` | — |
-| 8.5 | Commit any fixes | `pending` | — |
+| 8.1 | Run all backend tests (`pytest tests/ -v`) | `done` | — |
+| 8.2 | Run frontend typecheck (`npm run typecheck`) | `done` | — |
+| 8.3 | Run frontend lint (`npm run lint`) | `done` | — |
+| 8.4 | Verify import chain (`python -c "from runners.github.services.investigation_hooks import ..."`) | `done` | — |
+| 8.5 | Commit any fixes | `done` | n/a (no fixes needed) |
 
 ---
 
