@@ -27,18 +27,6 @@ export const THRESHOLD_MAX = 1.0;
 export const THRESHOLD_STEP = 0.05;
 
 // ============================================
-// Trust Levels
-// ============================================
-
-export type TrustLevel = 'crawl' | 'walk' | 'run';
-
-export const TRUST_LEVEL_LABELS: Record<TrustLevel, string> = {
-  crawl: 'Suggestions Only',
-  walk: 'Auto-Apply Above Threshold',
-  run: 'Fully Automated',
-};
-
-// ============================================
 // Enrichment Comment
 // ============================================
 

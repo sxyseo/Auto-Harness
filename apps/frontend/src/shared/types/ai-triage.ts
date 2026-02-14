@@ -9,21 +9,6 @@ import type { TriageCategory as EnrichmentTriageCategory } from './enrichment';
 // in renderer use IPC; only main-process code imports triage-handlers)
 
 // ============================================
-// Progressive Trust
-// ============================================
-
-export interface ProgressiveTrustConfig {
-  autoApply: {
-    type: { enabled: boolean; threshold: number };
-    priority: { enabled: boolean; threshold: number };
-    labels: { enabled: boolean; threshold: number };
-    duplicate: { enabled: boolean; threshold: number };
-  };
-  batchSize: number;
-  confirmAbove: number;
-}
-
-// ============================================
 // AI Enrichment
 // ============================================
 
@@ -114,23 +99,6 @@ export interface ApplyResultsProgress {
   totalItems: number;
   processedItems: number;
   currentIssueNumber?: number;
-}
-
-// ============================================
-// Factory Functions
-// ============================================
-
-export function createDefaultProgressiveTrust(): ProgressiveTrustConfig {
-  return {
-    autoApply: {
-      type: { enabled: false, threshold: 0.9 },
-      priority: { enabled: false, threshold: 0.9 },
-      labels: { enabled: false, threshold: 0.9 },
-      duplicate: { enabled: false, threshold: 0.9 },
-    },
-    batchSize: 50,
-    confirmAbove: 10,
-  };
 }
 
 // ============================================

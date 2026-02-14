@@ -312,9 +312,6 @@ const browserMockAPI: ElectronAPI = {
 
     savePendingReview: async () => true,
     loadPendingReview: async () => [],
-    saveProgressiveTrust: async () => true,
-    getProgressiveTrust: async () => ({ autoApply: { type: { enabled: false, threshold: 0.9 }, priority: { enabled: false, threshold: 0.9 }, labels: { enabled: false, threshold: 0.9 }, duplicate: { enabled: false, threshold: 0.9 } }, batchSize: 50, confirmAbove: 10 }),
-
     // Label Sync (Phase 4)
     enableLabelSync: async () => ({ created: 0, updated: 0, removed: 0, errors: [] }),
     disableLabelSync: async () => ({ success: true }),

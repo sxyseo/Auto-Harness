@@ -643,23 +643,6 @@
     "cancel": "Annuler",
     "duplicateWarning": "Un commentaire d'enrichissement IA existe déjà sur cette issue. La publication créera un doublon."
   },
-  "progressiveTrust": {
-    "title": "Paramètres de confiance progressive",
-    "type": "Type",
-    "priority": "Priorité",
-    "labels": "Labels",
-    "duplicate": "Doublon",
-    "threshold": "Seuil de {{category}}",
-    "batchSize": "Taille du lot",
-    "confirmAbove": "Confirmer au-dessus de",
-    "save": "Enregistrer",
-    "cancel": "Annuler",
-    "trustLevel": "Niveau de confiance",
-    "crawl": "Suggestions uniquement",
-    "walk": "Auto-application au-dessus du seuil",
-    "run": "Entièrement automatisé",
-    "runWarning": "Tous les résultats de triage seront appliqués automatiquement sans révision."
-  },
   "labelSync": {
     "title": "Synchronisation des labels",
     "description": "Synchroniser les états du workflow en tant que labels ac: sur GitHub",

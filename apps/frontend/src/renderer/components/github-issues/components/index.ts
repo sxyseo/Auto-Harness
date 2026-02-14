@@ -24,7 +24,6 @@ export { TriageResultCard } from './TriageResultCard';
 export { BatchTriageReview } from './BatchTriageReview';
 export { IssueSplitDialog } from './IssueSplitDialog';
 export { TriageProgressOverlay } from './TriageProgressOverlay';
-export { ProgressiveTrustSettings } from './ProgressiveTrustSettings';
 
 // Phase 4 — Polish
 export { LabelSyncSettings } from './LabelSyncSettings';

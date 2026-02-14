@@ -12,14 +12,12 @@ import {
   THRESHOLD_MIN,
   THRESHOLD_MAX,
   THRESHOLD_STEP,
-  TRUST_LEVEL_LABELS,
   ENRICHMENT_COMMENT_FOOTER,
   getConfidenceLevel,
   isValidThreshold,
   clampThreshold,
   estimateBatchCost,
 } from '../constants/ai-triage';
-import type { TrustLevel } from '../constants/ai-triage';
 
 describe('confidence constants', () => {
   it('CONFIDENCE_HIGH is 0.8', () => {
@@ -60,16 +58,6 @@ describe('threshold constants', () => {
 
   it('THRESHOLD_STEP is 0.05', () => {
     expect(THRESHOLD_STEP).toBe(0.05);
-  });
-});
-
-describe('TRUST_LEVEL_LABELS', () => {
-  it('has entry for every trust level', () => {
-    const allLevels: TrustLevel[] = ['crawl', 'walk', 'run'];
-    for (const level of allLevels) {
-      expect(TRUST_LEVEL_LABELS).toHaveProperty(level);
-      expect(typeof TRUST_LEVEL_LABELS[level]).toBe('string');
-    }
   });
 });
 

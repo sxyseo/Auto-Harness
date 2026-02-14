@@ -33,7 +33,6 @@ import {
 import { getToolPath } from '../../cli-tool-manager';
 import { killProcessGracefully } from '../../platform';
 import { MAX_SPLIT_SUB_ISSUES } from '../../../shared/constants/ai-triage';
-import { createDefaultProgressiveTrust } from '../../../shared/types/ai-triage';
 import { readEnrichmentFile, writeEnrichmentFile, withEnrichmentFileLock, appendTransition } from './enrichment-persistence';
 import { createDefaultEnrichment } from '../../../shared/types/enrichment';
 import type { TriageCategory } from '../../../shared/types/enrichment';
@@ -44,7 +43,6 @@ import type {
   EnrichmentProgress,
   SplitProgress,
   ApplyResultsProgress,
-  ProgressiveTrustConfig,
 } from '../../../shared/types/ai-triage';
 
 const { debug: debugLog } = createContextLogger('AI Triage');
@@ -439,63 +437,6 @@ export function registerAITriageHandlers(
         debugLog('applyTriageResults failed', { error: error instanceof Error ? error.message : error });
         sendError(error instanceof Error ? error.message : 'Failed to apply triage results');
       }
-    },
-  );
-
-  // ============================================
-  // Save progressive trust config
-  // ============================================
-  ipcMain.handle(
-    IPC_CHANNELS.GITHUB_TRIAGE_SAVE_TRUST,
-    async (_, projectId: string, config: ProgressiveTrustConfig): Promise<boolean> => {
-      debugLog('saveProgressiveTrust handler called', { projectId });
-      const result = await withProjectOrNull(projectId, async (project) => {
-        const githubDir = getGitHubDir(project.path);
-        fs.mkdirSync(githubDir, { recursive: true });
-
-        const configPath = path.join(githubDir, 'config.json');
-        let existingConfig: Record<string, unknown> = {};
-
-        try {
-          existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-        } catch {
-          // Use empty config if file doesn't exist
-        }
-
-        const updatedConfig = {
-          ...existingConfig,
-          progressive_trust: config,
-        };
-
-        await writeJsonWithRetry(configPath, updatedConfig, { indent: 2 });
-        return true;
-      });
-      return result ?? false;
-    },
-  );
-
-  // ============================================
-  // Get progressive trust config
-  // ============================================
-  ipcMain.handle(
-    IPC_CHANNELS.GITHUB_TRIAGE_GET_TRUST,
-    async (_, projectId: string): Promise<ProgressiveTrustConfig> => {
-      debugLog('getProgressiveTrust handler called', { projectId });
-      const result = await withProjectOrNull(projectId, async (project) => {
-        const configPath = path.join(getGitHubDir(project.path), 'config.json');
-
-        try {
-          const data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-          if (data.progressive_trust) {
-            return data.progressive_trust as ProgressiveTrustConfig;
-          }
-        } catch {
-          // Return default
-        }
-
-        return createDefaultProgressiveTrust();
-      });
-      return result ?? createDefaultProgressiveTrust();
     },
   );
 

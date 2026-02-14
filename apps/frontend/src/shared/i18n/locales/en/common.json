@@ -643,23 +643,6 @@
     "cancel": "Cancel",
     "duplicateWarning": "An AI enrichment comment already exists on this issue. Posting will create a duplicate."
   },
-  "progressiveTrust": {
-    "title": "Progressive Trust Settings",
-    "type": "Type",
-    "priority": "Priority",
-    "labels": "Labels",
-    "duplicate": "Duplicate",
-    "threshold": "{{category}} threshold",
-    "batchSize": "Batch size",
-    "confirmAbove": "Confirm above",
-    "save": "Save",
-    "cancel": "Cancel",
-    "trustLevel": "Trust Level",
-    "crawl": "Suggestions Only",
-    "walk": "Auto-Apply Above Threshold",
-    "run": "Fully Automated",
-    "runWarning": "All triage results will be applied automatically without review."
-  },
   "labelSync": {
     "title": "Label Synchronization",
     "description": "Sync workflow states as ac: labels on GitHub",

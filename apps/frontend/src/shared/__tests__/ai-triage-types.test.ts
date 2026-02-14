@@ -3,45 +3,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  createDefaultProgressiveTrust,
   mapTriageCategory,
 } from '../types/ai-triage';
-import type { ProgressiveTrustConfig } from '../types/ai-triage';
-
-describe('createDefaultProgressiveTrust', () => {
-  it('returns all categories disabled', () => {
-    const config = createDefaultProgressiveTrust();
-    expect(config.autoApply.type.enabled).toBe(false);
-    expect(config.autoApply.priority.enabled).toBe(false);
-    expect(config.autoApply.labels.enabled).toBe(false);
-    expect(config.autoApply.duplicate.enabled).toBe(false);
-  });
-
-  it('returns 0.9 threshold for all categories', () => {
-    const config = createDefaultProgressiveTrust();
-    expect(config.autoApply.type.threshold).toBe(0.9);
-    expect(config.autoApply.priority.threshold).toBe(0.9);
-    expect(config.autoApply.labels.threshold).toBe(0.9);
-    expect(config.autoApply.duplicate.threshold).toBe(0.9);
-  });
-
-  it('returns default batch size of 50', () => {
-    const config = createDefaultProgressiveTrust();
-    expect(config.batchSize).toBe(50);
-  });
-
-  it('returns default confirmAbove of 10', () => {
-    const config = createDefaultProgressiveTrust();
-    expect(config.confirmAbove).toBe(10);
-  });
-
-  it('returns a fresh object each time (no shared references)', () => {
-    const a = createDefaultProgressiveTrust();
-    const b = createDefaultProgressiveTrust();
-    expect(a).not.toBe(b);
-    expect(a.autoApply).not.toBe(b.autoApply);
-  });
-});
 
 describe('mapTriageCategory', () => {
   it('maps bug to bug', () => {

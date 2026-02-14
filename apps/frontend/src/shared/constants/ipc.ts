@@ -475,8 +475,6 @@ export const IPC_CHANNELS = {
   GITHUB_TRIAGE_CANCEL: 'github:triage:cancel',
   GITHUB_TRIAGE_SAVE_PENDING_REVIEW: 'github:triage:savePendingReview',
   GITHUB_TRIAGE_LOAD_PENDING_REVIEW: 'github:triage:loadPendingReview',
-  GITHUB_TRIAGE_SAVE_TRUST: 'github:triage:saveTrust',
-  GITHUB_TRIAGE_GET_TRUST: 'github:triage:getTrust',
 
   // GitHub Enrichment operations
   GITHUB_ENRICHMENT_GET_ALL: 'github:enrichment:getAll',

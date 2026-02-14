@@ -32,7 +32,6 @@ import type {
   EnrichmentProgress,
   SplitProgress,
   ApplyResultsProgress,
-  ProgressiveTrustConfig,
 } from '../../../shared/types/ai-triage';
 import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
 
@@ -429,9 +428,6 @@ export interface GitHubAPI {
 
   savePendingReview: (projectId: string, items: TriageReviewItem[]) => Promise<boolean>;
   loadPendingReview: (projectId: string) => Promise<TriageReviewItem[]>;
-  saveProgressiveTrust: (projectId: string, config: ProgressiveTrustConfig) => Promise<boolean>;
-  getProgressiveTrust: (projectId: string) => Promise<ProgressiveTrustConfig>;
-
   // Label Sync (Phase 4)
   enableLabelSync: (projectId: string) => Promise<LabelSyncResult>;
   disableLabelSync: (projectId: string, cleanup: boolean) => Promise<{ success: boolean }>;
@@ -1088,12 +1084,6 @@ export const createGitHubAPI = (): GitHubAPI => ({
 
   loadPendingReview: (projectId: string): Promise<TriageReviewItem[]> =>
     invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_LOAD_PENDING_REVIEW, projectId),
-
-  saveProgressiveTrust: (projectId: string, config: ProgressiveTrustConfig): Promise<boolean> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_SAVE_TRUST, projectId, config),
-
-  getProgressiveTrust: (projectId: string): Promise<ProgressiveTrustConfig> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_TRIAGE_GET_TRUST, projectId),
 
   // Label Sync (Phase 4)
   enableLabelSync: (projectId: string): Promise<LabelSyncResult> =>

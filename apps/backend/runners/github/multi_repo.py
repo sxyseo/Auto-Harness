@@ -53,7 +53,6 @@ class RepoConfig:
         relationship: Relationship to other repos
         upstream_repo: Upstream repo if this is a fork
         labels: Label configuration overrides
-        trust_level: Trust level for this repo
     """
 
     repo: str  # owner/repo format
@@ -64,7 +63,6 @@ class RepoConfig:
     labels: dict[str, list[str]] = field(
         default_factory=dict
     )  # e.g., {"auto_fix": ["fix-me"]}
-    trust_level: int = 0  # 0-4 trust level
     display_name: str | None = None  # Human-readable name
 
     # Feature toggles per repo
@@ -125,7 +123,6 @@ class RepoConfig:
             "relationship": self.relationship.value,
             "upstream_repo": self.upstream_repo,
             "labels": self.labels,
-            "trust_level": self.trust_level,
             "display_name": self.display_name,
             "auto_fix_enabled": self.auto_fix_enabled,
             "pr_review_enabled": self.pr_review_enabled,
@@ -141,7 +138,6 @@ class RepoConfig:
             relationship=RepoRelationship(data.get("relationship", "standalone")),
             upstream_repo=data.get("upstream_repo"),
             labels=data.get("labels", {}),
-            trust_level=data.get("trust_level", 0),
             display_name=data.get("display_name"),
             auto_fix_enabled=data.get("auto_fix_enabled", True),
             pr_review_enabled=data.get("pr_review_enabled", True),

@@ -8,7 +8,6 @@ import { GitHubIntegration } from '../integrations/GitHubIntegration';
 import { GitLabIntegration } from '../integrations/GitLabIntegration';
 import { InitializationGuard } from '../common/InitializationGuard';
 import { LabelSyncSettingsConnected } from '../../github-issues/components/LabelSyncSettingsConnected';
-import { ProgressiveTrustSettingsConnected } from '../../github-issues/components/ProgressiveTrustSettingsConnected';
 import { InvestigationSettings } from '../../github-issues/components/InvestigationSettings';
 import type { ProjectSettingsSection } from '../ProjectSettingsContent';
 
@@ -143,7 +142,6 @@ export function SectionRouter({
               setSettings={setSettings}
             />
             <LabelSyncSettingsConnected />
-            <ProgressiveTrustSettingsConnected />
             <InvestigationSettings projectId={project.id} />
           </InitializationGuard>
         </SettingsSection>

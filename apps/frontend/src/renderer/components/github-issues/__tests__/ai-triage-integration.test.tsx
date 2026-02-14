@@ -14,7 +14,7 @@ vi.mock('react-i18next', () => ({
 
 describe('AI Triage integration', () => {
   it('TriageProgressOverlay renders progress bar and message', () => {
-    const progress = { progress: 60, message: 'Enriching issue...' };
+    const progress = { phase: 'generating' as const, progress: 60, message: 'Enriching issue...' };
     render(<TriageProgressOverlay progress={progress} onCancel={vi.fn()} />);
     expect(screen.getByText('Enriching issue...')).toBeDefined();
     expect(screen.getByRole('progressbar')).toBeDefined();
@@ -22,7 +22,7 @@ describe('AI Triage integration', () => {
 
   it('TriageProgressOverlay cancel button calls onCancel', () => {
     const onCancel = vi.fn();
-    const progress = { progress: 30, message: 'Working...' };
+    const progress = { phase: 'analyzing' as const, progress: 30, message: 'Working...' };
     render(<TriageProgressOverlay progress={progress} onCancel={onCancel} />);
     fireEvent.click(screen.getByRole('button'));
     expect(onCancel).toHaveBeenCalledOnce();
@@ -32,6 +32,7 @@ describe('AI Triage integration', () => {
     const suggestion = {
       issueNumber: 42,
       rationale: 'This issue should be split',
+      confidence: 0.9,
       subIssues: [
         { title: 'Sub-issue A', body: 'Body A', labels: ['bug'] },
         { title: 'Sub-issue B', body: 'Body B', labels: [] },
@@ -55,6 +56,7 @@ describe('AI Triage integration', () => {
     const suggestion = {
       issueNumber: 42,
       rationale: 'Split needed',
+      confidence: 0.85,
       subIssues: [{ title: 'Sub A', body: 'Body A', labels: [] }],
     };
     render(
