@@ -2,7 +2,12 @@
 Issue Investigation Orchestrator
 ==================================
 
-Runs 4 specialist agents in parallel to investigate a GitHub issue:
+Runs 4 specialist agents in two phases to investigate a GitHub issue:
+
+Phase 1 (parallel): root_cause + reproducer
+Phase 2 (parallel): impact + fix_advisor (with root cause context injected)
+
+Specialists:
 - Root Cause Analyzer: trace bug to source code paths
 - Impact Assessor: blast radius and affected components
 - Fix Advisor: concrete fix approaches with files and patterns
@@ -127,11 +132,13 @@ _SPECIALIST_SCHEMAS: dict[str, type] = {
 
 class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
     """
-    Orchestrator for parallel issue investigation.
+    Orchestrator for two-phase issue investigation.
 
-    Runs 4 specialist agents in parallel, each with their own SDK session
-    and structured output schema. Results are combined into an
-    InvestigationReport.
+    Runs 4 specialist agents in two sequential phases, each with their own
+    SDK session and structured output schema. Phase 1 runs root_cause and
+    reproducer in parallel. Phase 2 runs impact and fix_advisor in parallel,
+    with root cause findings injected as context. Results are combined into
+    an InvestigationReport.
 
     Inherits from ParallelAgentOrchestrator:
     - _report_progress() — progress callback
@@ -189,30 +196,34 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
             issue_comments=issue_comments or [],
         )
 
-        # Resolve model
-        model_shorthand = self.config.model or "sonnet"
-        model = resolve_model_id(model_shorthand)
-        thinking_level = self.config.thinking_level or "medium"
-        thinking_budget = get_thinking_budget(thinking_level)
+        # Resolve per-specialist config
+        specialist_config = self.config.specialist_config or {}
+
+        # Fallback model/thinking for specialists not in config
+        fallback_model_shorthand = self.config.model or "sonnet"
+        fallback_model = resolve_model_id(fallback_model_shorthand)
+        fallback_thinking_level = self.config.thinking_level or "medium"
 
         logger.info(
-            f"[Investigation] Using model={model}, "
-            f"thinking_level={thinking_level}, thinking_budget={thinking_budget}"
+            f"[Investigation] Using fallback model={fallback_model}, "
+            f"thinking_level={fallback_thinking_level}, "
+            f"specialist_config={specialist_config}"
         )
 
         self._report_progress(
             "investigating",
             20,
-            "Launching specialist agents in parallel...",
+            "Launching investigation...",
             issue_number=issue_number,
         )
 
-        # Run all specialists in parallel
+        # Run specialists in two phases (root_cause+reproducer, then impact+fix_advisor)
         specialist_results = await self._run_investigation_specialists(
             issue_context=issue_context,
             project_root=working_dir,
-            model=model,
-            thinking_budget=thinking_budget,
+            specialist_config=specialist_config,
+            fallback_model=fallback_model,
+            fallback_thinking_level=fallback_thinking_level,
             issue_number=issue_number,
             resume_sessions=resume_sessions,
         )
@@ -294,6 +305,7 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
         config: SpecialistConfig,
         issue_context: str,
         project_root: Path,
+        root_cause_context: str = "",
     ) -> str:
         """Build the full prompt for a specialist agent.
 
@@ -301,6 +313,8 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
             config: Specialist configuration
             issue_context: Pre-built issue context string
             project_root: Working directory for the agent
+            root_cause_context: Optional root cause context from Phase 1
+                               (injected into Phase 2 prompts)
 
         Returns:
             Full system prompt with context injected
@@ -320,43 +334,94 @@ All file paths are relative to: `{project_root}`
 Use Read, Grep, and Glob tools to explore the codebase.
 """
 
-        return base_prompt + working_dir_section + issue_context
+        return base_prompt + working_dir_section + issue_context + root_cause_context
+
+    def _build_root_cause_context(self, root_cause: RootCauseAnalysis | None) -> str:
+        """Build root cause context string for injection into Phase 2 prompts."""
+        if not root_cause:
+            return ""
+
+        code_paths_str = ""
+        if hasattr(root_cause, 'code_paths') and root_cause.code_paths:
+            if isinstance(root_cause.code_paths, list):
+                code_paths_str = "\n".join(f"- {p}" for p in root_cause.code_paths)
+            else:
+                code_paths_str = str(root_cause.code_paths)
+
+        return f"""
+## Root Cause Analysis (from prior investigation phase)
+
+**Root Cause:** {root_cause.identified_root_cause}
+
+**Confidence:** {root_cause.confidence}
+
+**Code Paths:**
+{code_paths_str}
+
+**Evidence:** {root_cause.evidence}
+
+**Likely Already Fixed:** {root_cause.likely_already_fixed}
+
+Use this root cause analysis to inform your assessment. Do NOT re-investigate
+the root cause — focus on your specialty using these findings as ground truth.
+"""
 
     async def _run_investigation_specialists(
         self,
         issue_context: str,
         project_root: Path,
-        model: str,
-        thinking_budget: int | None,
+        specialist_config: dict[str, dict[str, str]],
+        fallback_model: str,
+        fallback_thinking_level: str,
         issue_number: int | None = None,
         resume_sessions: dict[str, str] | None = None,
     ) -> dict[str, dict[str, Any]]:
-        """Run all investigation specialists in parallel.
+        """Run investigation specialists in two phases.
+
+        Phase 1 (parallel): root_cause + reproducer
+        Phase 2 (parallel): impact + fix_advisor (with root cause context)
 
         Args:
             issue_context: Pre-built issue context
             project_root: Working directory
-            model: Model to use
-            thinking_budget: Max thinking tokens
+            specialist_config: Per-specialist model/thinking overrides
+            fallback_model: Default model ID for specialists without overrides
+            fallback_thinking_level: Default thinking level for specialists
+                                    without overrides
             issue_number: GitHub issue number (for session persistence)
             resume_sessions: Optional dict mapping specialist name to SDK
                            session ID for resuming interrupted sessions.
 
         Returns:
-            Dict mapping specialist name → stream result dict
+            Dict mapping specialist name -> stream result dict
         """
+        PHASE_1_NAMES = {"root_cause", "reproducer"}
+
+        phase_1_specs = [s for s in INVESTIGATION_SPECIALISTS if s.name in PHASE_1_NAMES]
+        phase_2_specs = [s for s in INVESTIGATION_SPECIALISTS if s.name not in PHASE_1_NAMES]
 
         # Shared completion counter for incremental progress reporting
         _agents_done = 0
         _agents_lock = asyncio.Lock()
 
+        def _resolve_specialist(cfg_name: str):
+            """Resolve model and thinking budget for a specialist."""
+            sc = specialist_config.get(cfg_name, {})
+            model_str = sc.get("model", fallback_model)
+            # If model_str is a shorthand, resolve it
+            if not model_str.startswith("claude-"):
+                model_str = resolve_model_id(model_str)
+            thinking_level = sc.get("thinking", fallback_thinking_level)
+            budget = get_thinking_budget(thinking_level)
+            return model_str, budget
+
         # Build coroutine factories so failed specialists can be retried
-        def _make_specialist_factory(cfg: SpecialistConfig):
+        def _make_specialist_factory(cfg: SpecialistConfig, model: str, budget: int | None, root_cause_ctx: str = ""):
             """Create a 0-arg callable that returns a fresh coroutine."""
 
             def factory():
                 _prompt = self._build_specialist_prompt(
-                    cfg, issue_context, project_root
+                    cfg, issue_context, project_root, root_cause_context=root_cause_ctx
                 )
                 _schema_class = _SPECIALIST_SCHEMAS.get(cfg.name)
                 _output_schema = (
@@ -366,7 +431,7 @@ Use Read, Grep, and Glob tools to explore the codebase.
                 _resume_id = (
                     resume_sessions.get(cfg.name) if resume_sessions else None
                 )
-                # Track tool_id → tool_name so on_tool_result can include the tool name
+                # Track tool_id -> tool_name so on_tool_result can include the tool name
                 _tool_names: dict[str, str] = {}
 
                 def _on_tool_use(name, tid, inp, _name=cfg.name, _map=_tool_names):
@@ -397,7 +462,7 @@ Use Read, Grep, and Glob tools to explore the codebase.
                     prompt=_prompt,
                     project_root=project_root,
                     model=model,
-                    thinking_budget=thinking_budget,
+                    thinking_budget=budget,
                     output_schema=_output_schema,
                     agent_type="investigation_specialist",
                     context_name=f"Investigation:{cfg.name}",
@@ -417,6 +482,8 @@ Use Read, Grep, and Glob tools to explore the codebase.
         async def _agent_lifecycle_wrapper(
             cfg: SpecialistConfig,
             coro,
+            progress_base: int,
+            progress_step: int,
         ):
             """Wrap a specialist coroutine with agent_started/agent_done events."""
             nonlocal _agents_done
@@ -444,35 +511,94 @@ Use Read, Grep, and Glob tools to explore the codebase.
             # Bump incremental progress (thread-safe via asyncio lock)
             async with _agents_lock:
                 _agents_done += 1
-                # 20% base + 15% per agent = 20→35→50→65→80
                 self._report_progress(
                     "investigating",
-                    20 + (_agents_done * 15),
-                    f"{cfg.name} complete ({_agents_done}/4)",
+                    progress_base + (_agents_done * progress_step),
+                    f"{cfg.name} complete",
                     issue_number=issue_number,
                 )
 
             return result
 
-        # Create initial coroutines and retry factories
-        coroutines = []
-        retry_factories = []
-        for config in INVESTIGATION_SPECIALISTS:
-            factory = _make_specialist_factory(config)
-            coroutines.append(_agent_lifecycle_wrapper(config, factory()))
-            retry_factories.append(factory)
-
-        # Run all in parallel (with retry-once on failure)
-        valid_results = await self._run_parallel_specialists(
-            tasks=coroutines,
-            orchestrator_name="IssueInvestigation",
-            retry_tasks=retry_factories,
+        # === Phase 1: root_cause + reproducer ===
+        self._report_progress(
+            "investigating", 20,
+            "Phase 1: Root Cause Agent + Reproducer Agent...",
+            issue_number=issue_number,
         )
 
-        # Save session IDs for resume support
+        _agents_done = 0
+        phase_1_coroutines = []
+        phase_1_retry_factories = []
+        for cfg in phase_1_specs:
+            model, budget = _resolve_specialist(cfg.name)
+            factory = _make_specialist_factory(cfg, model, budget)
+            phase_1_coroutines.append(
+                _agent_lifecycle_wrapper(cfg, factory(), 20, 15)
+            )
+            phase_1_retry_factories.append(factory)
+
+        phase_1_results = await self._run_parallel_specialists(
+            tasks=phase_1_coroutines,
+            orchestrator_name="IssueInvestigation:Phase1",
+            retry_tasks=phase_1_retry_factories,
+        )
+
+        # Map phase 1 results
+        phase_1_result_map: dict[str, dict[str, Any]] = {}
+        for i, cfg in enumerate(phase_1_specs):
+            result = phase_1_results[i] if i < len(phase_1_results) else None
+            phase_1_result_map[cfg.name] = result if result is not None else {
+                "result_text": "", "structured_output": None,
+                "error": "Specialist did not complete", "msg_count": 0,
+            }
+
+        # Parse root cause for context injection into Phase 2
+        root_cause_parsed = self._parse_specialist_result(
+            "root_cause", phase_1_result_map, RootCauseAnalysis
+        )
+        root_cause_ctx = self._build_root_cause_context(root_cause_parsed)
+
+        # === Phase 2: impact + fix_advisor (with root cause context) ===
+        self._report_progress(
+            "investigating", 55,
+            "Phase 2: Impact Agent + Fix Advisor Agent...",
+            issue_number=issue_number,
+        )
+
+        _agents_done = 0
+        phase_2_coroutines = []
+        phase_2_retry_factories = []
+        for cfg in phase_2_specs:
+            model, budget = _resolve_specialist(cfg.name)
+            factory = _make_specialist_factory(cfg, model, budget, root_cause_ctx=root_cause_ctx)
+            phase_2_coroutines.append(
+                _agent_lifecycle_wrapper(cfg, factory(), 55, 13)
+            )
+            phase_2_retry_factories.append(factory)
+
+        phase_2_results = await self._run_parallel_specialists(
+            tasks=phase_2_coroutines,
+            orchestrator_name="IssueInvestigation:Phase2",
+            retry_tasks=phase_2_retry_factories,
+        )
+
+        # Map phase 2 results
+        phase_2_result_map: dict[str, dict[str, Any]] = {}
+        for i, cfg in enumerate(phase_2_specs):
+            result = phase_2_results[i] if i < len(phase_2_results) else None
+            phase_2_result_map[cfg.name] = result if result is not None else {
+                "result_text": "", "structured_output": None,
+                "error": "Specialist did not complete", "msg_count": 0,
+            }
+
+        # Combine all results
+        all_results = {**phase_1_result_map, **phase_2_result_map}
+
+        # Save session IDs for resume support (both phases)
         if issue_number is not None:
-            for i, config in enumerate(INVESTIGATION_SPECIALISTS):
-                result = valid_results[i] if i < len(valid_results) else None
+            for config in INVESTIGATION_SPECIALISTS:
+                result = all_results.get(config.name)
                 if result and result.get("session_id"):
                     try:
                         save_specialist_session(
@@ -484,21 +610,7 @@ Use Read, Grep, and Glob tools to explore the codebase.
                     except Exception as e:
                         logger.warning(f"Failed to save session ID for {config.name}: {e}")
 
-        # Map results back to specialist names (position-preserving)
-        result_map: dict[str, dict[str, Any]] = {}
-        for i, config in enumerate(INVESTIGATION_SPECIALISTS):
-            result = valid_results[i] if i < len(valid_results) else None
-            if result is not None:
-                result_map[config.name] = result
-            else:
-                result_map[config.name] = {
-                    "result_text": "",
-                    "structured_output": None,
-                    "error": "Specialist did not complete",
-                    "msg_count": 0,
-                }
-
-        return result_map
+        return all_results
 
     def _build_report(
         self,
