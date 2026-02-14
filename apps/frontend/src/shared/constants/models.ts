@@ -3,7 +3,7 @@
  * Claude models, thinking levels, memory backends, and agent profiles
  */
 
-import type { AgentProfile, PhaseModelConfig, FeatureModelConfig, FeatureThinkingConfig } from '../types/settings';
+import type { AgentProfile, PhaseModelConfig, FeatureModelConfig, FeatureThinkingConfig, InvestigationModelConfig, InvestigationThinkingConfig } from '../types/settings';
 
 // ============================================
 // Available Models
@@ -138,6 +138,42 @@ export const DEFAULT_FEATURE_THINKING: FeatureThinkingConfig = {
   githubIssues: 'medium', // Moderate thinking for issue analysis
   githubPrs: 'medium',    // Moderate thinking for PR review
   utility: 'low'          // Fast thinking for utility operations
+};
+
+// ============================================
+// Investigation Specialist Settings
+// ============================================
+
+// Keys for iterating over investigation specialist config
+export const INVESTIGATION_SPECIALIST_KEYS: readonly (keyof InvestigationModelConfig)[] = [
+  'rootCause', 'impact', 'fixAdvisor', 'reproducer'
+] as const;
+
+// Default per-specialist model configuration
+export const DEFAULT_INVESTIGATION_MODELS: InvestigationModelConfig = {
+  rootCause: 'opus',
+  impact: 'sonnet',
+  fixAdvisor: 'sonnet',
+  reproducer: 'sonnet'
+};
+
+// Default per-specialist thinking configuration
+export const DEFAULT_INVESTIGATION_THINKING: InvestigationThinkingConfig = {
+  rootCause: 'high',
+  impact: 'medium',
+  fixAdvisor: 'medium',
+  reproducer: 'low'
+};
+
+// Labels for investigation specialist UI
+export const INVESTIGATION_SPECIALIST_LABELS: Record<
+  keyof InvestigationModelConfig,
+  { label: string; description: string }
+> = {
+  rootCause: { label: 'Root Cause Agent', description: 'Traces the bug to its source code' },
+  impact: { label: 'Impact Agent', description: 'Determines blast radius and severity' },
+  fixAdvisor: { label: 'Fix Advisor Agent', description: 'Suggests concrete fix approaches' },
+  reproducer: { label: 'Reproducer Agent', description: 'Checks reproducibility and test coverage' }
 };
 
 // Feature labels for UI display
