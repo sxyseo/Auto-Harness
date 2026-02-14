@@ -270,6 +270,8 @@ async def process_sdk_stream(
     # Track subagent tool IDs to log their results
     subagent_tool_ids: dict[str, str] = {}  # tool_id -> agent_name
     completed_agent_tool_ids: set[str] = set()  # tool_ids of completed agents
+    # Track StructuredOutput tool submissions for fallback capture
+    _pending_structured_output: dict[str, dict[str, Any]] = {}  # tool_id -> tool_input
     # Track tool concurrency errors for retry logic
     detected_concurrency_error = False
     # Track repeated identical responses to detect error loops early
@@ -390,7 +392,10 @@ async def process_sdk_stream(
                             safe_print(
                                 f"[{context_name}] Delegation prompt for {agent_name}: {prompt_preview}"
                             )
-                    elif tool_name != "StructuredOutput":
+                    elif tool_name == "StructuredOutput":
+                        # Track StructuredOutput submission for fallback capture
+                        _pending_structured_output[tool_id] = tool_input
+                    else:
                         # Log meaningful tool info (not just tool name)
                         tool_detail = _get_tool_detail(tool_name, tool_input)
                         safe_print(f"[{context_name}] {tool_detail}")
@@ -436,6 +441,15 @@ async def process_sdk_stream(
                                 f"[{context_name}] Tool result [{status}]: {result_preview}{'...' if len(str(result_content)) > 100 else ''}"
                             )
 
+                    # Capture validated StructuredOutput tool data as fallback
+                    if tool_id in _pending_structured_output:
+                        if not is_error:
+                            # Tool validation passed — save as fallback
+                            _pending_structured_output[tool_id]["_validated"] = True
+                        else:
+                            # Validation failed — discard this attempt
+                            del _pending_structured_output[tool_id]
+
                     # Invoke callback
                     if on_tool_result:
                         on_tool_result(tool_id, is_error, result_content)
@@ -468,7 +482,10 @@ async def process_sdk_stream(
                                     safe_print(
                                         f"[{context_name}] Invoking agent: {agent_name}{model_info}"
                                     )
-                            elif tool_name != "StructuredOutput":
+                            elif tool_name == "StructuredOutput":
+                                # Track StructuredOutput submission for fallback
+                                _pending_structured_output[tool_id] = tool_input
+                            else:
                                 # Log meaningful tool info (not just tool name)
                                 tool_detail = _get_tool_detail(tool_name, tool_input)
                                 safe_print(f"[{context_name}] {tool_detail}")
@@ -610,6 +627,13 @@ async def process_sdk_stream(
                                     f"[Agent:{agent_name}] {status}: {result_preview}{'...' if len(str(result_content)) > 600 else ''}"
                                 )
 
+                            # Capture validated StructuredOutput tool data as fallback
+                            if tool_id in _pending_structured_output:
+                                if not is_error:
+                                    _pending_structured_output[tool_id]["_validated"] = True
+                                else:
+                                    del _pending_structured_output[tool_id]
+
                             # Invoke callback
                             if on_tool_result:
                                 on_tool_result(tool_id, is_error, result_content)
@@ -639,6 +663,19 @@ async def process_sdk_stream(
         safe_print(f"[DEBUG {context_name}] Session ended. Total messages: {msg_count}")
 
     safe_print(f"[{context_name}] Session ended. Total messages: {msg_count}")
+
+    # Fallback: if ResultMessage didn't carry structured_output, use validated
+    # StructuredOutput tool data (the agent submitted valid JSON but the
+    # ResultMessage didn't propagate it — observed in parallel sessions).
+    if structured_output is None and _pending_structured_output:
+        for tid, data in _pending_structured_output.items():
+            if data.pop("_validated", False):
+                structured_output = data
+                safe_print(
+                    f"[{context_name}] Using StructuredOutput tool fallback "
+                    f"(ResultMessage did not carry structured_output)"
+                )
+                break
 
     # Set error flag if tool concurrency error was detected
     if detected_concurrency_error and not stream_error:

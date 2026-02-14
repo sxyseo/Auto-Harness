@@ -38,6 +38,7 @@ try:
         save_investigation_report,
         save_specialist_session,
     )
+    from .io_utils import safe_print
     from .parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
     from .sdk_utils import _get_tool_detail
 except (ImportError, ValueError, SystemError):
@@ -55,6 +56,7 @@ except (ImportError, ValueError, SystemError):
             save_investigation_report,
             save_specialist_session,
         )
+        from services.io_utils import safe_print
         from services.parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
         from services.sdk_utils import _get_tool_detail
     except (ImportError, ModuleNotFoundError):
@@ -71,6 +73,7 @@ except (ImportError, ValueError, SystemError):
             save_investigation_report,
             save_specialist_session,
         )
+        from io_utils import safe_print
         from parallel_agent_base import ParallelAgentOrchestrator, SpecialistConfig
         from sdk_utils import _get_tool_detail
     from phase_config import (
@@ -566,7 +569,16 @@ Use Read, Grep, and Glob tools to explore the codebase.
 
         structured_output = result.get("structured_output")
         if not structured_output:
-            logger.warning(f"[Investigation] No structured output from {name}")
+            error = result.get("error", "unknown")
+            msg_count = result.get("msg_count", 0)
+            logger.warning(
+                f"[Investigation] No structured output from {name} "
+                f"(error={error}, msgs={msg_count})"
+            )
+            safe_print(
+                f"[Investigation] {name}: no structured output "
+                f"(error={error}, msgs={msg_count})"
+            )
             return None
 
         try:
@@ -575,6 +587,9 @@ Use Read, Grep, and Glob tools to explore the codebase.
             logger.error(
                 f"[Investigation] Failed to parse {name} output: {e}",
                 exc_info=True,
+            )
+            safe_print(
+                f"[Investigation] {name}: schema validation failed: {e}"
             )
             return None
 
