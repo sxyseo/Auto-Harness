@@ -155,6 +155,7 @@ class ParallelAgentOrchestrator:
         on_tool_use: Any | None = None,
         on_tool_result: Any | None = None,
         resume_session_id: str | None = None,
+        thinking_level: str | None = None,
     ) -> dict[str, Any]:
         """Run a single specialist as its own SDK session.
 
@@ -190,9 +191,12 @@ class ParallelAgentOrchestrator:
 
         try:
             # Create SDK client for this specialist
-            betas = get_model_betas(self.config.model or "sonnet")
+            # Use per-specialist model for betas (not the global config model)
+            betas = get_model_betas(model or self.config.model or "sonnet")
+            # Use per-specialist thinking level when provided
+            effective_thinking = thinking_level or self.config.thinking_level or "medium"
             thinking_kwargs = get_thinking_kwargs_for_model(
-                model, self.config.thinking_level or "medium"
+                model, effective_thinking
             )
 
             client_kwargs: dict[str, Any] = {

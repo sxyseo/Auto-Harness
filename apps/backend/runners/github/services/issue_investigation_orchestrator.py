@@ -405,18 +405,18 @@ the root cause — focus on your specialty using these findings as ground truth.
         _agents_lock = asyncio.Lock()
 
         def _resolve_specialist(cfg_name: str):
-            """Resolve model and thinking budget for a specialist."""
+            """Resolve model, thinking budget, and thinking level for a specialist."""
             sc = specialist_config.get(cfg_name, {})
             model_str = sc.get("model", fallback_model)
             # If model_str is a shorthand, resolve it
             if not model_str.startswith("claude-"):
                 model_str = resolve_model_id(model_str)
-            thinking_level = sc.get("thinking", fallback_thinking_level)
-            budget = get_thinking_budget(thinking_level)
-            return model_str, budget
+            thinking_lvl = sc.get("thinking", fallback_thinking_level)
+            budget = get_thinking_budget(thinking_lvl)
+            return model_str, budget, thinking_lvl
 
         # Build coroutine factories so failed specialists can be retried
-        def _make_specialist_factory(cfg: SpecialistConfig, model: str, budget: int | None, root_cause_ctx: str = ""):
+        def _make_specialist_factory(cfg: SpecialistConfig, model: str, budget: int | None, thinking_lvl: str = "medium", root_cause_ctx: str = ""):
             """Create a 0-arg callable that returns a fresh coroutine."""
 
             def factory():
@@ -467,6 +467,7 @@ the root cause — focus on your specialty using these findings as ground truth.
                     agent_type="investigation_specialist",
                     context_name=f"Investigation:{cfg.name}",
                     resume_session_id=_resume_id,
+                    thinking_level=thinking_lvl,
                     on_thinking=lambda text, _name=cfg.name: emit_json_event(
                         "thinking",
                         _name,
@@ -531,8 +532,8 @@ the root cause — focus on your specialty using these findings as ground truth.
         phase_1_coroutines = []
         phase_1_retry_factories = []
         for cfg in phase_1_specs:
-            model, budget = _resolve_specialist(cfg.name)
-            factory = _make_specialist_factory(cfg, model, budget)
+            model, budget, thinking_lvl = _resolve_specialist(cfg.name)
+            factory = _make_specialist_factory(cfg, model, budget, thinking_lvl=thinking_lvl)
             phase_1_coroutines.append(
                 _agent_lifecycle_wrapper(cfg, factory(), 20, 15)
             )
@@ -570,8 +571,8 @@ the root cause — focus on your specialty using these findings as ground truth.
         phase_2_coroutines = []
         phase_2_retry_factories = []
         for cfg in phase_2_specs:
-            model, budget = _resolve_specialist(cfg.name)
-            factory = _make_specialist_factory(cfg, model, budget, root_cause_ctx=root_cause_ctx)
+            model, budget, thinking_lvl = _resolve_specialist(cfg.name)
+            factory = _make_specialist_factory(cfg, model, budget, thinking_lvl=thinking_lvl, root_cause_ctx=root_cause_ctx)
             phase_2_coroutines.append(
                 _agent_lifecycle_wrapper(cfg, factory(), 55, 13)
             )
