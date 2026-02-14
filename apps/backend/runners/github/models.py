@@ -1005,6 +1005,10 @@ class GitHubRunnerConfig:
     thinking_level: str = "medium"
     fast_mode: bool = False
 
+    # Per-specialist investigation config (overrides model/thinking_level for each specialist)
+    # Dict mapping specialist name → {"model": str, "thinking": str}
+    specialist_config: dict[str, dict[str, str]] | None = None
+
     def to_dict(self) -> dict:
         return {
             "token": "***",  # Never save token

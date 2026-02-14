@@ -177,6 +177,10 @@ def get_config(args) -> GitHubRunnerConfig:
         )
         sys.exit(1)
 
+    specialist_config = None
+    if hasattr(args, "specialist_config") and args.specialist_config:
+        specialist_config = json.loads(args.specialist_config)
+
     return GitHubRunnerConfig(
         token=token,
         repo=repo,
@@ -187,6 +191,7 @@ def get_config(args) -> GitHubRunnerConfig:
         auto_fix_enabled=getattr(args, "auto_fix_enabled", False),
         auto_fix_labels=getattr(args, "auto_fix_labels", ["auto-fix"]),
         auto_post_reviews=getattr(args, "auto_post", False),
+        specialist_config=specialist_config,
     )
 
 
@@ -847,6 +852,12 @@ def main():
         type=str,
         default=None,
         help="JSON dict of specialist_name:session_id for resuming interrupted investigations",
+    )
+    investigate_parser.add_argument(
+        "--specialist-config",
+        type=str,
+        default=None,
+        help="JSON dict of specialist configs: {name: {model, thinking}}",
     )
 
     # post-investigation command
