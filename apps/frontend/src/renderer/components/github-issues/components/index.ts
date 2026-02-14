@@ -42,3 +42,6 @@ export { InvestigationLogs } from './InvestigationLogs';
 // Investigation System (F7)
 export { BatchStagingBanner } from './BatchStagingBanner';
 export { InvestigationSettings } from './InvestigationSettings';
+
+// Filter Bar
+export { IssueFilterBar } from './IssueFilterBar';
