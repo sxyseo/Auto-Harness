@@ -10,6 +10,8 @@ import {
   cancelAllIssueInvestigations,
   loadPersistedInvestigations,
 } from "../stores/github";
+import { useLabelSync } from "./github-issues/hooks/useLabelSync";
+import { mapInvestigationStateToWorkflowState } from "../../shared/constants/label-sync";
 import { loadTasks } from "../stores/task-store";
 import {
   useGitHubIssues,
@@ -73,6 +75,9 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
 
   // Investigation store — multi-issue keyed state
   const investigationStore = useInvestigationStore();
+
+  // Label sync hook for automatic GitHub label updates
+  const { syncIssueLabel, config: labelSyncConfig } = useLabelSync();
 
   const storeIssues = useIssuesStore((s) => s.issues);
 
@@ -354,7 +359,18 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       const inv = investigationStore.getInvestigationState(projectId, issueNumber);
       if (!inv?.specId) continue;
 
+      const oldDerivedState = investigationStore.getDerivedState(projectId, issueNumber);
       investigationStore.syncTaskState(projectId, issueNumber, task.status);
+      const newDerivedState = investigationStore.getDerivedState(projectId, issueNumber);
+
+      // Trigger label sync if state changed
+      if (oldDerivedState !== newDerivedState && labelSyncConfig.enabled) {
+        const oldWorkflowState = mapInvestigationStateToWorkflowState(oldDerivedState);
+        const newWorkflowState = mapInvestigationStateToWorkflowState(newDerivedState);
+        if (oldWorkflowState && newWorkflowState && oldWorkflowState !== newWorkflowState) {
+          syncIssueLabel(issueNumber, newWorkflowState, oldWorkflowState);
+        }
+      }
     }
 
     // Detect deleted tasks: if an investigation has a specId but no matching task exists
@@ -366,6 +382,37 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       }
     }
   }, [tasks, selectedProject?.id, investigationStore]);
+
+  // Register label sync callback with investigation store
+  // Triggers GitHub label updates when investigation state changes
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+
+    const handleStateChange = (projectId: string, issueNumber: number, newState: string) => {
+      // Only sync if label sync is enabled
+      if (!labelSyncConfig.enabled) return;
+
+      // Map InvestigationState to WorkflowState for label sync
+      const workflowState = mapInvestigationStateToWorkflowState(newState);
+      if (!workflowState) return;
+
+      // Get the old state from the investigation
+      const inv = investigationStore.getInvestigationState(projectId, issueNumber);
+      const oldState = inv ? investigationStore.getDerivedState(projectId, issueNumber) : 'new';
+      const oldWorkflowState = mapInvestigationStateToWorkflowState(oldState);
+
+      // Only sync if state actually changed
+      if (workflowState !== oldWorkflowState) {
+        syncIssueLabel(issueNumber, workflowState, oldWorkflowState);
+      }
+    };
+
+    investigationStore.setStateChangeCallback(handleStateChange);
+
+    return () => {
+      investigationStore.setStateChangeCallback(undefined);
+    };
+  }, [selectedProject?.id, labelSyncConfig.enabled, syncIssueLabel, investigationStore]);
 
   // Auto-close GitHub issues when linked task reaches "done" and autoCloseIssues is enabled
   const autoClosedRef = useRef<Set<number>>(new Set());
