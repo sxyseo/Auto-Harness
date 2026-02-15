@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { spawn, type ChildProcess } from 'child_process';
 import path from 'path';
 import { existsSync, mkdirSync, unlinkSync, promises as fsPromises } from 'fs';
 import { EventEmitter } from 'events';
@@ -79,10 +79,9 @@ export class AgentQueueManager {
     this.debouncedPersistRoadmapProgress = debouncedFn;
     this.cancelPersistRoadmapProgress = cancel;
 
-    // Initialize sequential spawn queue
-    // The spawn function will be implemented in the next task
-    this.spawnQueue = new SpawnQueue(async (_id, _projectPath, _args, _env) => {
-      throw new Error('SpawnQueue not yet integrated - implementation in next task');
+    // Initialize sequential spawn queue with ideation spawn function
+    this.spawnQueue = new SpawnQueue(async (id, projectPath, args, env, projectId, cwd) => {
+      return this.executeIdeationSpawn(id, projectPath, args, env, projectId, cwd);
     });
   }
 
@@ -327,6 +326,63 @@ export class AgentQueueManager {
   }
 
   /**
+   * Execute the actual spawn of an ideation process
+   * Extracted to be used by SpawnQueue for sequential execution
+   *
+   * This method only spawns the process and adds it to state tracking.
+   * Event handlers are attached by spawnIdeationProcess() via onSpawn callback.
+   *
+   * @param spawnId - Unique spawn ID for this process instance
+   * @param projectPath - Project path (not used directly but kept for signature)
+   * @param args - Command-line arguments
+   * @param env - Environment variables
+   * @param projectId - Project ID for state tracking
+   * @param cwd - Working directory for the process
+   * @returns The spawned ChildProcess
+   */
+  private async executeIdeationSpawn(
+    spawnId: string,
+    projectPath: string,
+    args: string[],
+    env: Record<string, string>,
+    projectId: string,
+    cwd: string
+  ): Promise<ChildProcess> {
+    debugLog('[Agent Queue] Executing ideation spawn:', { spawnId, projectId });
+
+    // Get Python path from process manager (uses venv if configured)
+    const pythonPath = this.processManager.getPythonPath();
+
+    // Validate Python path
+    if (!pythonPath) {
+      throw new Error('Python path not configured. Please ensure Python is properly set up in settings.');
+    }
+
+    // Parse Python command to handle space-separated commands like "py -3"
+    const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
+
+    // Spawn the process
+    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
+      cwd,
+      env
+    });
+
+    // Add to state tracking
+    this.state.addProcess(projectId, {
+      taskId: projectId,
+      process: childProcess,
+      startedAt: new Date(),
+      projectPath, // Store project path for loading session on completion
+      spawnId: parseInt(spawnId, 10),
+      queueProcessType: 'ideation'
+    });
+
+    debugLog('[Agent Queue] Ideation process spawned:', { spawnId, projectId, pid: childProcess.pid });
+
+    return childProcess;
+  }
+
+  /**
    * Spawn a Python process for ideation generation
    */
   private async spawnIdeationProcess(
@@ -415,50 +471,47 @@ export class AgentQueueManager {
       hasToken
     });
 
-    // Parse Python command to handle space-separated commands like "py -3"
-    const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
-    const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
+    // Enqueue the spawn request for sequential processing
+    // The queue will call executeIdeationSpawn() when it's this request's turn
+    this.spawnQueue.enqueue({
+      id: String(spawnId),
+      type: 'ideation',
+      projectId,
+      projectPath,
+      args,
+      env: finalEnv as Record<string, string>,
       cwd,
-      env: finalEnv
-    });
+      onSpawn: async (childProcess) => {
+        debugLog('[Agent Queue] Ideation process spawned from queue:', { spawnId, projectId, pid: childProcess.pid });
 
-    this.state.addProcess(projectId, {
-      taskId: projectId,
-      process: childProcess,
-      startedAt: new Date(),
-      projectPath, // Store project path for loading session on completion
-      spawnId,
-      queueProcessType: 'ideation'
-    });
+        // Track progress through output
+        let progressPhase = 'analyzing';
+        let progressPercent = 10;
+        // Collect output for rate limit detection
+        let allOutput = '';
 
-    // Track progress through output
-    let progressPhase = 'analyzing';
-    let progressPercent = 10;
-    // Collect output for rate limit detection
-    let allOutput = '';
+        // Helper to emit logs - split multi-line output into individual log lines
+        const emitLogs = (log: string) => {
+          const lines = log.split('\n').filter(line => line.trim().length > 0);
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.length > 0) {
+              this.emitter.emit('ideation-log', projectId, trimmed);
+            }
+          }
+        };
 
-    // Helper to emit logs - split multi-line output into individual log lines
-    const emitLogs = (log: string) => {
-      const lines = log.split('\n').filter(line => line.trim().length > 0);
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.length > 0) {
-          this.emitter.emit('ideation-log', projectId, trimmed);
-        }
-      }
-    };
+        // Track completed types for progress calculation
+        const completedTypes = new Set<string>();
+        // Derive totalTypes from --types argument instead of hardcoding
+        const typesArgIndex = args.indexOf('--types');
+        const totalTypes =
+          typesArgIndex > -1 && args[typesArgIndex + 1]
+            ? args[typesArgIndex + 1].split(',').length
+            : 6; // Default to 6 if not specified
 
-    // Track completed types for progress calculation
-    const completedTypes = new Set<string>();
-    // Derive totalTypes from --types argument instead of hardcoding
-    const typesArgIndex = args.indexOf('--types');
-    const totalTypes =
-      typesArgIndex > -1 && args[typesArgIndex + 1]
-        ? args[typesArgIndex + 1].split(',').length
-        : 6; // Default to 6 if not specified
-
-    // Handle stdout - explicitly decode as UTF-8 for cross-platform Unicode support
-    childProcess.stdout?.on('data', (data: Buffer) => {
+        // Handle stdout - explicitly decode as UTF-8 for cross-platform Unicode support
+        childProcess.stdout?.on('data', (data: Buffer) => {
       const log = data.toString('utf-8');
       // Collect output for rate limit detection (keep last 10KB)
       allOutput = (allOutput + log).slice(-10000);
@@ -545,118 +598,126 @@ export class AgentQueueManager {
       });
     });
 
-    // Handle stderr - also emit as logs, explicitly decode as UTF-8
-    childProcess.stderr?.on('data', (data: Buffer) => {
-      const log = data.toString('utf-8');
-      // Collect stderr for rate limit detection too
-      allOutput = (allOutput + log).slice(-10000);
-      console.error('[Ideation STDERR]', log);
-      emitLogs(log);
-      this.emitter.emit('ideation-progress', projectId, {
-        phase: progressPhase,
-        progress: progressPercent,
-        message: formatStatusMessage(log)
-      });
-    });
-
-    // Handle process exit
-    childProcess.on('exit', (code: number | null) => {
-      debugLog('[Agent Queue] Ideation process exited:', { projectId, code, spawnId });
-
-      // Check if this process was intentionally stopped by the user
-      const wasIntentionallyStopped = this.state.wasSpawnKilled(spawnId);
-      if (wasIntentionallyStopped) {
-        debugLog('[Agent Queue] Ideation process was intentionally stopped, ignoring exit');
-        this.state.clearKilledSpawn(spawnId);
-        // Note: Don't call deleteProcess here - killProcess() already deleted it.
-        // A new process with the same projectId may have been started.
-        // Emit stopped event to ensure UI updates
-        this.emitter.emit('ideation-stopped', projectId);
-        return;
-      }
-
-      // Get the stored project path before deleting from map
-      const processInfo = this.state.getProcess(projectId);
-      const storedProjectPath = processInfo?.projectPath;
-      this.state.deleteProcess(projectId);
-
-      // Check for rate limit if process failed
-      if (code !== 0) {
-        debugLog('[Agent Queue] Checking for rate limit (non-zero exit)');
-        const rateLimitDetection = detectRateLimit(allOutput);
-        if (rateLimitDetection.isRateLimited) {
-          debugLog('[Agent Queue] Rate limit detected for ideation');
-          const rateLimitInfo = createSDKRateLimitInfo('ideation', rateLimitDetection, {
-            projectId
+        // Handle stderr - also emit as logs, explicitly decode as UTF-8
+        childProcess.stderr?.on('data', (data: Buffer) => {
+          const log = data.toString('utf-8');
+          // Collect stderr for rate limit detection too
+          allOutput = (allOutput + log).slice(-10000);
+          console.error('[Ideation STDERR]', log);
+          emitLogs(log);
+          this.emitter.emit('ideation-progress', projectId, {
+            phase: progressPhase,
+            progress: progressPercent,
+            message: formatStatusMessage(log)
           });
-          this.emitter.emit('sdk-rate-limit', rateLimitInfo);
-        }
-      }
-
-      if (code === 0) {
-        debugLog('[Agent Queue] Ideation generation completed successfully');
-        this.emitter.emit('ideation-progress', projectId, {
-          phase: 'complete',
-          progress: 100,
-          message: 'Ideation generation complete'
         });
 
-        // Load and emit the complete ideation session
-        if (storedProjectPath) {
-          try {
-            const ideationFilePath = path.join(
-              storedProjectPath,
-              '.auto-claude',
-              'ideation',
-              'ideation.json'
-            );
-            debugLog('[Agent Queue] Loading ideation session from:', ideationFilePath);
-            if (existsSync(ideationFilePath)) {
-              const loadSession = async (): Promise<void> => {
-                try {
-                  const content = await fsPromises.readFile(ideationFilePath, 'utf-8');
-                  const rawSession = JSON.parse(content);
-                  const session = transformSessionFromSnakeCase(rawSession, projectId);
-                  debugLog('[Agent Queue] Loaded ideation session:', {
-                    totalIdeas: session.ideas?.length || 0
-                  });
-                  this.emitter.emit('ideation-complete', projectId, session);
-                } catch (err) {
-                  debugError('[Ideation] Failed to load ideation session:', err);
-                  this.emitter.emit('ideation-error', projectId,
-                    `Failed to load ideation session: ${err instanceof Error ? err.message : 'Unknown error'}`);
-                }
-              };
-              loadSession().catch((err: unknown) => {
-                debugError('[Agent Queue] Unhandled error loading ideation session:', err);
-              });
-            } else {
-              debugError('[Ideation] ideation.json not found at:', ideationFilePath);
-              this.emitter.emit('ideation-error', projectId,
-                'Ideation completed but session file not found. Ideas may have been saved to individual type files.');
-            }
-          } catch (err) {
-            debugError('[Ideation] Unexpected error in ideation completion:', err);
-            this.emitter.emit('ideation-error', projectId,
-              `Failed to load ideation session: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        // Handle process exit
+        childProcess.on('exit', (code: number | null) => {
+          debugLog('[Agent Queue] Ideation process exited:', { projectId, code, spawnId });
+
+          // Check if this process was intentionally stopped by the user
+          const wasIntentionallyStopped = this.state.wasSpawnKilled(spawnId);
+          if (wasIntentionallyStopped) {
+            debugLog('[Agent Queue] Ideation process was intentionally stopped, ignoring exit');
+            this.state.clearKilledSpawn(spawnId);
+            // Note: Don't call deleteProcess here - killProcess() already deleted it.
+            // A new process with the same projectId may have been started.
+            // Emit stopped event to ensure UI updates
+            this.emitter.emit('ideation-stopped', projectId);
+            return;
           }
-        } else {
-          debugError('[Ideation] No project path available to load session');
-          this.emitter.emit('ideation-error', projectId,
-            'Ideation completed but project path unavailable');
-        }
-      } else {
-        debugError('[Agent Queue] Ideation generation failed:', { projectId, code });
-        this.emitter.emit('ideation-error', projectId, `Ideation generation failed with exit code ${code}`);
+
+          // Get the stored project path before deleting from map
+          const processInfo = this.state.getProcess(projectId);
+          const storedProjectPath = processInfo?.projectPath;
+          this.state.deleteProcess(projectId);
+
+          // Check for rate limit if process failed
+          if (code !== 0) {
+            debugLog('[Agent Queue] Checking for rate limit (non-zero exit)');
+            const rateLimitDetection = detectRateLimit(allOutput);
+            if (rateLimitDetection.isRateLimited) {
+              debugLog('[Agent Queue] Rate limit detected for ideation');
+              const rateLimitInfo = createSDKRateLimitInfo('ideation', rateLimitDetection, {
+                projectId
+              });
+              this.emitter.emit('sdk-rate-limit', rateLimitInfo);
+            }
+          }
+
+          if (code === 0) {
+            debugLog('[Agent Queue] Ideation generation completed successfully');
+            this.emitter.emit('ideation-progress', projectId, {
+              phase: 'complete',
+              progress: 100,
+              message: 'Ideation generation complete'
+            });
+
+            // Load and emit the complete ideation session
+            if (storedProjectPath) {
+              try {
+                const ideationFilePath = path.join(
+                  storedProjectPath,
+                  '.auto-claude',
+                  'ideation',
+                  'ideation.json'
+                );
+                debugLog('[Agent Queue] Loading ideation session from:', ideationFilePath);
+                if (existsSync(ideationFilePath)) {
+                  const loadSession = async (): Promise<void> => {
+                    try {
+                      const content = await fsPromises.readFile(ideationFilePath, 'utf-8');
+                      const rawSession = JSON.parse(content);
+                      const session = transformSessionFromSnakeCase(rawSession, projectId);
+                      debugLog('[Agent Queue] Loaded ideation session:', {
+                        totalIdeas: session.ideas?.length || 0
+                      });
+                      this.emitter.emit('ideation-complete', projectId, session);
+                    } catch (err) {
+                      debugError('[Ideation] Failed to load ideation session:', err);
+                      this.emitter.emit('ideation-error', projectId,
+                        `Failed to load ideation session: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                    }
+                  };
+                  loadSession().catch((err: unknown) => {
+                    debugError('[Agent Queue] Unhandled error loading ideation session:', err);
+                  });
+                } else {
+                  debugError('[Ideation] ideation.json not found at:', ideationFilePath);
+                  this.emitter.emit('ideation-error', projectId,
+                    'Ideation completed but session file not found. Ideas may have been saved to individual type files.');
+                }
+              } catch (err) {
+                debugError('[Ideation] Unexpected error in ideation completion:', err);
+                this.emitter.emit('ideation-error', projectId,
+                  `Failed to load ideation session: ${err instanceof Error ? err.message : 'Unknown error'}`);
+              }
+            } else {
+              debugError('[Ideation] No project path available to load session');
+              this.emitter.emit('ideation-error', projectId,
+                'Ideation completed but project path unavailable');
+            }
+          } else {
+            debugError('[Agent Queue] Ideation generation failed:', { projectId, code });
+            this.emitter.emit('ideation-error', projectId, `Ideation generation failed with exit code ${code}`);
+          }
+        });
+
+        // Handle process error
+        childProcess.on('error', (err: Error) => {
+          console.error('[Ideation] Process error:', err.message);
+          this.state.deleteProcess(projectId);
+          this.emitter.emit('ideation-error', projectId, err.message);
+        });
+      },
+      onError: (error: Error) => {
+        debugError('[Agent Queue] Failed to spawn ideation process:', error);
+        this.emitter.emit('ideation-error', projectId, error.message);
       }
     });
 
-    // Handle process error
-    childProcess.on('error', (err: Error) => {
-      console.error('[Ideation] Process error:', err.message);
-      this.state.deleteProcess(projectId);
-      this.emitter.emit('ideation-error', projectId, err.message);
-    });
+    debugLog('[Agent Queue] Ideation spawn request enqueued:', { spawnId, projectId });
   }
 
   /**

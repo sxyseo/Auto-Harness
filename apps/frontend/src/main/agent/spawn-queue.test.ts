@@ -15,6 +15,30 @@ describe('SpawnQueue', () => {
   let mockSpawnFn: SpawnFunction;
   let mockChildProcess: ChildProcess;
 
+  // Helper to create a valid spawn request
+  const createRequest = (overrides: Partial<{
+    id: string;
+    type: string;
+    onSpawn: (process: ChildProcess) => Promise<void>;
+    onError: (error: Error) => void;
+    projectId: string;
+    projectPath: string;
+    args: string[];
+    env: Record<string, string>;
+    cwd: string;
+  }> = {}) => ({
+    id: 'test-id',
+    type: 'test',
+    onSpawn: vi.fn(async () => {}),
+    onError: vi.fn(),
+    projectId: 'test-project',
+    projectPath: '/test/path',
+    args: [],
+    env: {},
+    cwd: '/test/cwd',
+    ...overrides
+  });
+
   beforeEach(() => {
     // Mock child process that exits successfully
     mockChildProcess = {
@@ -59,41 +83,26 @@ describe('SpawnQueue', () => {
       const executionOrder: string[] = [];
 
       // Create three spawn requests that track execution order
-      const request1 = {
+      const request1 = createRequest({
         id: 'task-1',
         onSpawn: vi.fn(async () => {
           executionOrder.push('task-1');
-        }),
-        onError: vi.fn(),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg1'],
-        env: {}
-      };
+        })
+      });
 
-      const request2 = {
+      const request2 = createRequest({
         id: 'task-2',
         onSpawn: vi.fn(async () => {
           executionOrder.push('task-2');
-        }),
-        onError: vi.fn(),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg2'],
-        env: {}
-      };
+        })
+      });
 
-      const request3 = {
+      const request3 = createRequest({
         id: 'task-3',
         onSpawn: vi.fn(async () => {
           executionOrder.push('task-3');
-        }),
-        onError: vi.fn(),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg3'],
-        env: {}
-      };
+        })
+      });
 
       // Enqueue all three items
       queue.enqueue(request1);
@@ -114,34 +123,24 @@ describe('SpawnQueue', () => {
       let task1Running = false;
       let task2Started = false;
 
-      const request1 = {
+      const request1 = createRequest({
         id: 'task-1',
         onSpawn: vi.fn(async () => {
           task1Running = true;
           // Simulate work
           await new Promise(resolve => setTimeout(resolve, 50));
           task1Running = false;
-        }),
-        onError: vi.fn(),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg1'],
-        env: {}
-      };
+        })
+      });
 
-      const request2 = {
+      const request2 = createRequest({
         id: 'task-2',
         onSpawn: vi.fn(async () => {
           task2Started = true;
           // Task 2 should only start after task 1 completes
           expect(task1Running).toBe(false);
-        }),
-        onError: vi.fn(),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg2'],
-        env: {}
-      };
+        })
+      });
 
       queue.enqueue(request1);
       queue.enqueue(request2);
@@ -158,31 +157,22 @@ describe('SpawnQueue', () => {
       const executionOrder: string[] = [];
 
       // First request fails
-      const request1 = {
+      const request1 = createRequest({
         id: 'task-1',
         onSpawn: vi.fn().mockRejectedValue(new Error('Spawn failed')),
         onError: vi.fn((error: Error) => {
           executionOrder.push('task-1-error');
           expect(error.message).toBe('Spawn failed');
-        }),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg1'],
-        env: {}
-      };
+        })
+      });
 
       // Second request succeeds
-      const request2 = {
+      const request2 = createRequest({
         id: 'task-2',
         onSpawn: vi.fn(async () => {
           executionOrder.push('task-2');
-        }),
-        onError: vi.fn(),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg2'],
-        env: {}
-      };
+        })
+      });
 
       queue.enqueue(request1);
       queue.enqueue(request2);
@@ -200,17 +190,13 @@ describe('SpawnQueue', () => {
     it('should handle multiple failures gracefully', async () => {
       let errorCount = 0;
 
-      const failingRequest = {
+      const failingRequest = createRequest({
         id: `task-${errorCount}`,
         onSpawn: vi.fn().mockRejectedValue(new Error('Failed')),
         onError: vi.fn((error: Error) => {
           errorCount++;
-        }),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg'],
-        env: {}
-      };
+        })
+      });
 
       // Enqueue multiple failing requests
       queue.enqueue({ ...failingRequest, id: 'task-1' });
@@ -243,40 +229,25 @@ describe('SpawnQueue', () => {
       expect(queue.length).toBe(0);
 
       // Enqueue first item - it will start processing immediately
-      queue.enqueue({
+      queue.enqueue(createRequest({
         id: 'task-1',
         onSpawn: vi.fn(async () => {
           // While task-1 is processing, check that subsequent items are queued
-          queue.enqueue({
+          queue.enqueue(createRequest({
             id: 'task-2',
-            onSpawn: vi.fn(),
-            onError: vi.fn(),
-            projectId: 'project-1',
-            projectPath: '/path/to/project',
-            args: ['arg2'],
-            env: {}
-          });
+            onSpawn: vi.fn()
+          }));
           // Task 2 should be queued while task 1 processes
           expect(queue.length).toBe(1);
 
-          queue.enqueue({
+          queue.enqueue(createRequest({
             id: 'task-3',
-            onSpawn: vi.fn(),
-            onError: vi.fn(),
-            projectId: 'project-1',
-            projectPath: '/path/to/project',
-            args: ['arg3'],
-            env: {}
-          });
+            onSpawn: vi.fn()
+          }));
           // Now both task 2 and task 3 are queued
           expect(queue.length).toBe(2);
-        }),
-        onError: vi.fn(),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg1'],
-        env: {}
-      });
+        })
+      }));
 
       // Wait for all to complete
       await queue.drain();
@@ -288,18 +259,13 @@ describe('SpawnQueue', () => {
     it('should track processing state', async () => {
       expect(queue.isProcessing).toBe(false);
 
-      const request = {
+      const request = createRequest({
         id: 'task-1',
         onSpawn: vi.fn(async () => {
           // Check that processing is true during execution
           expect(queue.isProcessing).toBe(true);
-        }),
-        onError: vi.fn(),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg1'],
-        env: {}
-      };
+        })
+      });
 
       queue.enqueue(request);
       expect(queue.isProcessing).toBe(true);
@@ -311,15 +277,14 @@ describe('SpawnQueue', () => {
 
   describe('Spawn Function Integration', () => {
     it('should call spawn function with correct arguments', async () => {
-      const request = {
+      const request = createRequest({
         id: 'task-1',
-        onSpawn: vi.fn(),
-        onError: vi.fn(),
         projectId: 'project-1',
         projectPath: '/path/to/project',
         args: ['--test', '--verbose'],
-        env: { TEST_VAR: 'test-value' }
-      };
+        env: { TEST_VAR: 'test-value' },
+        cwd: '/test/cwd'
+      });
 
       queue.enqueue(request);
       await queue.drain();
@@ -329,24 +294,21 @@ describe('SpawnQueue', () => {
         'task-1',
         '/path/to/project',
         ['--test', '--verbose'],
-        { TEST_VAR: 'test-value' }
+        { TEST_VAR: 'test-value' },
+        'project-1',
+        '/test/cwd'
       );
     });
 
     it('should pass spawned process to onSpawn callback', async () => {
       let receivedProcess: import('child_process').ChildProcess | undefined;
 
-      const request = {
+      const request = createRequest({
         id: 'task-1',
         onSpawn: vi.fn(async (process: import('child_process').ChildProcess) => {
           receivedProcess = process;
-        }),
-        onError: vi.fn(),
-        projectId: 'project-1',
-        projectPath: '/path/to/project',
-        args: ['arg1'],
-        env: {}
-      };
+        })
+      });
 
       queue.enqueue(request);
       await queue.drain();

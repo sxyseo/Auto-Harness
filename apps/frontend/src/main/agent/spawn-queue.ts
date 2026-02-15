@@ -22,6 +22,8 @@ const DRAIN_POLL_INTERVAL = 10;
 export interface SpawnRequest {
   /** Unique identifier for this spawn request */
   id: string;
+  /** Type of process being spawned ('ideation' | 'roadmap' | 'build') */
+  type: string;
   /** Callback invoked when process is spawned (receives ChildProcess) */
   onSpawn: (process: ChildProcess) => Promise<void>;
   /** Callback invoked if spawn fails */
@@ -34,6 +36,8 @@ export interface SpawnRequest {
   args: string[];
   /** Environment variables for the process */
   env: Record<string, string>;
+  /** Working directory for the process */
+  cwd: string;
 }
 
 /**
@@ -44,7 +48,9 @@ export type SpawnFunction = (
   id: string,
   projectPath: string,
   args: string[],
-  env: Record<string, string>
+  env: Record<string, string>,
+  projectId: string,
+  cwd: string
 ) => Promise<ChildProcess>;
 
 /**
@@ -96,7 +102,9 @@ export class SpawnQueue {
           request.id,
           request.projectPath,
           request.args,
-          request.env
+          request.env,
+          request.projectId,
+          request.cwd
         );
 
         // Invoke the onSpawn callback
