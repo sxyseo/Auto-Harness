@@ -127,6 +127,23 @@ function queueSyncUpdate(state: GlobalState): void {
     return;
   }
 
+  // Settings changes apply immediately for responsive UX
+  // This ensures theme/language/preference changes sync within 500ms across all windows
+  if (state.type === 'settings' && syncCallbacks) {
+    if (window.DEBUG) {
+      console.warn('[Window Sync] Settings change detected, applying immediately');
+    }
+    // Flush any pending updates first to ensure correct ordering
+    if (batchTimeout) {
+      clearTimeout(batchTimeout);
+      batchTimeout = null;
+      flushBatch();
+    }
+    // Apply settings change immediately
+    syncCallbacks.onSettingsSync?.(state.data);
+    return;
+  }
+
   // Add to batch queue
   batchQueue.push(state);
 
