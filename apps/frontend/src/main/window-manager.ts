@@ -379,6 +379,69 @@ export class WindowManager {
   }
 
   /**
+   * Get all child windows of specified parent
+   * @param parentWindowId - Parent window ID
+   * @returns Array of child window configurations
+   */
+  getChildWindows(parentWindowId: number): WindowConfig[] {
+    const children: WindowConfig[] = [];
+
+    for (const config of this.windows.values()) {
+      if (config.parentWindowId === parentWindowId) {
+        children.push(config);
+      }
+    }
+
+    return children;
+  }
+
+  /**
+   * Get parent window ID for specified window
+   * @param windowId - Child window ID
+   * @returns Parent window ID or null if no parent
+   */
+  getParentWindowId(windowId: number): number | null {
+    const config = this.windows.get(windowId);
+    return config?.parentWindowId ?? null;
+  }
+
+  /**
+   * Check if window has children
+   * @param windowId - Window ID to check
+   * @returns True if window has child windows
+   */
+  hasChildWindows(windowId: number): boolean {
+    for (const config of this.windows.values()) {
+      if (config.parentWindowId === windowId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Get window hierarchy for a given window
+   * @param windowId - Window ID
+   * @returns Object containing parent and children configurations
+   */
+  getWindowHierarchy(windowId: number): {
+    window: WindowConfig | null;
+    parent: WindowConfig | null;
+    children: WindowConfig[];
+  } {
+    const window = this.windows.get(windowId) ?? null;
+    const parentId = this.getParentWindowId(windowId);
+    const parent = parentId !== null ? this.windows.get(parentId) ?? null : null;
+    const children = this.getChildWindows(windowId);
+
+    return {
+      window,
+      parent,
+      children,
+    };
+  }
+
+  /**
    * Save window state to persistent storage
    * TODO: Implement persistence using app.getPath('userData')
    */
