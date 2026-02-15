@@ -346,12 +346,13 @@ export function Sidebar({
           'group relative flex w-full items-center rounded-lg text-sm transition-all duration-200',
           'hover:bg-accent hover:text-accent-foreground',
           isActive && 'bg-accent text-accent-foreground',
+          isPoppedOut && 'bg-muted/30 text-muted-foreground',
           isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
         )}
       >
         <button
           onClick={() => handleNavClick(item.id)}
-          disabled={!selectedProjectId}
+          disabled={!selectedProjectId || isPoppedOut}
           aria-keyshortcuts={item.shortcut}
           className={cn(
             'flex flex-1 items-center gap-3',
@@ -362,7 +363,7 @@ export function Sidebar({
           {!isCollapsed && (
             <>
               <span className="flex-1 text-left">{t(item.labelKey)}</span>
-              {item.shortcut && (
+              {item.shortcut && !isPoppedOut && (
                 <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded-md border border-border bg-secondary px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:flex">
                   {item.shortcut}
                 </kbd>
@@ -383,21 +384,21 @@ export function Sidebar({
                   }
                 }}
                 disabled={isPoppedOut}
-                aria-label={t('navigation:popOutView')}
+                aria-label={isPoppedOut ? t('navigation:viewPoppedOut') : t('navigation:popOutView')}
                 className={cn(
                   'h-5 w-5 p-0 rounded flex items-center justify-center',
                   'text-muted-foreground hover:text-foreground',
                   'hover:bg-muted/50 transition-colors',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                  'opacity-0 group-hover:opacity-100',
-                  isPoppedOut && 'opacity-50 cursor-not-allowed'
+                  isPoppedOut ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-100',
+                  isPoppedOut && 'cursor-not-allowed'
                 )}
               >
                 <ExternalLink className="h-3 w-3" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <span>{t('navigation:popOutView')}</span>
+              <span>{isPoppedOut ? t('navigation:tooltips.viewPoppedOut') : t('navigation:tooltips.popOutView')}</span>
             </TooltipContent>
           </Tooltip>
         )}
@@ -413,7 +414,12 @@ export function Sidebar({
           </TooltipTrigger>
           <TooltipContent side="right">
             <span>{t(item.labelKey)}</span>
-            {item.shortcut && (
+            {isPoppedOut && (
+              <span className="ml-2 text-xs text-muted-foreground">
+                ({t('navigation:viewPoppedOut')})
+              </span>
+            )}
+            {item.shortcut && !isPoppedOut && (
               <kbd className="ml-2 rounded border border-border bg-secondary px-1 font-mono text-[10px]">
                 {item.shortcut}
               </kbd>

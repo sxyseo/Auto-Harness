@@ -27,10 +27,12 @@
     "sponsor": "Sponsor Us"
   },
   "popOutView": "Pop Out View",
+  "viewPoppedOut": "Opened in separate window",
   "tooltips": {
     "settings": "Application Settings",
     "help": "Help & Feedback",
-    "popOutView": "Open this view in a separate window"
+    "popOutView": "Open this view in a separate window",
+    "viewPoppedOut": "This view is opened in a separate window"
   },
   "messages": {
     "initializeToCreateTasks": "Initialize Auto Claude to create tasks"
