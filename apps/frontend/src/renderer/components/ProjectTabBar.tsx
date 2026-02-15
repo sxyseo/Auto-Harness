@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { SortableProjectTab } from './SortableProjectTab';
 import { UsageIndicator } from './UsageIndicator';
 import { AuthStatusIndicator } from './AuthStatusIndicator';
+import { useWindowStore } from '../stores/window-store';
 import type { Project } from '../../shared/types';
 
 interface ProjectTabBarProps {
@@ -29,6 +30,22 @@ export function ProjectTabBar({
   onSettingsClick
 }: ProjectTabBarProps) {
   const { t } = useTranslation('common');
+  const { isProjectPoppedOut, setWindowLoading, addPoppedOutProject } = useWindowStore();
+
+  // Handler for popping out a project into a new window
+  const handlePopOutProject = async (projectId: string) => {
+    try {
+      setWindowLoading(projectId, true);
+      const { windowId } = await window.electronAPI.window.popOutProject(projectId);
+      addPoppedOutProject(projectId);
+      console.log(`Project ${projectId} popped out to window ${windowId}`);
+    } catch (error) {
+      console.error('Failed to pop out project:', error);
+      // TODO: Show error notification to user
+    } finally {
+      setWindowLoading(projectId, false);
+    }
+  };
 
   // Keyboard shortcuts for tab navigation
   useEffect(() => {
@@ -107,6 +124,8 @@ export function ProjectTabBar({
               }}
               // Pass control props only for active tab
               onSettingsClick={isActiveTab ? onSettingsClick : undefined}
+              onPopOutClick={isActiveTab ? () => handlePopOutProject(project.id) : undefined}
+              isPoppedOut={isProjectPoppedOut(project.id)}
             />
           );
         })}
