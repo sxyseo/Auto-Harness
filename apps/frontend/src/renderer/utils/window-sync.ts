@@ -38,6 +38,9 @@ export interface WindowSyncCallbacks {
   /** Called when auth state should sync (login, logout, profile change) */
   onAuthSync?: (data: unknown) => void;
 
+  /** Called when auth failure occurs (401 errors requiring re-authentication) */
+  onAuthFailure?: (info: unknown) => void;
+
   /** Called when settings state should sync (theme, language, preferences) */
   onSettingsSync?: (data: unknown) => void;
 
@@ -57,6 +60,7 @@ let syncCallbacks: WindowSyncCallbacks | null = null;
 let batchQueue: GlobalState[] = [];
 let batchTimeout: NodeJS.Timeout | null = null;
 let cleanupListener: IpcListenerCleanup | null = null;
+let cleanupAuthFailureListener: IpcListenerCleanup | null = null;
 
 /**
  * Maximum sync events to buffer in the batch queue (OOM prevention)
@@ -177,16 +181,29 @@ export function initializeWindowSync(callbacks: WindowSyncCallbacks): () => void
     queueSyncUpdate(state);
   });
 
+  // Set up auth failure listener (401 errors requiring re-authentication)
+  // Auth failures bypass batching and apply immediately for security
+  cleanupAuthFailureListener = window.electronAPI.onAuthFailure((info: unknown) => {
+    if (window.DEBUG) {
+      console.warn('[Window Sync] Auth failure detected, applying immediately');
+    }
+    syncCallbacks?.onAuthFailure?.(info);
+  });
+
   if (window.DEBUG) {
     console.warn('[Window Sync] Initialized cross-window state synchronization');
   }
 
   // Return cleanup function
   return () => {
-    // Clean up IPC listener
+    // Clean up IPC listeners
     if (cleanupListener) {
       cleanupListener();
       cleanupListener = null;
+    }
+    if (cleanupAuthFailureListener) {
+      cleanupAuthFailureListener();
+      cleanupAuthFailureListener = null;
     }
 
     // Clear batch state
