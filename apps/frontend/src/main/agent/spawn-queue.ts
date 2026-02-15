@@ -13,6 +13,9 @@
 
 import type { ChildProcess } from 'child_process';
 
+/** Poll interval for drain() method in milliseconds */
+const DRAIN_POLL_INTERVAL = 10;
+
 /**
  * Request to spawn an agent process
  */
@@ -117,16 +120,18 @@ export class SpawnQueue {
    */
   private waitForExit(process: ChildProcess): Promise<void> {
     return new Promise<void>((resolve) => {
-      // Check if process already exited
+      // Check if process already exited (handles race condition)
       if (process.exitCode !== null) {
         resolve();
         return;
       }
 
-      // Wait for exit event
-      process.once('exit', () => {
+      // Set up exit event listener (in case exit hasn't happened yet)
+      const onExit = () => {
         resolve();
-      });
+      };
+
+      process.once('exit', onExit);
     });
   }
 
@@ -137,7 +142,7 @@ export class SpawnQueue {
   async drain(): Promise<void> {
     // Poll until queue is empty and not processing
     while (this.queue.length > 0 || this.processing) {
-      await this.sleep(10);
+      await this.sleep(DRAIN_POLL_INTERVAL);
     }
   }
 

@@ -6,16 +6,14 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SpawnQueue } from './spawn-queue';
+import { SpawnQueue, type SpawnFunction } from './spawn-queue';
+import type { ChildProcess } from 'child_process';
+import type { Readable, Writable } from 'stream';
 
 describe('SpawnQueue', () => {
   let queue: SpawnQueue;
-  let mockSpawnFn: ReturnType<typeof vi.fn>;
-  let mockChildProcess: {
-    on: ReturnType<typeof vi.fn>;
-    kill: ReturnType<typeof vi.fn>;
-    pid: number;
-  };
+  let mockSpawnFn: SpawnFunction;
+  let mockChildProcess: ChildProcess;
 
   beforeEach(() => {
     // Mock child process that exits successfully
@@ -25,13 +23,32 @@ describe('SpawnQueue', () => {
           // Simulate immediate exit for testing
           setTimeout(() => callback(0), 0);
         }
+        return mockChildProcess as ChildProcess;
+      }),
+      once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
+        if (event === 'exit') {
+          // Simulate immediate exit for testing
+          setTimeout(() => callback(0), 0);
+        }
+        return mockChildProcess as ChildProcess;
       }),
       kill: vi.fn(),
-      pid: 12345
-    };
+      pid: 12345,
+      exitCode: null,
+      signalCode: null,
+      stdin: null,
+      stdout: null,
+      stderr: null,
+      stdio: [null, null, null] as [
+        Writable | null,
+        Readable | null,
+        Readable | null
+      ],
+      connected: false
+    } as unknown as ChildProcess;
 
-    // Mock spawn function
-    mockSpawnFn = vi.fn().mockResolvedValue(mockChildProcess as unknown as import('child_process').ChildProcess);
+    // Mock spawn function with proper type
+    mockSpawnFn = vi.fn().mockResolvedValue(mockChildProcess) as SpawnFunction;
 
     // Create queue with mock spawn function
     queue = new SpawnQueue(mockSpawnFn);
