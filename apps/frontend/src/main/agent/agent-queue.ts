@@ -21,6 +21,7 @@ import type { RawIdea } from '../ipc-handlers/ideation/types';
 import { getPathDelimiter } from '../platform';
 import { debounce } from '../utils/debounce';
 import { writeFileWithRetry } from '../utils/atomic-file';
+import { SpawnQueue } from './spawn-queue';
 
 /** Maximum length for status messages displayed in progress UI */
 const STATUS_MESSAGE_MAX_LENGTH = 200;
@@ -54,6 +55,7 @@ export class AgentQueueManager {
     isRunning: boolean
   ) => void;
   private cancelPersistRoadmapProgress: () => void;
+  private spawnQueue: SpawnQueue;
 
   constructor(
     state: AgentState,
@@ -76,6 +78,12 @@ export class AgentQueueManager {
     );
     this.debouncedPersistRoadmapProgress = debouncedFn;
     this.cancelPersistRoadmapProgress = cancel;
+
+    // Initialize sequential spawn queue
+    // The spawn function will be implemented in the next task
+    this.spawnQueue = new SpawnQueue(async (_id, _projectPath, _args, _env) => {
+      throw new Error('SpawnQueue not yet integrated - implementation in next task');
+    });
   }
 
   /**
