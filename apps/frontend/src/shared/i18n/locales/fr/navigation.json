@@ -26,6 +26,7 @@
     "expandSidebar": "Développer la barre latérale",
     "sponsor": "Nous sponsoriser"
   },
+  "popOutView": "Ouvrir dans une nouvelle fenêtre",
   "tooltips": {
     "settings": "Paramètres de l'application",
     "help": "Aide & Feedback"

@@ -22,7 +22,8 @@ import {
   Heart,
   Wrench,
   PanelLeft,
-  PanelLeftClose
+  PanelLeftClose,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -53,6 +54,7 @@ import {
   loadProjectEnvConfig,
   clearProjectEnvConfig
 } from '../stores/project-env-store';
+import { useWindowStore } from '../stores/window-store';
 import { AddProjectModal } from './AddProjectModal';
 import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
@@ -111,6 +113,7 @@ export function Sidebar({
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const settings = useSettingsStore((state) => state.settings);
+  const { isViewPoppedOut, setWindowLoading, addPoppedOutView } = useWindowStore();
 
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [showInitDialog, setShowInitDialog] = useState(false);
@@ -290,43 +293,124 @@ export function Sidebar({
     onViewChange?.(view);
   };
 
+  // Handler for popping out a view into a new window
+  const handlePopOutView = async (view: SidebarView, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the view navigation
+
+    if (!selectedProjectId) {
+      console.warn('Cannot pop out view: no project selected');
+      return;
+    }
+
+    const viewKey = `${selectedProjectId}:${view}`;
+    try {
+      setWindowLoading(viewKey, true);
+      const result = await window.electronAPI.window.popOutView(selectedProjectId, view);
+
+      // Check if the result indicates an error (IPC handler returns success/error structure)
+      if ('success' in result && result.success === false && 'error' in result) {
+        const error = result.error as {
+          code: string;
+          message: string;
+          existingWindowId?: number;
+        };
+
+        // If view already popped out, focus the existing window
+        if (error.code === 'ALREADY_POPPED_OUT' && error.existingWindowId) {
+          await window.electronAPI.window.focusWindow(error.existingWindowId);
+        } else {
+          console.error('Failed to pop out view:', error.message);
+        }
+        return;
+      }
+
+      // Success path - result is { success: true, windowId: number }
+      const successResult = result as { success: true; windowId: number };
+      addPoppedOutView(selectedProjectId, view, successResult.windowId);
+    } catch (error) {
+      console.error('Failed to pop out view:', error);
+    } finally {
+      setWindowLoading(viewKey, false);
+    }
+  };
+
   const renderNavItem = (item: NavItem) => {
     const isActive = activeView === item.id;
     const Icon = item.icon;
+    const isPoppedOut = selectedProjectId ? isViewPoppedOut(selectedProjectId, item.id) : false;
 
     const button = (
-      <button
+      <div
         key={item.id}
-        onClick={() => handleNavClick(item.id)}
-        disabled={!selectedProjectId}
-        aria-keyshortcuts={item.shortcut}
         className={cn(
-          'flex w-full items-center rounded-lg text-sm transition-all duration-200',
+          'group relative flex w-full items-center rounded-lg text-sm transition-all duration-200',
           'hover:bg-accent hover:text-accent-foreground',
-          'disabled:pointer-events-none disabled:opacity-50',
           isActive && 'bg-accent text-accent-foreground',
           isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
         )}
       >
-        <Icon className="h-4 w-4 shrink-0" />
-        {!isCollapsed && (
-          <>
-            <span className="flex-1 text-left">{t(item.labelKey)}</span>
-            {item.shortcut && (
-              <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded-md border border-border bg-secondary px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:flex">
-                {item.shortcut}
-              </kbd>
-            )}
-          </>
+        <button
+          onClick={() => handleNavClick(item.id)}
+          disabled={!selectedProjectId}
+          aria-keyshortcuts={item.shortcut}
+          className={cn(
+            'flex flex-1 items-center gap-3',
+            'disabled:pointer-events-none disabled:opacity-50'
+          )}
+        >
+          <Icon className="h-4 w-4 shrink-0" />
+          {!isCollapsed && (
+            <>
+              <span className="flex-1 text-left">{t(item.labelKey)}</span>
+              {item.shortcut && (
+                <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded-md border border-border bg-secondary px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:flex">
+                  {item.shortcut}
+                </kbd>
+              )}
+            </>
+          )}
+        </button>
+        {/* Pop-out button - visible when not collapsed and project is selected */}
+        {!isCollapsed && selectedProjectId && (
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isPoppedOut) {
+                    handlePopOutView(item.id, e);
+                  }
+                }}
+                disabled={isPoppedOut}
+                aria-label={t('navigation:popOutView')}
+                className={cn(
+                  'h-5 w-5 p-0 rounded flex items-center justify-center',
+                  'text-muted-foreground hover:text-foreground',
+                  'hover:bg-muted/50 transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                  'opacity-0 group-hover:opacity-100',
+                  isPoppedOut && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <span>{t('navigation:popOutView')}</span>
+            </TooltipContent>
+          </Tooltip>
         )}
-      </button>
+      </div>
     );
 
-    // Wrap in tooltip when collapsed
+    // Wrap in tooltip when collapsed to show full label
     if (isCollapsed) {
       return (
         <Tooltip key={item.id}>
-          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipTrigger asChild>
+            <div className="w-full">{button}</div>
+          </TooltipTrigger>
           <TooltipContent side="right">
             <span>{t(item.labelKey)}</span>
             {item.shortcut && (
