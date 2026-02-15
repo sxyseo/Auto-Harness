@@ -63,6 +63,49 @@ GitHubIssues (Main Orchestrator - 131 lines)
         └── Complete state (success message + done button)
 ```
 
+## Automatic Label Sync
+
+GitHub issue labels are automatically synchronized when investigation state changes during the build process.
+
+### When Labels Sync Automatically
+
+1. **Investigation state changes:** When an issue moves through investigation states (queued → investigating → findings_ready)
+2. **Task creation:** When a task is created from an investigation (task_created → ready label)
+3. **Build progress:** When the linked task status changes during build (in_progress → building → in-progress label)
+4. **Task completion:** When the task reaches done or pr_created state (done → done label)
+
+### State Mapping
+
+The mapping from InvestigationState to GitHub workflow labels is defined in:
+`apps/frontend/src/shared/constants/label-sync.ts:mapInvestigationStateToWorkflowState()`
+
+| Investigation State | Workflow Label | GitHub Label |
+|-------------------|----------------|--------------|
+| new | new | ac:new |
+| queued | ready | ac:ready |
+| investigating | triage | ac:triage |
+| findings_ready | ready | ac:ready |
+| resolved | done | ac:done |
+| task_created | ready | ac:ready |
+| building | in_progress | ac:in-progress |
+| done | done | ac:done |
+
+### Implementation
+
+- **Label Sync Hook:** `useLabelSync()` provides `syncIssueLabel()` with 2-second debouncing
+- **Store Callback:** Investigation store accepts an optional `setStateChangeCallback()`
+- **Registration:** GitHubIssues component registers callback on mount, unregisters on cleanup
+- **Triggering:** Both the store callback and direct sync in task state changes trigger updates
+- **Error Handling:** Label sync failures are silent and don't disrupt the build process
+
+### Files
+
+- `apps/frontend/src/shared/constants/label-sync.ts` - State mapping and constants
+- `apps/frontend/src/renderer/stores/github/investigation-store.ts` - Callback mechanism
+- `apps/frontend/src/renderer/components/GitHubIssues.tsx` - Callback registration and triggering
+- `apps/frontend/src/renderer/components/github-issues/hooks/useLabelSync.ts` - Debounced API calls
+- `apps/frontend/src/main/ipc-handlers/github/label-sync-handlers.ts` - IPC to GitHub CLI
+
 ## Data Flow
 
 ```
