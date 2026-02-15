@@ -22,6 +22,7 @@ import { setUpdateChannel, setUpdateChannelWithDowngradeCheck } from '../app-upd
 import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
 import { parseEnvFile } from './utils';
+import { WindowManager } from '../window-manager';
 
 const settingsPath = getSettingsPath();
 
@@ -279,6 +280,13 @@ export function registerSettingsHandlers(
             });
           }
         }
+
+        // Broadcast settings change to all windows for synchronization
+        // This ensures theme, language, and other preferences update across all windows within 500ms
+        WindowManager.getInstance().broadcastStateChange({
+          type: 'settings',
+          data: newSettings
+        });
 
         return { success: true };
       } catch (error) {
