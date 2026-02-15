@@ -257,6 +257,21 @@ const browserMockAPI: ElectronAPI = {
     onQueueBlockedNoProfiles: () => () => {}
   },
 
+  // Window Management API (multi-window pop-out support)
+  window: {
+    popOutProject: async (_projectId: string) => ({ windowId: 1 }),
+    popOutView: async (_projectId: string, _view: string) => ({ windowId: 2 }),
+    mergeWindow: async (_windowId: number) => {},
+    getWindows: async () => [],
+    getConfig: async () => ({
+      windowId: 1,
+      type: 'main' as const
+    }),
+    focusWindow: async (_windowId: number) => {},
+    onConfigChanged: () => () => {},
+    onSyncState: () => () => {}
+  },
+
   // Claude Code Operations
   checkClaudeCodeVersion: async () => ({
     success: true,

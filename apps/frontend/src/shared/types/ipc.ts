@@ -924,6 +924,9 @@ export interface ElectronAPI {
 
   // Queue Routing API (rate limit recovery)
   queue: import('../../preload/api/queue-api').QueueAPI;
+
+  // Window Management API (multi-window pop-out support)
+  window: import('../../preload/api/modules/window-api').WindowAPI;
 }
 
 /** Platform information exposed via contextBridge for platform-specific behavior */
