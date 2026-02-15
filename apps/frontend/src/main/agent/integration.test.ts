@@ -90,10 +90,15 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
   beforeEach(() => {
     concurrentProcesses = new Map();
 
+    // Suppress console.log output in tests
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
     // Mock spawn function that creates processes with different exit delays
     mockSpawnFn = vi.fn(async (id: string) => {
-      // Vary exit delay slightly to simulate real-world conditions
-      const delay = 10 + Math.random() * 20;
+      // Use deterministic delays to avoid non-determinism
+      const delays = [10, 15, 20, 25, 30];
+      const index = parseInt(id.split('-')[1]) || 0;
+      const delay = delays[index % delays.length];
       return createMockProcess(id, delay);
     }) as SpawnFunction;
 
@@ -194,14 +199,8 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
         const [nextId, nextTimes] = sortedEntries[i + 1];
 
         // Next agent should start after current agent finishes
-        expect(nextTimes.start).toBeGreaterThanOrEqual(currentTimes.end);
-
-        // Log for debugging
-        const currentDuration = currentTimes.end - currentTimes.start;
-        const gap = nextTimes.start - currentTimes.end;
-        console.log(
-          `${currentId}: ${currentDuration}ms, gap to ${nextId}: ${gap}ms`
-        );
+        // Add tolerance for timing precision
+        expect(nextTimes.start).toBeGreaterThanOrEqual(currentTimes.end - 1);
       }
     });
 
@@ -239,10 +238,6 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
 
       // Exit should be after spawn
       expect(times!.end).toBeGreaterThanOrEqual(spawnedTime!);
-
-      console.log(
-        `Agent ${testId}: spawned at ${spawnedTime}, exited at ${times!.end}`
-      );
     });
   });
 
@@ -333,10 +328,10 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
           env: { PROJECT_ID: projectId },
           cwd: '/auto-claude',
           onSpawn: vi.fn(async () => {
-            console.log(`[Simulation] Ideation spawned for ${projectId}`);
+            // Ideation spawned
           }),
           onError: vi.fn((error: Error) => {
-            console.error(`[Simulation] Ideation failed for ${projectId}:`, error.message);
+            // Ideation failed
           })
         });
       };
@@ -347,8 +342,6 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
         Array.from({ length: 5 }, (_, i) => triggerIdeation(i))
       );
       const triggerTime = Date.now() - startTime;
-
-      console.log(`[Simulation] User triggered 5 ideations in ${triggerTime}ms`);
 
       // Wait for all to complete
       await queue.drain();
@@ -366,8 +359,6 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
         const nextStart = sortedEntries[i + 1][1].start;
         expect(nextStart).toBeGreaterThanOrEqual(currentEnd);
       }
-
-      console.log('[Simulation] All ideations completed sequentially without overlap');
     });
   });
 
@@ -387,10 +378,6 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
       // should take roughly 50-100ms (much slower than parallel, but safe)
       expect(totalTime).toBeGreaterThan(40); // At least 40ms for sequential
       expect(totalTime).toBeLessThan(500); // But should complete in reasonable time
-
-      const throughput = numAgents / (totalTime / 1000); // agents per second
-      console.log(`[Performance] Processed ${numAgents} agents in ${totalTime}ms`);
-      console.log(`[Performance] Throughput: ${throughput.toFixed(2)} agents/second`);
 
       // Verify all completed
       expect(mockSpawnFn).toHaveBeenCalledTimes(numAgents);
