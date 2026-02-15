@@ -5,5 +5,12 @@
       "titleSuffix": "(Erreur JSON)",
       "description": "⚠️ Erreur d'analyse JSON : {{error}}\n\nLe fichier implementation_plan.json est malformé. Exécutez la correction automatique du backend ou réparez le fichier manuellement."
     }
+  },
+  "window": {
+    "popOutProjectFailed": "Échec de l'extraction du projet",
+    "popOutViewFailed": "Échec de l'extraction de la vue",
+    "windowCreationFailed": "Impossible de créer la fenêtre : {{message}}",
+    "sourceWindowNotFound": "Fenêtre source introuvable",
+    "genericError": "Une erreur inattendue s'est produite"
   }
 }

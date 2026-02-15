@@ -5,5 +5,12 @@
       "titleSuffix": "(JSON Error)",
       "description": "⚠️ JSON Parse Error: {{error}}\n\nThe implementation_plan.json file is malformed. Run the backend auto-fix or manually repair the file."
     }
+  },
+  "window": {
+    "popOutProjectFailed": "Failed to pop out project",
+    "popOutViewFailed": "Failed to pop out view",
+    "windowCreationFailed": "Could not create window: {{message}}",
+    "sourceWindowNotFound": "Source window not found",
+    "genericError": "An unexpected error occurred"
   }
 }

@@ -61,6 +61,7 @@ import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
 import { UpdateBanner } from './UpdateBanner';
+import { useToast } from '../hooks/use-toast';
 import type { Project, GitStatus } from '../../shared/types';
 
 export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'gitlab-issues' | 'github-prs' | 'gitlab-merge-requests' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools';
@@ -110,7 +111,8 @@ export function Sidebar({
   activeView = 'kanban',
   onViewChange
 }: SidebarProps) {
-  const { t } = useTranslation(['navigation', 'dialogs', 'common']);
+  const { t } = useTranslation(['navigation', 'dialogs', 'common', 'errors']);
+  const { toast } = useToast();
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const settings = useSettingsStore((state) => state.settings);
@@ -321,6 +323,11 @@ export function Sidebar({
           await window.electronAPI.window.focusWindow(error.existingWindowId);
         } else {
           console.error('Failed to pop out view:', error.message);
+          toast({
+            title: t('errors:window.popOutViewFailed'),
+            description: t('errors:window.windowCreationFailed', { message: error.message }),
+            variant: 'destructive'
+          });
         }
         return;
       }
@@ -330,6 +337,11 @@ export function Sidebar({
       addPoppedOutView(selectedProjectId, view, successResult.windowId);
     } catch (error) {
       console.error('Failed to pop out view:', error);
+      toast({
+        title: t('errors:window.popOutViewFailed'),
+        description: error instanceof Error ? error.message : t('errors:window.genericError'),
+        variant: 'destructive'
+      });
     } finally {
       setWindowLoading(viewKey, false);
     }

@@ -7,6 +7,7 @@ import { SortableProjectTab } from './SortableProjectTab';
 import { UsageIndicator } from './UsageIndicator';
 import { AuthStatusIndicator } from './AuthStatusIndicator';
 import { useWindowStore } from '../stores/window-store';
+import { useToast } from '../hooks/use-toast';
 import type { Project } from '../../shared/types';
 
 interface ProjectTabBarProps {
@@ -29,7 +30,8 @@ export function ProjectTabBar({
   className,
   onSettingsClick
 }: ProjectTabBarProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'errors']);
+  const { toast } = useToast();
   const { isProjectPoppedOut, setWindowLoading, addPoppedOutProject, isWindowLoading } = useWindowStore();
 
   // Handler for popping out a project into a new window
@@ -52,7 +54,11 @@ export function ProjectTabBar({
           console.log(`Project ${projectId} already popped out, focused existing window ${error.existingWindowId}`);
         } else {
           console.error('Failed to pop out project:', error.message);
-          // TODO: Show error notification to user
+          toast({
+            title: t('errors:window.popOutProjectFailed'),
+            description: t('errors:window.windowCreationFailed', { message: error.message }),
+            variant: 'destructive'
+          });
         }
         return;
       }
@@ -63,7 +69,11 @@ export function ProjectTabBar({
       console.log(`Project ${projectId} popped out to window ${successResult.windowId}`);
     } catch (error) {
       console.error('Failed to pop out project:', error);
-      // TODO: Show error notification to user
+      toast({
+        title: t('errors:window.popOutProjectFailed'),
+        description: error instanceof Error ? error.message : t('errors:window.genericError'),
+        variant: 'destructive'
+      });
     } finally {
       setWindowLoading(projectId, false);
     }
