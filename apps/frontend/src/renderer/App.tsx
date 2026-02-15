@@ -67,6 +67,7 @@ import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
 import { useIpcListeners } from './hooks/useIpc';
 import { useGlobalTerminalListeners } from './hooks/useGlobalTerminalListeners';
 import { useTerminalProfileChange } from './hooks/useTerminalProfileChange';
+import { initializeWindowSync } from './utils/window-sync';
 import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../shared/constants';
 import type { Task, Project, ColorTheme } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
@@ -195,10 +196,28 @@ export function App() {
     initializeGitHubListeners();
     // Initialize global download progress listener for Ollama model downloads
     const cleanupDownloadListener = initDownloadProgressListener();
+    // Initialize cross-window state synchronization
+    const cleanupWindowSync = initializeWindowSync({
+      onSettingsSync: () => {
+        // Reload settings when synced from another window
+        loadSettings();
+        loadProfiles();
+        loadClaudeProfiles();
+      },
+      onProjectsSync: () => {
+        // Reload projects when synced from another window
+        loadProjects();
+      },
+      onAuthFailure: () => {
+        // Auth failures are handled by useIpcListeners hook
+        // This callback ensures the event propagates across all windows
+      },
+    });
 
     return () => {
       cleanupDownloadListener();
       cleanupGitHubListeners();
+      cleanupWindowSync();
     };
   }, []);
 
