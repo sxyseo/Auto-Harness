@@ -157,3 +157,34 @@ export function isAutoClaudeLabel(
   const prefix = customization?.prefix || LABEL_PREFIX;
   return label.startsWith(prefix);
 }
+
+// ============================================
+// Investigation State → Workflow State Mapping
+// ============================================
+
+/**
+ * Map investigation state to workflow state for label sync.
+ * Investigation states are derived from investigation + task status,
+ * workflow states are used for GitHub labels.
+ */
+export function mapInvestigationStateToWorkflowState(
+  investigationState: string,
+): WorkflowState | null {
+  // Direct mappings (same name)
+  if (investigationState === 'new') return 'new';
+  if (investigationState === 'done') return 'done';
+
+  // Investigation-specific states (no label equivalent - use "ready" as default)
+  if (investigationState === 'queued') return 'ready';
+  if (investigationState === 'investigating') return 'triage';
+  if (investigationState === 'interrupted') return 'ready';
+  if (investigationState === 'failed') return 'ready';
+  if (investigationState === 'resolved') return 'done';
+  if (investigationState === 'findings_ready') return 'ready';
+
+  // Task-related states
+  if (investigationState === 'task_created') return 'ready';
+  if (investigationState === 'building') return 'in_progress';
+
+  return null; // Unknown state - don't sync
+}
