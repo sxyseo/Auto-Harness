@@ -10,6 +10,7 @@
     "addProjectAriaLabel": "Ajouter un projet",
     "popOut": "Ouvrir dans une fenêtre séparée",
     "popOutAriaLabel": "Ouvrir le projet dans une fenêtre séparée",
+    "popOutLoading": "Création de la fenêtre...",
     "poppedOutBadge": "Détaché"
   },
   "accessibility": {

@@ -32,7 +32,8 @@
     "settings": "Paramètres de l'application",
     "help": "Aide & Feedback",
     "popOutView": "Ouvrir cette vue dans une fenêtre séparée",
-    "viewPoppedOut": "Cette vue est ouverte dans une fenêtre séparée"
+    "viewPoppedOut": "Cette vue est ouverte dans une fenêtre séparée",
+    "popOutLoading": "Création de la fenêtre..."
   },
   "messages": {
     "initializeToCreateTasks": "Initialisez Auto Claude pour créer des tâches"

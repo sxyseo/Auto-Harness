@@ -30,7 +30,7 @@ export function ProjectTabBar({
   onSettingsClick
 }: ProjectTabBarProps) {
   const { t } = useTranslation('common');
-  const { isProjectPoppedOut, setWindowLoading, addPoppedOutProject } = useWindowStore();
+  const { isProjectPoppedOut, setWindowLoading, addPoppedOutProject, isWindowLoading } = useWindowStore();
 
   // Handler for popping out a project into a new window
   const handlePopOutProject = async (projectId: string) => {
@@ -148,6 +148,7 @@ export function ProjectTabBar({
               onSettingsClick={isActiveTab ? onSettingsClick : undefined}
               onPopOutClick={isActiveTab ? () => handlePopOutProject(project.id) : undefined}
               isPoppedOut={isProjectPoppedOut(project.id)}
+              isLoading={isWindowLoading(project.id)}
             />
           );
         })}

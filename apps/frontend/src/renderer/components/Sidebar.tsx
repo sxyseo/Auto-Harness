@@ -23,7 +23,8 @@ import {
   Wrench,
   PanelLeft,
   PanelLeftClose,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -113,7 +114,7 @@ export function Sidebar({
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const settings = useSettingsStore((state) => state.settings);
-  const { isViewPoppedOut, setWindowLoading, addPoppedOutView } = useWindowStore();
+  const { isViewPoppedOut, setWindowLoading, addPoppedOutView, isWindowLoading, getViewKey } = useWindowStore();
 
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [showInitDialog, setShowInitDialog] = useState(false);
@@ -338,6 +339,8 @@ export function Sidebar({
     const isActive = activeView === item.id;
     const Icon = item.icon;
     const isPoppedOut = selectedProjectId ? isViewPoppedOut(selectedProjectId, item.id) : false;
+    const viewKey = selectedProjectId ? getViewKey(selectedProjectId, item.id) : '';
+    const isLoading = viewKey ? isWindowLoading(viewKey) : false;
 
     const button = (
       <div
@@ -379,26 +382,31 @@ export function Sidebar({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!isPoppedOut) {
+                  if (!isPoppedOut && !isLoading) {
                     handlePopOutView(item.id, e);
                   }
                 }}
-                disabled={isPoppedOut}
+                disabled={isPoppedOut || isLoading}
                 aria-label={isPoppedOut ? t('navigation:viewPoppedOut') : t('navigation:popOutView')}
                 className={cn(
                   'h-5 w-5 p-0 rounded flex items-center justify-center',
                   'text-muted-foreground hover:text-foreground',
                   'hover:bg-muted/50 transition-colors',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                  isPoppedOut ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-100',
-                  isPoppedOut && 'cursor-not-allowed'
+                  isPoppedOut || isLoading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                  isPoppedOut && 'text-primary',
+                  (isPoppedOut || isLoading) && 'cursor-not-allowed'
                 )}
               >
-                <ExternalLink className="h-3 w-3" />
+                {isLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ExternalLink className="h-3 w-3" />
+                )}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <span>{isPoppedOut ? t('navigation:tooltips.viewPoppedOut') : t('navigation:tooltips.popOutView')}</span>
+              <span>{isLoading ? t('navigation:tooltips.popOutLoading') : isPoppedOut ? t('navigation:tooltips.viewPoppedOut') : t('navigation:tooltips.popOutView')}</span>
             </TooltipContent>
           </Tooltip>
         )}

@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useTranslation } from 'react-i18next';
-import { Settings2, ExternalLink } from 'lucide-react';
+import { Settings2, ExternalLink, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import type { Project } from '../../shared/types';
@@ -17,6 +17,7 @@ interface SortableProjectTabProps {
   onSettingsClick?: () => void;
   onPopOutClick?: () => void;
   isPoppedOut?: boolean;
+  isLoading?: boolean;
 }
 
 // Detect if running on macOS for keyboard shortcut display
@@ -32,7 +33,8 @@ export function SortableProjectTab({
   onClose,
   onSettingsClick,
   onPopOutClick,
-  isPoppedOut = false
+  isPoppedOut = false,
+  isLoading = false
 }: SortableProjectTabProps) {
   const { t } = useTranslation('common');
   // Build tooltip with keyboard shortcut hint (only for tabs 1-9)
@@ -138,22 +140,26 @@ export function SortableProjectTab({
                     'text-muted-foreground hover:text-foreground',
                     'hover:bg-muted/50 transition-colors',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                    isPoppedOut && 'opacity-50 cursor-not-allowed'
+                    (isPoppedOut || isLoading) && 'opacity-50 cursor-not-allowed'
                   )}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isPoppedOut) {
+                    if (!isPoppedOut && !isLoading) {
                       onPopOutClick();
                     }
                   }}
-                  disabled={isPoppedOut}
+                  disabled={isPoppedOut || isLoading}
                   aria-label={t('projectTab.popOutAriaLabel')}
                 >
-                  <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  {isLoading ? (
+                    <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
+                  ) : (
+                    <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  )}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <span>{t('projectTab.popOut')}</span>
+                <span>{isLoading ? t('projectTab.popOutLoading') : t('projectTab.popOut')}</span>
               </TooltipContent>
             </Tooltip>
           )}
