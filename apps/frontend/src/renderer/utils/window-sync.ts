@@ -144,6 +144,23 @@ function queueSyncUpdate(state: GlobalState): void {
     return;
   }
 
+  // Project changes apply immediately for responsive multi-window UX
+  // This ensures project add/remove/update operations sync instantly across all windows
+  if (state.type === 'projects' && syncCallbacks) {
+    if (window.DEBUG) {
+      console.warn('[Window Sync] Project change detected, applying immediately');
+    }
+    // Flush any pending updates first to ensure correct ordering
+    if (batchTimeout) {
+      clearTimeout(batchTimeout);
+      batchTimeout = null;
+      flushBatch();
+    }
+    // Apply project change immediately
+    syncCallbacks.onProjectsSync?.(state.data);
+    return;
+  }
+
   // Add to batch queue
   batchQueue.push(state);
 
