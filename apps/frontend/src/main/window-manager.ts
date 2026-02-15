@@ -21,6 +21,7 @@ import { app, BrowserWindow, screen } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { isMacOS } from './platform';
+import { IPC_CHANNELS } from '../shared/constants';
 import type { WindowConfig, GlobalState } from '../shared/types/window';
 
 // Window sizing constants (reused from index.ts patterns)
@@ -406,7 +407,7 @@ export class WindowManager {
     // Send to all windows
     for (const window of allWindows) {
       if (!window.isDestroyed()) {
-        window.webContents.send('window:sync-state', state);
+        window.webContents.send(IPC_CHANNELS.WINDOW_SYNC_STATE, state);
       }
     }
   }
