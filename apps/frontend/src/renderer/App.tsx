@@ -60,6 +60,7 @@ import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings, loadProfiles, saveSettings } from './stores/settings-store';
 import { useClaudeProfileStore, loadClaudeProfiles } from './stores/claude-profile-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
+import { useWindowStore } from './stores/window-store';
 import { initializeGitHubListeners, cleanupGitHubListeners } from './stores/github';
 import { initDownloadProgressListener } from './stores/download-store';
 import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
@@ -135,6 +136,9 @@ export function App() {
   // Claude Profile state (OAuth)
   const claudeProfiles = useClaudeProfileStore((state) => state.profiles);
 
+  // Window store
+  const setWindowConfig = useWindowStore((state) => state.setWindowConfig);
+
   // UI State
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
@@ -196,6 +200,41 @@ export function App() {
       cleanupGitHubListeners();
     };
   }, []);
+
+  // Parse URL parameters to detect window type and configuration
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const type = params.get('type');
+      const projectId = params.get('projectId');
+      const view = params.get('view');
+
+      // Only set window config if type parameter is present
+      if (type) {
+        // Validate window type
+        if (type !== 'main' && type !== 'project' && type !== 'view') {
+          debugLog('window-routing', `Invalid window type in URL: ${type}`);
+          return;
+        }
+
+        // Get window ID (will be set by main process via IPC in a real implementation)
+        // For now, use a placeholder value
+        const windowId = 0;
+
+        const config = {
+          windowId,
+          type: type as 'main' | 'project' | 'view',
+          ...(projectId && { projectId }),
+          ...(view && { view })
+        };
+
+        debugLog('window-routing', 'Parsed window config from URL:', config);
+        setWindowConfig(config);
+      }
+    } catch (error) {
+      debugLog('window-routing', 'Failed to parse URL parameters:', error);
+    }
+  }, [setWindowConfig]);
 
   // Restore tab state and open tabs for loaded projects
   useEffect(() => {
