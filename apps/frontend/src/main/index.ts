@@ -339,6 +339,13 @@ function createWindow(): void {
     agentManager?.killAll?.()?.catch((err: unknown) => {
       console.warn('[main] Error killing agents on window close:', err);
     });
+
+    // WindowManager cleanup (child windows, state persistence, window map cleanup)
+    // Note: WindowManager also has its own 'closed' event listener registered in registerMainWindow()
+    // that handles closeChildWindows() and saveNow(). This ensures cleanup happens even if this handler fails.
+    const windowManager = getWindowManager();
+    windowManager.saveWindowState();
+
     mainWindow = null;
   });
 }
