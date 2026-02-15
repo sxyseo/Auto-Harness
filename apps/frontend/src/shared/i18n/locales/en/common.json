@@ -9,7 +9,8 @@
     "closeTabAriaLabel": "Close tab (removes project from app)",
     "addProjectAriaLabel": "Add project",
     "popOut": "Pop out project",
-    "popOutAriaLabel": "Pop out project into separate window"
+    "popOutAriaLabel": "Pop out project into separate window",
+    "poppedOutBadge": "Popped Out"
   },
   "accessibility": {
     "deleteFeatureAriaLabel": "Delete feature",

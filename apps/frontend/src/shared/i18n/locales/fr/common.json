@@ -9,7 +9,8 @@
     "closeTabAriaLabel": "Fermer l'onglet (retire le projet de l'application)",
     "addProjectAriaLabel": "Ajouter un projet",
     "popOut": "Ouvrir dans une fenêtre séparée",
-    "popOutAriaLabel": "Ouvrir le projet dans une fenêtre séparée"
+    "popOutAriaLabel": "Ouvrir le projet dans une fenêtre séparée",
+    "poppedOutBadge": "Détaché"
   },
   "accessibility": {
     "deleteFeatureAriaLabel": "Supprimer la fonctionnalité",

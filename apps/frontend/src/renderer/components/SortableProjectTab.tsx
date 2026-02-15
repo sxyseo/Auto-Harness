@@ -104,6 +104,13 @@ export function SortableProjectTab({
             <span className="truncate font-medium">
               {project.name}
             </span>
+            {/* Badge indicator for popped-out projects */}
+            {isPoppedOut && (
+              <span className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium bg-primary/10 text-primary rounded border border-primary/20">
+                <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                <span className="hidden sm:inline">{t('projectTab.poppedOutBadge')}</span>
+              </span>
+            )}
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="flex items-center gap-2">
