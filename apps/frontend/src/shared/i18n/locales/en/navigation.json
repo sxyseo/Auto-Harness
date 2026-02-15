@@ -29,7 +29,8 @@
   "popOutView": "Pop Out View",
   "tooltips": {
     "settings": "Application Settings",
-    "help": "Help & Feedback"
+    "help": "Help & Feedback",
+    "popOutView": "Open this view in a separate window"
   },
   "messages": {
     "initializeToCreateTasks": "Initialize Auto Claude to create tasks"
