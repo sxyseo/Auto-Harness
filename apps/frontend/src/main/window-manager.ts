@@ -71,6 +71,10 @@ export class WindowManager {
 
     // Track window close to clean up from map
     window.on('closed', () => {
+      // Close all child windows first (prevents orphaned pop-outs)
+      this.closeChildWindows(window.id);
+
+      // Clean up the main window reference
       this.windows.delete(window.id);
       if (this.mainWindowId === window.id) {
         this.mainWindowId = null;
