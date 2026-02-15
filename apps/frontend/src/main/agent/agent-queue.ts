@@ -40,6 +40,29 @@ function formatStatusMessage(log: string): string {
 
 /**
  * Queue management for ideation and roadmap generation
+ *
+ * **IMPORTANT: Sequential Execution**
+ * All agent types (ideation, roadmap) now execute SEQUENTIALLY via SpawnQueue.
+ * This prevents race conditions when multiple agents write to ~/.claude.json
+ * concurrently, which was causing JSON corruption and backup file accumulation.
+ *
+ * **Key Behaviors:**
+ * - Only ONE agent spawns at a time across all types (FIFO queue)
+ * - Next agent waits for previous agent's process to exit
+ * - Queue automatically continues if spawn fails (error resilience)
+ * - Each agent type gets unique process tracking via queueProcessType
+ *
+ * **Architecture:**
+ * - User calls startIdeationGeneration() or startRoadmapGeneration()
+ * - Request enqueued in spawnQueue with type ('ideation' | 'roadmap')
+ * - Queue routes to executeIdeationSpawn() or executeRoadmapSpawn()
+ * - Process spawned, tracked in AgentState, event handlers attached
+ * - Queue waits for process.exit() before processing next item
+ *
+ * **Process Types:**
+ * - 'ideation': Idea generation (discoveries, performance, security)
+ * - 'roadmap': Strategic roadmap generation with competitor analysis
+ * - 'build': Build agents (managed separately, not in this queue)
  */
 export class AgentQueueManager {
   private state: AgentState;
@@ -476,7 +499,7 @@ export class AgentQueueManager {
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
 
     // Get Python path from process manager (uses venv if configured)
-    const pythonPath = this.processManager.getPythonPath();
+    const _pythonPath = this.processManager.getPythonPath();
 
     // Get Python environment from pythonEnvManager (includes bundled site-packages)
     const pythonEnv = pythonEnvManager.getPythonEnv();
@@ -814,7 +837,7 @@ export class AgentQueueManager {
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
 
     // Get Python path from process manager (uses venv if configured)
-    const pythonPath = this.processManager.getPythonPath();
+    const _pythonPath = this.processManager.getPythonPath();
 
     // Get Python environment from pythonEnvManager (includes bundled site-packages)
     const pythonEnv = pythonEnvManager.getPythonEnv();
