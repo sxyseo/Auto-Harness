@@ -51,6 +51,7 @@ export const IPC_CHANNELS = {
   TASK_ARCHIVE: 'task:archive',
   TASK_UNARCHIVE: 'task:unarchive',
   TASK_CLEAR_STAGED_STATE: 'task:clearStagedState',
+  TASK_GET_INVESTIGATION_DATA: 'task:getInvestigationData',  // Get investigation report for GitHub-sourced tasks
 
   // Task events (main -> renderer)
   TASK_PROGRESS: 'task:progress',

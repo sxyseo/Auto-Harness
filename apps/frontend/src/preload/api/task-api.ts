@@ -18,6 +18,7 @@ import type {
   WorktreeCreatePRResult,
   ImageAttachment
 } from '../../shared/types';
+import type { InvestigationData } from '../../shared/types/investigation';
 
 export interface TaskAPI {
   // Task Operations
@@ -55,6 +56,9 @@ export interface TaskAPI {
 
   // Worktree Change Detection
   checkWorktreeChanges: (taskId: string) => Promise<IPCResult<{ hasChanges: boolean; worktreePath?: string; changedFileCount?: number }>>;
+
+  // Investigation Data
+  getInvestigationData: (taskId: string) => Promise<IPCResult<InvestigationData | null>>;
 
   // Image Operations
   loadImageThumbnail: (projectPath: string, specId: string, imagePath: string) => Promise<IPCResult<string>>;
@@ -154,6 +158,10 @@ export const createTaskAPI = (): TaskAPI => ({
   // Worktree Change Detection
   checkWorktreeChanges: (taskId: string): Promise<IPCResult<{ hasChanges: boolean; worktreePath?: string; changedFileCount?: number }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TASK_CHECK_WORKTREE_CHANGES, taskId),
+
+  // Investigation Data
+  getInvestigationData: (taskId: string): Promise<IPCResult<InvestigationData | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TASK_GET_INVESTIGATION_DATA, taskId),
 
   // Image Operations
   loadImageThumbnail: (projectPath: string, specId: string, imagePath: string): Promise<IPCResult<string>> =>

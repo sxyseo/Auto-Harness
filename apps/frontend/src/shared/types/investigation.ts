@@ -321,3 +321,15 @@ export interface InvestigationLogs {
   updatedAt: string;
   agents: Record<InvestigationAgentType | 'orchestrator', InvestigationAgentLog>;
 }
+
+// ============================================
+// Investigation Data for UI (from spec directory)
+// ============================================
+
+/**
+ * Investigation data loaded from spec directory for GitHub-sourced tasks.
+ * Includes the report plus the file path for reference.
+ */
+export interface InvestigationData extends InvestigationReport {
+  reportPath: string;
+}
