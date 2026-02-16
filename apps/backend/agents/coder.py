@@ -80,6 +80,7 @@ from .base import (
     RESUME_FILE,
     sanitize_error_message,
 )
+from .investigation_context import load_investigation_context
 from .memory_manager import debug_memory_system_status, get_graphiti_context
 from .session import post_session_processing, run_agent_session
 from .utils import (
@@ -781,6 +782,56 @@ async def run_autonomous_agent(
             if graphiti_context:
                 prompt += "\n\n" + graphiti_context
                 print_status("Graphiti memory context loaded", "success")
+
+            # Load investigation context if this is a GitHub-sourced task
+            investigation_context = load_investigation_context(spec_dir)
+            if investigation_context:
+                # Format investigation context for the prompt
+                inv = investigation_context
+                inv_prompt = "\n## GitHub Investigation Context\n\n"
+                inv_prompt += "This task was created from a GitHub issue investigation. "
+                inv_prompt += "Use this context to guide your work.\n\n"
+
+                if inv.get("root_cause", {}).get("summary"):
+                    inv_prompt += f"**Root Cause:** {inv['root_cause']['summary']}\n\n"
+
+                if inv.get("root_cause", {}).get("evidence"):
+                    inv_prompt += "**Evidence:**\n"
+                    for evidence in inv["root_cause"]["evidence"]:
+                        inv_prompt += f"- {evidence}\n"
+                    inv_prompt += "\n"
+
+                if inv.get("root_cause", {}).get("code_paths"):
+                    inv_prompt += "**Code Paths:**\n"
+                    for path in inv["root_cause"]["code_paths"]:
+                        inv_prompt += f"- `{path}`\n"
+                    inv_prompt += "\n"
+
+                if inv.get("fix_approaches"):
+                    inv_prompt += "**Fix Approaches:**\n"
+                    for i, approach in enumerate(inv["fix_approaches"], 1):
+                        inv_prompt += f"{i}. {approach.get('name', 'Approach')}\n"
+                        if approach.get("description"):
+                            inv_prompt += f"   - {approach['description']}\n"
+                    inv_prompt += "\n"
+
+                if inv.get("gotchas"):
+                    inv_prompt += "**Gotchas:**\n"
+                    for gotcha in inv["gotchas"]:
+                        inv_prompt += f"- {gotcha}\n"
+                    inv_prompt += "\n"
+
+                if inv.get("patterns_to_follow"):
+                    inv_prompt += "**Patterns to Follow:**\n"
+                    for pattern in inv["patterns_to_follow"]:
+                        inv_prompt += f"- {pattern}\n"
+                    inv_prompt += "\n"
+
+                if inv.get("reproducer"):
+                    inv_prompt += f"**Verification Steps:**\n{inv['reproducer']}\n\n"
+
+                prompt += inv_prompt
+                print_status("Investigation context loaded", "success")
 
             # Add concurrency error context if recovering from 400 error
             if concurrency_error_context:
