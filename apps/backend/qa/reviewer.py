@@ -8,12 +8,17 @@ acceptance criteria.
 Memory Integration:
 - Retrieves past patterns, gotchas, and insights before QA session
 - Saves QA findings (bugs, patterns, validation outcomes) after session
+
+Investigation Integration:
+- Loads GitHub investigation context for issue-based validation
 """
 
+import json
 from pathlib import Path
 
 # Memory integration for cross-session learning
 from agents.base import sanitize_error_message
+from agents.investigation_context import load_investigation_for_qa
 from agents.memory_manager import get_graphiti_context, save_session_memory
 from claude_agent_sdk import ClaudeSDKClient
 from core.error_utils import is_rate_limit_error, is_tool_concurrency_error
@@ -106,6 +111,73 @@ async def run_qa_agent_session(
         prompt += "\n\n" + qa_memory_context
         print("✓ Memory context loaded for QA reviewer")
         debug_success("qa_reviewer", "Graphiti memory context loaded for QA")
+
+    # Load investigation context for GitHub-sourced tasks
+    task_metadata_path = spec_dir / "task_metadata.json"
+    base_branch = "main"  # Default base branch
+
+    # Try to read base_branch from task_metadata.json
+    if task_metadata_path.exists():
+        try:
+            with open(task_metadata_path) as f:
+                task_metadata = json.load(f)
+                base_branch = task_metadata.get("baseBranch", "main")
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    investigation_context = load_investigation_for_qa(spec_dir, base_branch)
+    if investigation_context:
+        # Format investigation context for the prompt
+        inv = investigation_context
+        inv_prompt = "\n## GitHub Issue Validation\n\n"
+        inv_prompt += "This task was created from a GitHub issue investigation. "
+        inv_prompt += "You must verify that the issue is actually fixed.\n\n"
+
+        if inv.get("root_cause", {}).get("summary"):
+            inv_prompt += f"**Root Cause:** {inv['root_cause']['summary']}\n\n"
+
+        if inv.get("root_cause", {}).get("evidence"):
+            inv_prompt += "**Evidence of the Issue:**\n"
+            for evidence in inv["root_cause"]["evidence"]:
+                inv_prompt += f"- {evidence}\n"
+            inv_prompt += "\n"
+
+        if inv.get("root_cause", {}).get("code_paths"):
+            inv_prompt += "**Affected Code Paths:**\n"
+            for path in inv["root_cause"]["code_paths"]:
+                inv_prompt += f"- `{path}`\n"
+            inv_prompt += "\n"
+
+        if inv.get("reproducer"):
+            inv_prompt += f"**Verification Steps:**\n{inv['reproducer']}\n\n"
+            inv_prompt += "**ACTION REQUIRED:** Attempt to reproduce the issue following these steps. "
+            inv_prompt += "If a reproducer script or test is mentioned, run it to confirm the issue is fixed.\n\n"
+
+        if inv.get("impact"):
+            inv_prompt += "**Expected Impact:**\n"
+            if inv["impact"].get("before"):
+                inv_prompt += f"- **Before:** {inv['impact']['before']}\n"
+            if inv["impact"].get("after"):
+                inv_prompt += f"- **After:** {inv['impact']['after']}\n"
+            inv_prompt += "\n"
+
+        inv_prompt += "**Validation Checklist:**\n"
+        inv_prompt += "In your review, you MUST:\n"
+        inv_prompt += "1. Verify the root cause is addressed\n"
+        inv_prompt += "2. Validate the issue is resolved"
+        if inv.get("reproducer"):
+            inv_prompt += " (run the reproducer)\n"
+        else:
+            inv_prompt += "\n"
+        inv_prompt += "3. Check for regressions\n"
+        inv_prompt += "4. Verify minimal changes\n\n"
+
+        inv_prompt += f"You are comparing changes from branch `{inv.get('base_branch', 'main')}` to the current worktree.\n"
+        inv_prompt += "Focus your review on whether these changes actually fix the described issue.\n"
+
+        prompt += inv_prompt
+        print("✓ Investigation context loaded for QA reviewer")
+        debug_success("qa_reviewer", "Investigation context loaded for QA validation")
 
     # Add session context
     prompt += f"\n\n---\n\n**QA Session**: {qa_session}\n"
