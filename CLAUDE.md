@@ -153,6 +153,17 @@ Each spec in `.auto-claude/specs/XXX-name/` contains: `spec.md`, `requirements.j
 
 Graph-based semantic memory in `integrations/graphiti/`. Configured through the Electron app's onboarding/settings UI (CLI users can alternatively set `GRAPHITI_ENABLED=true` in `.env`). See [ARCHITECTURE.md](shared_docs/ARCHITECTURE.md#memory-system) for details.
 
+### Opus 4.6 Features
+
+Auto Claude leverages Opus 4.6's advanced capabilities for GitHub issue investigations:
+
+- **Fast Mode:** 2.5x faster investigations (toggle in Settings > GitHub > AI Investigation)
+- **128K Output Tokens:** Root cause specialist gets max tokens for deep analysis
+- **Per-Specialist Limits:** Different token limits per investigation specialist
+- **Adaptive Thinking:** High-effort mode for thorough investigations
+
+See [guides/opus-4.6-features.md](guides/opus-4.6-features.md) for detailed documentation on Opus 4.6 features, pricing, and usage.
+
 ## Frontend Development
 
 ### Tech Stack
