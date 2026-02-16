@@ -105,14 +105,6 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     }
   }, [issueFilters.searchQuery, handleSearchStart, handleSearchClear]);
 
-  // Ensure all issues are loaded — status filtering is now client-side
-  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount
-  useEffect(() => {
-    if (filterState !== 'all') {
-      handleFilterChange('all');
-    }
-  }, []);
-
   // Analyze & Group Issues (proactive workflow)
   const {
     isWizardOpen,
