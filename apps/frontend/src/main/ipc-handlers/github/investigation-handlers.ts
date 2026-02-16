@@ -546,6 +546,20 @@ function needsTransformation(report: unknown): boolean {
 // Track active investigation subprocesses, keyed by `${projectId}:${issueNumber}`
 const activeInvestigations = new Map<string, ChildProcess>();
 
+/** Kill all active investigation subprocesses. Called during app shutdown. */
+export function killAllInvestigations(): void {
+  for (const [key, proc] of activeInvestigations.entries()) {
+    if (proc && !proc.killed) {
+      try {
+        killProcessGracefully(proc);
+      } catch {
+        // Best-effort cleanup during shutdown
+      }
+    }
+    activeInvestigations.delete(key);
+  }
+}
+
 // ============================================
 // Investigation Queue
 // ============================================

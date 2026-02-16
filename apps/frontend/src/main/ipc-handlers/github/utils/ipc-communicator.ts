@@ -16,7 +16,9 @@ export function createProgressSender<T>(
   projectId: string
 ) {
   return (status: T): void => {
-    mainWindow.webContents.send(channel, projectId, status);
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(channel, projectId, status);
+    }
   };
 }
 
@@ -29,8 +31,10 @@ export function createErrorSender(
   projectId: string
 ) {
   return (error: string | { error: string; [key: string]: unknown }): void => {
-    const errorPayload = typeof error === 'string' ? { error } : error;
-    mainWindow.webContents.send(channel, projectId, errorPayload);
+    if (!mainWindow.isDestroyed()) {
+      const errorPayload = typeof error === 'string' ? { error } : error;
+      mainWindow.webContents.send(channel, projectId, errorPayload);
+    }
   };
 }
 
@@ -43,7 +47,9 @@ export function createCompleteSender<T>(
   projectId: string
 ) {
   return (result: T): void => {
-    mainWindow.webContents.send(channel, projectId, result);
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(channel, projectId, result);
+    }
   };
 }
 

@@ -56,6 +56,7 @@ import { initializeClaudeProfileManager, getClaudeProfileManager } from './claud
 import { isProfileAuthenticated } from './claude-profile/profile-utils';
 import { isMacOS, isWindows } from './platform';
 import { ptyDaemonClient } from './terminal/pty-daemon-client';
+import { killAllInvestigations } from './ipc-handlers/github/investigation-handlers';
 import type { AppSettings, AuthFailureInfo } from '../shared/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -627,6 +628,9 @@ app.on('before-quit', (event) => {
       if (agentManager) {
         await agentManager.killAll();
       }
+
+      // Kill all active investigation subprocesses
+      killAllInvestigations();
 
       // Kill all terminal processes — waits for PTY exit with bounded timeout
       if (terminalManager) {

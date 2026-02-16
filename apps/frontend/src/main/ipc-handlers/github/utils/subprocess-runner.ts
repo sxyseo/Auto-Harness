@@ -25,6 +25,31 @@ const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
 /**
+ * Buffers partial lines from chunked stdout data events.
+ * Yields only complete lines (terminated by \n).
+ */
+class LineBuffer {
+  private buffer = '';
+
+  addChunk(chunk: string): string[] {
+    this.buffer += chunk;
+    const lines = this.buffer.split('\n');
+    this.buffer = lines.pop() ?? '';
+    return lines.filter(line => line.trim());
+  }
+
+  flush(): string[] {
+    if (this.buffer.trim()) {
+      const line = this.buffer;
+      this.buffer = '';
+      return [line];
+    }
+    this.buffer = '';
+    return [];
+  }
+}
+
+/**
  * Create a fallback environment for Python subprocesses when no env is provided.
  * This is used for backwards compatibility when callers don't use getRunnerEnv().
  *
@@ -342,29 +367,30 @@ export function runPythonSubprocess<T = unknown>(
       }
     };
 
+    const stdoutLineBuffer = new LineBuffer();
+    const stderrLineBuffer = new LineBuffer();
+
     child.stdout.on('data', (data: Buffer) => {
       const text = data.toString('utf-8');
       stdout += text;
 
-      const lines = text.split('\n');
+      const lines = stdoutLineBuffer.addChunk(text);
       for (const line of lines) {
-        if (line.trim()) {
-          // Call custom stdout handler
-          options.onStdout?.(line);
+        // Call custom stdout handler
+        options.onStdout?.(line);
 
-          // Check for auth failures in real-time (only emit once)
-          checkAuthFailure(line);
+        // Check for auth failures in real-time (only emit once)
+        checkAuthFailure(line);
 
-          // Check for billing/credit failures in real-time (only emit once)
-          checkBillingFailure(line);
+        // Check for billing/credit failures in real-time (only emit once)
+        checkBillingFailure(line);
 
-          // Parse progress updates
-          const match = line.match(progressPattern);
-          if (match && options.onProgress) {
-            const percent = parseInt(match[1], 10);
-            const message = match[2].trim();
-            options.onProgress(percent, message);
-          }
+        // Parse progress updates
+        const match = line.match(progressPattern);
+        if (match && options.onProgress) {
+          const percent = parseInt(match[1], 10);
+          const message = match[2].trim();
+          options.onProgress(percent, message);
         }
       }
     });
@@ -373,21 +399,31 @@ export function runPythonSubprocess<T = unknown>(
       const text = data.toString('utf-8');
       stderr += text;
 
-      const lines = text.split('\n');
+      const lines = stderrLineBuffer.addChunk(text);
       for (const line of lines) {
-        if (line.trim()) {
-          options.onStderr?.(line);
+        options.onStderr?.(line);
 
-          // Also check stderr for auth failures
-          checkAuthFailure(line);
+        // Also check stderr for auth failures
+        checkAuthFailure(line);
 
-          // Also check stderr for billing/credit failures
-          checkBillingFailure(line);
-        }
+        // Also check stderr for billing/credit failures
+        checkBillingFailure(line);
       }
     });
 
     child.on('close', (code: number | null) => {
+      // Flush any remaining partial lines from the buffers
+      for (const line of stdoutLineBuffer.flush()) {
+        options.onStdout?.(line);
+        checkAuthFailure(line);
+        checkBillingFailure(line);
+      }
+      for (const line of stderrLineBuffer.flush()) {
+        options.onStderr?.(line);
+        checkAuthFailure(line);
+        checkBillingFailure(line);
+      }
+
       // Treat null exit code (killed with SIGKILL) as failure, not success
       const exitCode = code ?? -1;
 
