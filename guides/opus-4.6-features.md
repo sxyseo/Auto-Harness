@@ -66,12 +66,14 @@ Root cause analyzer now uses **128K max output tokens** (up from 64K) for comple
 
 Different investigation specialists have different output token limits based on their needs:
 
-| Specialist | Max Tokens | Rationale |
-|------------|------------|-----------|
-| **Root Cause** | 128K | Most complex specialist; needs to trace through multiple files, understand intricate dependencies, and provide comprehensive explanations |
-| **Impact** | 64K | Standard component mapping and affected file analysis |
-| **Fix Advisor** | 64K | Standard fix approaches and code suggestions |
-| **Reproducer** | 64K | Standard test coverage and reproduction steps |
+| Specialist | Max Tokens | API Max | Rationale |
+|------------|------------|---------|-----------|
+| **Root Cause** | 127,999 | 128,000 | Most complex specialist; needs to trace through multiple files, understand intricate dependencies, and provide comprehensive explanations |
+| **Impact** | 63,999 | 64,000 | Standard component mapping and affected file analysis |
+| **Fix Advisor** | 63,999 | 64,000 | Standard fix approaches and code suggestions |
+| **Reproducer** | 63,999 | 64,000 | Standard test coverage and reproduction steps |
+
+**Note:** Values are 1 token lower than API maximums to reserve space for the message separator that the SDK requires between thinking and output.
 
 ### Technical Implementation
 
@@ -79,11 +81,12 @@ The per-specialist limits are configured in `apps/backend/runners/github/service
 
 ```python
 # Per-specialist max_tokens configuration (Opus 4.6 supports up to 128K)
+# Note: Values are 1 token lower than API max to reserve space for message separator
 SPECIALIST_MAX_TOKENS = {
-    "root_cause": 128000,   # Maximum for complex multi-file tracing
-    "impact": 64000,         # Standard for component mapping
-    "fix_advisor": 64000,    # Standard for fix approaches
-    "reproducer": 64000,     # Standard for test coverage analysis
+    "root_cause": 127999,   # Maximum for complex multi-file tracing (API max: 128000)
+    "impact": 63999,         # Standard for component mapping (API max: 64000)
+    "fix_advisor": 63999,    # Standard for fix approaches (API max: 64000)
+    "reproducer": 63999,     # Standard for test coverage analysis (API max: 64000)
 }
 ```
 
