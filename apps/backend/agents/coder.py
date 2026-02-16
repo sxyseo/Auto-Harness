@@ -796,23 +796,34 @@ async def run_autonomous_agent(
                     inv_prompt += f"**Root Cause:** {inv['root_cause']['summary']}\n\n"
 
                 if inv.get("root_cause", {}).get("evidence"):
-                    inv_prompt += "**Evidence:**\n"
-                    for evidence in inv["root_cause"]["evidence"]:
-                        inv_prompt += f"- {evidence}\n"
-                    inv_prompt += "\n"
+                    inv_prompt += f"**Evidence:**\n{inv['root_cause']['evidence']}\n\n"
 
                 if inv.get("root_cause", {}).get("code_paths"):
                     inv_prompt += "**Code Paths:**\n"
                     for path in inv["root_cause"]["code_paths"]:
-                        inv_prompt += f"- `{path}`\n"
+                        file_ref = path.get("file", "unknown")
+                        start = path.get("start_line", "")
+                        end = path.get("end_line", "")
+                        desc = path.get("description", "")
+                        line_range = f":{start}-{end}" if start and end else ""
+                        inv_prompt += f"- `{file_ref}{line_range}`"
+                        if desc:
+                            inv_prompt += f" — {desc}"
+                        inv_prompt += "\n"
                     inv_prompt += "\n"
 
                 if inv.get("fix_approaches"):
                     inv_prompt += "**Fix Approaches:**\n"
                     for i, approach in enumerate(inv["fix_approaches"], 1):
-                        inv_prompt += f"{i}. {approach.get('name', 'Approach')}\n"
-                        if approach.get("description"):
-                            inv_prompt += f"   - {approach['description']}\n"
+                        desc = approach.get("description", "Approach")
+                        complexity = approach.get("complexity", "")
+                        inv_prompt += f"{i}. {desc}"
+                        if complexity:
+                            inv_prompt += f" (complexity: {complexity})"
+                        inv_prompt += "\n"
+                        files_affected = approach.get("files_affected", [])
+                        if files_affected:
+                            inv_prompt += f"   - Files: {', '.join(files_affected)}\n"
                     inv_prompt += "\n"
 
                 if inv.get("gotchas"):
@@ -824,11 +835,24 @@ async def run_autonomous_agent(
                 if inv.get("patterns_to_follow"):
                     inv_prompt += "**Patterns to Follow:**\n"
                     for pattern in inv["patterns_to_follow"]:
-                        inv_prompt += f"- {pattern}\n"
+                        file_ref = pattern.get("file", "unknown")
+                        desc = pattern.get("description", "")
+                        inv_prompt += f"- `{file_ref}`"
+                        if desc:
+                            inv_prompt += f" — {desc}"
+                        inv_prompt += "\n"
                     inv_prompt += "\n"
 
                 if inv.get("reproducer"):
-                    inv_prompt += f"**Verification Steps:**\n{inv['reproducer']}\n\n"
+                    reproducer = inv["reproducer"]
+                    inv_prompt += "**Verification Steps:**\n"
+                    steps = reproducer.get("reproduction_steps", [])
+                    for step in steps:
+                        inv_prompt += f"- {step}\n"
+                    test_approach = reproducer.get("suggested_test_approach")
+                    if test_approach:
+                        inv_prompt += f"\n**Suggested Test Approach:** {test_approach}\n"
+                    inv_prompt += "\n"
 
                 prompt += inv_prompt
                 print_status("Investigation context loaded", "success")

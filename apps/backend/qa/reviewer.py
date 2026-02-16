@@ -137,28 +137,45 @@ async def run_qa_agent_session(
             inv_prompt += f"**Root Cause:** {inv['root_cause']['summary']}\n\n"
 
         if inv.get("root_cause", {}).get("evidence"):
-            inv_prompt += "**Evidence of the Issue:**\n"
-            for evidence in inv["root_cause"]["evidence"]:
-                inv_prompt += f"- {evidence}\n"
-            inv_prompt += "\n"
+            inv_prompt += f"**Evidence of the Issue:**\n{inv['root_cause']['evidence']}\n\n"
 
         if inv.get("root_cause", {}).get("code_paths"):
             inv_prompt += "**Affected Code Paths:**\n"
             for path in inv["root_cause"]["code_paths"]:
-                inv_prompt += f"- `{path}`\n"
+                file_ref = path.get("file", "unknown")
+                start = path.get("start_line", "")
+                end = path.get("end_line", "")
+                desc = path.get("description", "")
+                line_range = f":{start}-{end}" if start and end else ""
+                inv_prompt += f"- `{file_ref}{line_range}`"
+                if desc:
+                    inv_prompt += f" — {desc}"
+                inv_prompt += "\n"
             inv_prompt += "\n"
 
         if inv.get("reproducer"):
-            inv_prompt += f"**Verification Steps:**\n{inv['reproducer']}\n\n"
+            reproducer = inv["reproducer"]
+            inv_prompt += "**Verification Steps:**\n"
+            steps = reproducer.get("reproduction_steps", [])
+            for step in steps:
+                inv_prompt += f"- {step}\n"
+            test_approach = reproducer.get("suggested_test_approach")
+            if test_approach:
+                inv_prompt += f"\n**Suggested Test Approach:** {test_approach}\n"
+            inv_prompt += "\n"
             inv_prompt += "**ACTION REQUIRED:** Attempt to reproduce the issue following these steps. "
             inv_prompt += "If a reproducer script or test is mentioned, run it to confirm the issue is fixed.\n\n"
 
         if inv.get("impact"):
             inv_prompt += "**Expected Impact:**\n"
-            if inv["impact"].get("before"):
-                inv_prompt += f"- **Before:** {inv['impact']['before']}\n"
-            if inv["impact"].get("after"):
-                inv_prompt += f"- **After:** {inv['impact']['after']}\n"
+            if inv["impact"].get("severity"):
+                inv_prompt += f"- **Severity:** {inv['impact']['severity']}\n"
+            if inv["impact"].get("user_impact"):
+                inv_prompt += f"- **User Impact:** {inv['impact']['user_impact']}\n"
+            if inv["impact"].get("blast_radius"):
+                inv_prompt += f"- **Blast Radius:** {inv['impact']['blast_radius']}\n"
+            if inv["impact"].get("regression_risk"):
+                inv_prompt += f"- **Regression Risk:** {inv['impact']['regression_risk']}\n"
             inv_prompt += "\n"
 
         inv_prompt += "**Validation Checklist:**\n"

@@ -31,18 +31,22 @@ def load_investigation_context(spec_dir: Path) -> dict[str, Any] | None:
         with open(investigation_report_path) as f:
             report = json.load(f)
 
+        root_cause = report.get("root_cause", {})
+        fix_advice = report.get("fix_advice", {})
+        reproduction = report.get("reproduction", {})
+
         # Structure the context for agents
         return {
             "root_cause": {
-                "summary": report.get("root_cause", {}).get("summary"),
-                "evidence": report.get("root_cause", {}).get("evidence", []),
-                "code_paths": report.get("root_cause", {}).get("code_paths", [])
+                "summary": root_cause.get("identified_root_cause"),
+                "evidence": root_cause.get("evidence", ""),
+                "code_paths": root_cause.get("code_paths", []),
             },
-            "fix_approaches": report.get("fix_approaches", []),
-            "reproducer": report.get("reproducer"),
-            "gotchas": report.get("gotchas", []),
-            "patterns_to_follow": report.get("patterns_to_follow", []),
-            "impact": report.get("impact", {})
+            "fix_approaches": fix_advice.get("approaches", []),
+            "reproducer": reproduction if reproduction else None,
+            "gotchas": fix_advice.get("gotchas", []),
+            "patterns_to_follow": fix_advice.get("patterns_to_follow", []),
+            "impact": report.get("impact", {}),
         }
     except (json.JSONDecodeError, OSError):
         return None
@@ -73,16 +77,19 @@ def load_investigation_for_qa(spec_dir: Path, base_branch: str) -> dict[str, Any
         with open(investigation_report_path) as f:
             report = json.load(f)
 
+        root_cause = report.get("root_cause", {})
+        reproduction = report.get("reproduction", {})
+
         return {
             "root_cause": {
-                "summary": report.get("root_cause", {}).get("summary"),
-                "evidence": report.get("root_cause", {}).get("evidence", []),
-                "code_paths": report.get("root_cause", {}).get("code_paths", [])
+                "summary": root_cause.get("identified_root_cause"),
+                "evidence": root_cause.get("evidence", ""),
+                "code_paths": root_cause.get("code_paths", []),
             },
-            "reproducer": report.get("reproducer"),
+            "reproducer": reproduction if reproduction else None,
             "impact": report.get("impact", {}),
-            "expected_outcome": report.get("expected_outcome"),
-            "base_branch": base_branch
+            "expected_outcome": report.get("ai_summary"),
+            "base_branch": base_branch,
         }
     except (json.JSONDecodeError, OSError):
         return None
