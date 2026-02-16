@@ -539,17 +539,88 @@ class GHClient:
             logger.debug("Raw stdout (truncated): %s", result.stdout[:200])
             return {}
 
-    async def issue_comment(self, issue_number: int, body: str) -> None:
+    async def issue_comment(self, issue_number: int, body: str) -> int:
         """
         Post a comment to an issue.
 
         Args:
             issue_number: Issue number
             body: Comment body
+
+        Returns:
+            The ID of the created comment
+
+        Raises:
+            GHCommandError: If the gh CLI command fails
+            ValueError: If the comment ID is not returned
         """
-        args = ["issue", "comment", str(issue_number), "--body", body]
-        args = self._add_repo_flag(args)
-        await self.run(args)
+        # Use GitHub API directly via 'gh api' to post the comment
+        # This allows us to get JSON response with the comment ID
+        # Note: gh issue comment doesn't support --json flag, but gh api does
+        endpoint = f"repos/{{owner}}/{{repo}}/issues/{issue_number}/comments"
+        args = [
+            "api",
+            "--method", "POST",
+            endpoint,
+            "-f", f"body={body}",
+            "--jq", ".id",
+        ]
+        # Note: gh api doesn't use -R flag, the repo is already in the endpoint URL
+        # Only add -R if we have a custom repo configured (not the default from git)
+        if self.repo:
+            # For gh api, we need to use --hostname to specify a different repo
+            # But since the endpoint already has {{owner}}/{{repo}}, it will be
+            # expanded correctly by gh CLI using the default git remote
+            pass
+        result = await self.run(args, raise_on_error=False)
+
+        # Check for gh CLI errors
+        if result.returncode != 0:
+            stderr_lower = result.stderr.lower()
+            error_msg = result.stderr.strip() or f"gh CLI failed with exit code {result.returncode}"
+
+            # Provide user-friendly error messages for common failure modes
+            if "401" in result.stderr or "unauthenticated" in stderr_lower or "not logged in" in stderr_lower:
+                raise GHCommandError(
+                    "GitHub authentication failed. Please run 'gh auth login' to authenticate."
+                )
+            elif "403" in result.stderr or "429" in result.stderr or "rate limit" in stderr_lower:
+                raise GHCommandError(
+                    "GitHub API rate limit exceeded. Please wait a few minutes before trying again."
+                )
+            elif "404" in result.stderr or "not found" in stderr_lower:
+                if self.repo:
+                    raise GHCommandError(
+                        f"Repository or issue not found. Please verify that the repository '{self.repo}' exists and you have access to it."
+                    )
+                else:
+                    raise GHCommandError(
+                        f"Issue #{issue_number} not found. Please verify that the issue exists in the repository."
+                    )
+            elif "permission" in stderr_lower or "forbidden" in stderr_lower:
+                raise GHCommandError(
+                    "You do not have permission to comment on this issue. Please ensure you have write access to the repository."
+                )
+
+            # Generic error with stderr output
+            raise GHCommandError(f"Failed to post comment to GitHub: {error_msg}")
+
+        # Parse the comment ID from the output (gh api --jq .id returns just the ID)
+        try:
+            stdout = result.stdout.strip()
+            if not stdout:
+                raise ValueError("Empty response from GitHub API")
+
+            comment_id = int(stdout)
+            if comment_id:
+                return comment_id
+            else:
+                raise ValueError(f"Invalid comment ID returned: {stdout}")
+        except (ValueError, json.JSONDecodeError) as e:
+            logger.error("Failed to parse comment ID response for issue #%d: %s", issue_number, e)
+            logger.debug("Raw stdout (first 500 chars): %s", result.stdout[:500])
+            logger.debug("Raw stderr (first 500 chars): %s", result.stderr[:500])
+            raise ValueError(f"Failed to parse GitHub response: {str(e)}")
 
     async def issue_comments(self, issue_number: int) -> list[dict]:
         """

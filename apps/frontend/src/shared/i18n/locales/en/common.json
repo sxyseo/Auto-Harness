@@ -1213,7 +1213,9 @@
     },
     "toast": {
       "investigationComplete": "Investigation complete for Issue #{{issueNumber}}",
-      "investigationFailed": "Investigation failed for Issue #{{issueNumber}}"
+      "investigationFailed": "Investigation failed for Issue #{{issueNumber}}",
+      "postedToGitHub": "Successfully posted findings to Issue #{{issueNumber}}",
+      "postToGitHubFailed": "Failed to post findings to GitHub"
     },
     "labelConsent": {
       "title": "Label Creation Notice",

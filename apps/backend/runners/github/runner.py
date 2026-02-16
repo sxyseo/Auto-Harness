@@ -386,36 +386,56 @@ async def cmd_post_investigation(args) -> int:
     from services.investigation_persistence import load_investigation_report
     from services.investigation_report_builder import build_github_comment
 
-    config = get_config(args)
-    orchestrator = GitHubOrchestrator(
-        project_dir=args.project,
-        config=config,
-        progress_callback=print_progress,
-    )
+    def output_error(error_message: str) -> None:
+        """Output an error in JSON format for the Electron frontend to parse."""
+        safe_print("\nJSON Output")
+        safe_print(f"{'=' * 60}")
+        safe_print(json.dumps({"success": False, "error": error_message}))
 
-    # Load investigation report from .auto-claude/issues/{issueNumber}/investigation_report.json
-    report = load_investigation_report(args.project, args.issue_number)
-    if report is None:
-        safe_print(
-            f"Error: No investigation report found for issue #{args.issue_number}. "
-            "Run investigation first."
+    try:
+        config = get_config(args)
+        orchestrator = GitHubOrchestrator(
+            project_dir=args.project,
+            config=config,
+            progress_callback=print_progress,
         )
+
+        # Load investigation report from .auto-claude/issues/{issueNumber}/investigation_report.json
+        report = load_investigation_report(args.project, args.issue_number)
+        if report is None:
+            error_msg = (
+                f"No investigation report found for issue #{args.issue_number}. "
+                f"Please run the investigation first."
+            )
+            safe_print(f"Error: {error_msg}")
+            output_error(error_msg)
+            return 1
+
+        # Build the GitHub comment from the report
+        comment_body = build_github_comment(report)
+
+        # Post it to GitHub
+        try:
+            comment_id = await orchestrator._post_issue_comment(args.issue_number, comment_body)
+        except Exception as e:
+            error_msg = f"Failed to post comment to GitHub: {str(e)}"
+            safe_print(f"Error: {error_msg}")
+            output_error(error_msg)
+            return 1
+
+        safe_print(f"Posted investigation results to issue #{args.issue_number}")
+
+        # Output JSON for the Electron frontend to parse
+        safe_print("\nJSON Output")
+        safe_print(f"{'=' * 60}")
+        safe_print(json.dumps({"success": True, "commentId": comment_id}))
+
+        return 0
+    except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        safe_print(f"Error: {error_msg}")
+        output_error(error_msg)
         return 1
-
-    # Build the GitHub comment from the report
-    comment_body = build_github_comment(report)
-
-    # Post it to GitHub
-    await orchestrator._post_issue_comment(args.issue_number, comment_body)
-
-    safe_print(f"Posted investigation results to issue #{args.issue_number}")
-
-    # Output JSON for the Electron frontend to parse
-    safe_print("\nJSON Output")
-    safe_print(f"{'=' * 60}")
-    safe_print(json.dumps({"success": True, "issueNumber": args.issue_number}))
-
-    return 0
 
 
 async def cmd_enrich(args) -> int:

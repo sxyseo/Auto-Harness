@@ -45,11 +45,13 @@ import {
   AlertDialogCancel,
 } from "./ui/alert-dialog";
 import { useMutationStore } from "../stores/github/mutation-store";
+import { useToast } from "../hooks/use-toast";
 import type { GitHubIssue, InvestigationState, InvestigationDismissReason, SuggestedLabel } from "../../shared/types";
 import type { GitHubIssuesProps } from "./github-issues/types";
 
 export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesProps) {
   const { t } = useTranslation("common");
+  const { toast } = useToast();
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -522,8 +524,17 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       // Track that we posted — use the comment ID if available, or a timestamp marker
       const commentId = result.data?.commentId ?? Date.now();
       investigationStore.setGithubCommentId(selectedProject.id, selectedIssue.number, commentId);
+      toast({
+        title: t('investigation.toast.postedToGitHub', { issueNumber: selectedIssue.number }),
+      });
+    } else {
+      toast({
+        title: t('investigation.toast.postToGitHubFailed'),
+        description: result?.error ?? t('errors.unknown'),
+        variant: 'destructive',
+      });
     }
-  }, [selectedProject?.id, selectedIssue, investigationStore]);
+  }, [selectedProject?.id, selectedIssue, investigationStore, toast, t]);
 
   const [isPostingToGitHub, setIsPostingToGitHub] = useState(false);
   const handlePostToGitHubWrapped = useCallback(async () => {

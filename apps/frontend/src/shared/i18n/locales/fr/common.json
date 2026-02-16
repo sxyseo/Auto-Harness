@@ -1213,7 +1213,9 @@
     },
     "toast": {
       "investigationComplete": "Investigation terminée pour l'issue #{{issueNumber}}",
-      "investigationFailed": "Investigation échouée pour l'issue #{{issueNumber}}"
+      "investigationFailed": "Investigation échouée pour l'issue #{{issueNumber}}",
+      "postedToGitHub": "Résultats postés avec succès sur l'issue #{{issueNumber}}",
+      "postToGitHubFailed": "Échec de la publication des résultats sur GitHub"
     },
     "labelConsent": {
       "title": "Avis de création de labels",

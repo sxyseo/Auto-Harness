@@ -254,7 +254,7 @@ class MockGitHubClient:
             raise Exception(f"Issue #{issue_number} not found")
         return self.issues[issue_number]
 
-    async def issue_comment(self, issue_number: int, body: str) -> None:
+    async def issue_comment(self, issue_number: int, body: str) -> int:
         self._log_call("issue_comment", issue_number=issue_number)
         self.posted_comments.append(
             {
@@ -262,6 +262,8 @@ class MockGitHubClient:
                 "body": body,
             }
         )
+        # Return a fake comment ID for testing
+        return 123456 + issue_number
 
     async def issue_add_labels(self, issue_number: int, labels: list[str]) -> None:
         self._log_call("issue_add_labels", issue_number=issue_number, labels=labels)

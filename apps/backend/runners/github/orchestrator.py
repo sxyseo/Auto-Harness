@@ -262,9 +262,9 @@ class GitHubOrchestrator:
             event=event.lower(),
         )
 
-    async def _post_issue_comment(self, issue_number: int, body: str) -> None:
-        """Post a comment to an issue."""
-        await self.gh_client.issue_comment(issue_number, body)
+    async def _post_issue_comment(self, issue_number: int, body: str) -> int:
+        """Post a comment to an issue and return the comment ID."""
+        return await self.gh_client.issue_comment(issue_number, body)
 
     async def _add_issue_labels(self, issue_number: int, labels: list[str]) -> None:
         """Add labels to an issue."""
