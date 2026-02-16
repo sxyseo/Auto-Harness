@@ -9,15 +9,18 @@ allowlist of read-only, investigation-safe commands. This lets
 specialists run git history commands, test runners, and dependency
 queries without risking destructive operations.
 
-The allowlist uses prefix matching: a command is allowed if it starts
-with any entry in INVESTIGATION_BASH_ALLOWLIST. This means "git log"
-also allows "git log --oneline -10".
+Commands are validated by:
+1. Rejecting dangerous shell operators (;, |, &, `, $(), ${}, redirects)
+2. Checking the base command against INVESTIGATION_BASH_ALLOWLIST
+3. Blocking dangerous find flags (-exec, -execdir, -delete, -ok, -okdir)
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
+import shlex
 from datetime import datetime, timezone
 from typing import Any
 
@@ -31,8 +34,20 @@ except (ImportError, ValueError, SystemError):
 
 logger = logging.getLogger(__name__)
 
+# Shell operators and constructs that allow command chaining / injection.
+_DANGEROUS_PATTERNS = re.compile(
+    r'[;|&`]'
+    r'|\$\('
+    r'|\$\{'
+    r'|>\s'
+    r'|<\s'
+    r'|>>',
+)
+
+# find(1) flags that can execute arbitrary commands or delete files.
+_DANGEROUS_FIND_FLAGS = {'-exec', '-execdir', '-delete', '-ok', '-okdir'}
+
 # Commands that investigation agents are allowed to run.
-# Uses prefix matching: "git log" also allows "git log --oneline -10".
 INVESTIGATION_BASH_ALLOWLIST: list[str] = [
     # Git history (read-only)
     "git log",
@@ -68,6 +83,46 @@ INVESTIGATION_BASH_ALLOWLIST: list[str] = [
     "grep",
     "rg",
 ]
+
+
+def _is_command_safe(command: str) -> bool:
+    """Check if a command is safe for investigation agents.
+
+    Validates that:
+    1. No dangerous shell operators are present (;, |, &, `, $(), redirects)
+    2. The base command is in the allowlist
+    3. ``find`` does not use dangerous flags (-exec, -delete, etc.)
+    """
+    # Reject shell operators that enable command chaining / injection
+    if _DANGEROUS_PATTERNS.search(command):
+        return False
+
+    # Parse into tokens to extract the base command
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return False
+
+    if not tokens:
+        return False
+
+    base_cmd = tokens[0]
+
+    # Check if the base command (or full prefix) is in the allowlist
+    if not any(
+        base_cmd == allowed or base_cmd == allowed.split()[0] and command.startswith(allowed)
+        for allowed in INVESTIGATION_BASH_ALLOWLIST
+    ):
+        if not any(command.startswith(allowed) for allowed in INVESTIGATION_BASH_ALLOWLIST):
+            return False
+
+    # Extra guard for find: block flags that execute commands or delete files
+    if base_cmd == 'find':
+        lower_tokens = {t.lower() for t in tokens}
+        if lower_tokens & _DANGEROUS_FIND_FLAGS:
+            return False
+
+    return True
 
 
 async def investigation_bash_guard(
@@ -109,8 +164,8 @@ async def investigation_bash_guard(
             }
         }
 
-    # Check against allowlist (prefix match)
-    if any(command.startswith(allowed) for allowed in INVESTIGATION_BASH_ALLOWLIST):
+    # Validate command safety (allowlist + shell-operator rejection)
+    if _is_command_safe(command):
         logger.debug(f"[InvestigationHook] Allowed: {command[:80]}")
         return {}
 
@@ -135,10 +190,13 @@ def emit_json_event(event: str, agent: str, **kwargs: Any) -> None:
         agent: Specialist agent name (root_cause, impact, etc.)
         **kwargs: Additional event data
     """
-    payload = {
-        "event": event,
-        "agent": agent,
-        "ts": datetime.now(timezone.utc).isoformat(),
-        **kwargs,
-    }
-    safe_print(json.dumps(payload, default=str))
+    try:
+        payload = {
+            "event": event,
+            "agent": agent,
+            "ts": datetime.now(timezone.utc).isoformat(),
+            **kwargs,
+        }
+        safe_print(json.dumps(payload, default=str))
+    except Exception:
+        pass  # Never crash a specialist due to event emission failure
