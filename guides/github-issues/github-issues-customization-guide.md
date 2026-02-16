@@ -37,7 +37,7 @@ This guide is for developers who want to extend, customize, or integrate with Au
 - How context is built and injected into prompts
 - How to modify specialist prompts
 - How to add custom investigation specialists
-- How to extend the integration with hooks
+- How to extend the integration
 
 ### Assumptions
 
@@ -54,10 +54,10 @@ This guide is for developers who want to extend, customize, or integrate with Au
 Investigation prompts are stored in:
 ```
 apps/backend/prompts/github/
-├── root_cause_analyzer.md
-├── impact_assessor.md
-├── fix_advisor.md
-└── reproducer.md
+├── investigation_root_cause.md
+├── investigation_impact.md
+├── investigation_fix_advice.md
+└── investigation_reproduction.md
 ```
 
 ### Prompt Structure
@@ -91,34 +91,15 @@ You will receive:
 - [Constraint 2]
 ```
 
-### Prompt Variables
+### Prompt Building
 
-Prompts use variable substitution for dynamic content:
+Prompts are built by the orchestrator via `_build_specialist_prompt()` which:
+1. Loads the prompt file
+2. Appends working directory context
+3. Appends issue context
+4. Returns the complete prompt
 
-| Variable | Purpose | Example |
-|----------|---------|---------|
-| `{{issue_title}}` | Issue title | "Fix authentication bug" |
-| `{{issue_description}}` | Issue body | Full issue description |
-| `{{repo_path}}` | Repository path | `/path/to/repo` |
-| `{{code_context}}` | Relevant code | File contents, search results |
-| `{{specialist_config}}` | Specialist config | Token limits, model settings |
-
-### Template Engine
-
-Auto Claude uses a simple template engine for variable substitution:
-
-**Python (`apps/backend/runners/github/services/prompt_builder.py`):**
-```python
-def build_prompt(template_path: str, variables: dict) -> str:
-    """Build prompt from template with variable substitution."""
-    with open(template_path) as f:
-        template = f.read()
-
-    for key, value in variables.items():
-        template = template.replace(f"{{{{{key}}}}}", str(value))
-
-    return template
-```
+No variable substitution occurs—context is appended as formatted text.
 
 ---
 
@@ -126,13 +107,13 @@ def build_prompt(template_path: str, variables: dict) -> str:
 
 ### Context Builder
 
-**Location:** `apps/backend/runners/github/context_gatherer.py`
+**Location:** `apps/backend/runners/github/services/issue_investigation_orchestrator.py`
 
-**Purpose:** Builds context for each specialist by:
-1. Parsing the issue
-2. Searching codebase for relevant files
-3. Extracting code snippets
-4. Building structured context object
+**Purpose:** Context is built via the `_build_issue_context()` method which:
+1. Parses the issue
+2. Searches codebase for relevant files
+3. Extracts code snippets
+4. Builds structured context object
 
 ### Context Flow
 
@@ -204,7 +185,7 @@ class CodeSnippet:
 
 **1. Add Custom Context Sources**
 
-Edit `context_gatherer.py`:
+Edit `issue_investigation_orchestrator.py`:
 
 ```python
 def build_context(issue: Issue, repo_path: str) -> InvestigationContext:
@@ -273,30 +254,30 @@ Prompts are in `apps/backend/prompts/github/`:
 
 ```bash
 $ ls apps/backend/prompts/github/
-root_cause_analyzer.md
-impact_assessor.md
-fix_advisor.md
-reproducer.md
+investigation_root_cause.md
+investigation_impact.md
+investigation_fix_advice.md
+investigation_reproduction.md
 ```
 
-### Prompt Variables Reference
+### Prompt Context Reference
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `{{issue_title}}` | string | Issue title |
-| `{{issue_description}}` | string | Issue body/description |
-| `{{issue_comments}}` | list | All issue comments |
-| `{{repo_path}}` | string | Absolute path to repository |
-| `{{repo_structure}}` | dict | Directory structure |
-| `{{code_context}}` | list | Relevant code snippets |
-| `{{max_tokens}}` | int | Token limit for this specialist |
-| `{{model}}` | string | Model name (e.g., "claude-opus-4-6") |
+Context is appended to prompts (not substituted):
+
+| Context | Type | Description |
+|---------|------|-------------|
+| Issue details | string | Issue title and body |
+| Issue comments | list | All issue comments |
+| Working directory | string | Repository path |
+| Code context | string | Relevant code snippets |
+| Token limit | int | Max tokens for this specialist |
+| Model | string | Model name (e.g., "claude-opus-4-6") |
 
 ### Modifying a Prompt
 
 **Example: Enhance Root Cause Analyzer**
 
-Edit `apps/backend/prompts/github/root_cause_analyzer.md`:
+Edit `apps/backend/prompts/github/investigation_root_cause.md`:
 
 ```markdown
 # Role Definition
@@ -304,14 +285,6 @@ You are a Root Cause Analyzer specializing in debugging software issues.
 
 # Task
 Your task is to analyze GitHub issues and identify their root causes.
-
-# Context
-You will receive:
-- Issue: {{issue_title}}
-- Description: {{issue_description}}
-- Comments: {{issue_comments}}
-- Repository: {{repo_path}}
-- Code Context: {{code_context}}
 
 # Instructions
 1. Read and understand the issue
@@ -340,7 +313,6 @@ Return a JSON object:
 }
 
 # Constraints
-- Max tokens: {{max_tokens}}
 - Use only the provided context
 - If uncertain, state low confidence
 ```
@@ -356,7 +328,7 @@ Return a JSON object:
 
 **Example: Security-Focused Root Cause Analyzer**
 
-Create `apps/backend/prompts/github/root_cause_security.md`:
+Create `apps/backend/prompts/github/investigation_security.md`:
 
 ```markdown
 # Role Definition
@@ -369,9 +341,6 @@ Identify security vulnerabilities including:
 - Authentication/authorization bypasses
 - Sensitive data exposure
 - Injection attacks
-
-# Context
-[Same as standard root cause analyzer]
 
 # Instructions
 1. Prioritize security-relevant code
@@ -395,7 +364,7 @@ Identify security vulnerabilities including:
 
 ### File Selection Patterns
 
-Control which files are included in context via `context_gatherer.py`:
+Control which files are included in context via `issue_investigation_orchestrator.py`:
 
 ```python
 # File selection patterns
@@ -528,7 +497,7 @@ Each specialist is defined in:
 
 ### Step 1: Create the Prompt
 
-Create `apps/backend/prompts/github/performance_analyzer.md`:
+Create `apps/backend/prompts/github/investigation_performance.md`:
 
 ```markdown
 # Role Definition
@@ -571,12 +540,12 @@ Edit `apps/backend/runners/github/services/issue_investigation_orchestrator.py`:
 SPECIALISTS = {
     "root_cause": {
         "name": "Root Cause Analyzer",
-        "prompt": "prompts/github/root_cause_analyzer.md",
+        "prompt": "prompts/github/investigation_root_cause.md",
         "max_tokens": 127_999,
     },
     "impact": {
         "name": "Impact Assessor",
-        "prompt": "prompts/github/impact_assessor.md",
+        "prompt": "prompts/github/investigation_impact.md",
         "max_tokens": 63_999,
     },
     # ... existing specialists ...
@@ -584,7 +553,7 @@ SPECIALISTS = {
     # New specialist
     "performance": {
         "name": "Performance Analyzer",
-        "prompt": "prompts/github/performance_analyzer.md",
+        "prompt": "prompts/github/investigation_performance.md",
         "max_tokens": 63_999,
         "optional": True,  # Not run by default
     }
@@ -598,9 +567,9 @@ async def run_performance_analyzer(
     context: InvestigationContext
 ) -> dict:
     """Run the Performance Analyzer specialist."""
-    prompt = build_prompt(
-        "prompts/github/performance_analyzer.md",
-        context.dict()
+    prompt = self._build_specialist_prompt(
+        "performance",
+        context
     )
 
     response = await create_client().messages.create(
@@ -633,122 +602,18 @@ const SPECIALIST_DISPLAY = {
 
 ## Extending the Integration
 
-### Hooks
+> **Note:** The investigation system currently runs via `issue_investigation_orchestrator.py`. Extension points are limited to modifying the orchestrator directly or creating new specialists.
 
-Auto Claude provides hooks for extending the investigation lifecycle:
+### Modifying the Orchestrator
 
-**Location:** `apps/backend/runners/github/services/hooks.py`
-
-```python
-class InvestigationHooks:
-    """Hooks for extending investigation workflow."""
-
-    def before_investigation(self, issue: Issue) -> Issue:
-        """Called before investigation starts."""
-        # Modify issue, add metadata, etc.
-        return issue
-
-    def after_specialist(self, specialist: str, result: dict) -> dict:
-        """Called after each specialist completes."""
-        # Process, transform, or log results
-        return result
-
-    def after_investigation(self, report: InvestigationReport) -> InvestigationReport:
-        """Called after all specialists complete."""
-        # Aggregate, transform, or enhance report
-        return report
-
-    def on_task_create(self, report: InvestigationReport, task: Task) -> Task:
-        """Called when creating a task from investigation."""
-        # Add custom context to task
-        return task
-```
-
-**Register Hooks:**
+To extend investigations, edit `apps/backend/runners/github/services/issue_investigation_orchestrator.py`:
 
 ```python
-# In your project's .auto-claude/hooks.py
-from apps.backend.runners.github.services import hooks
-
-@hooks.register
-def custom_before_investigation(issue: Issue) -> Issue:
-    """Add custom metadata to issues."""
-    issue.metadata["team"] = detect_team(issue)
-    issue.metadata["priority"] = calculate_priority(issue)
-    return issue
-```
-
-### Custom Providers
-
-Create custom data providers for investigations:
-
-```python
-# In .auto-claude/providers/custom_provider.py
-from apps.backend.runners.github.providers import BaseProvider
-
-class CustomDataProvider(BaseProvider):
-    """Custom data provider for investigations."""
-
-    def get_context(self, issue: Issue) -> dict:
-        """Get custom context for this issue."""
-        return {
-            "team_context": self.get_team_context(issue),
-            "service_dependencies": self.get_dependencies(issue),
-            "metrics": self.get_metrics(issue),
-        }
-
-    def get_team_context(self, issue: Issue) -> dict:
-        """Get team-specific context."""
-        # Query your team management system
-        pass
-
-    def get_dependencies(self, issue: Issue) -> list:
-        """Get service dependencies."""
-        # Query your service mesh / dependency graph
-        pass
-```
-
-**Register Provider:**
-
-```python
-# In .auto-claude/config.json
-{
-  "providers": {
-    "custom": ".auto-claude/providers/custom_provider.py::CustomDataProvider"
-  }
-}
-```
-
-### Webhook Integration
-
-Post investigation results to external systems:
-
-```python
-# In .auto-claude/webhooks.py
-import requests
-
-def post_to_slack(report: InvestigationReport):
-    """Post investigation results to Slack."""
-    webhook_url = os.getenv("SLACK_WEBHOOK_URL")
-
-    message = {
-        "text": f"Investigation complete for {report.issue.title}",
-        "blocks": [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*Root Cause:* {report.root_cause.summary}\n"
-                           f"*Impact:* {report.impact.summary}"
-                }
-            }
-        ]
-    }
-
-    requests.post(webhook_url, json=message)
-
-# Register as hook
-hooks.register("after_investigation", post_to_slack)
+# Add custom logic to _build_issue_context()
+def _build_issue_context(self, issue: Issue) -> dict:
+    context = base_context
+    # Add your custom context here
+    return context
 ```
 
 ---
@@ -760,20 +625,17 @@ hooks.register("after_investigation", post_to_slack)
 **Goal:** Include project documentation in investigations
 
 ```python
-# In .auto-claude/context_builders.py
-def build_project_context(issue: Issue, repo_path: str) -> dict:
-    """Build project-specific context."""
-    return {
-        "docs": search_docs(issue, repo_path),
-        "architecture": load_architecture_docs(repo_path),
-        "contributing": load_contributing_guide(repo_path),
-    }
+# In issue_investigation_orchestrator.py
+def _build_issue_context(self, issue: Issue) -> dict:
+    """Build investigation context with project docs."""
+    context = base_context
 
-# Register in hooks.py
-@hooks.register("before_investigation")
-def add_project_context(issue: Issue) -> Issue:
-    issue.context.update(build_project_context(issue, repo_path))
-    return issue
+    # Add project-specific context
+    context["docs"] = self._search_docs(issue)
+    context["architecture"] = self._load_architecture_docs()
+    context["contributing"] = self._load_contributing_guide()
+
+    return context
 ```
 
 ### Recipe 2: Custom Severity Calculation
@@ -781,8 +643,8 @@ def add_project_context(issue: Issue) -> Issue:
 **Goal:** Calculate severity based on team-specific rules
 
 ```python
-# In .auto-claude/severity.py
-def calculate_severity(report: InvestigationReport) -> str:
+# In issue_investigation_orchestrator.py
+def _calculate_severity(self, report: InvestigationReport) -> str:
     """Calculate severity based on custom rules."""
     score = 0
 
@@ -808,12 +670,6 @@ def calculate_severity(report: InvestigationReport) -> str:
         return "medium"
     else:
         return "low"
-
-# Register in hooks.py
-@hooks.register("after_investigation")
-def add_severity(report: InvestigationReport) -> InvestigationReport:
-    report.severity = calculate_severity(report)
-    return report
 ```
 
 ### Recipe 3: Integrate with Issue Tracker
@@ -821,13 +677,14 @@ def add_severity(report: InvestigationReport) -> InvestigationReport:
 **Goal:** Link investigations to external issue tracker (Jira, Linear)
 
 ```python
-# In .auto-claude/issue_tracker.py
-import requests
+# In issue_investigation_orchestrator.py
+def _post_to_jira(self, report: InvestigationReport):
+    """Post investigation results to Jira."""
+    import requests
+    import os
 
-def link_to_jira(report: InvestigationReport):
-    """Link investigation to Jira ticket."""
     jira_url = os.getenv("JIRA_URL")
-    issue_key = extract_jira_key(report.issue.title)
+    issue_key = self._extract_jira_key(report.issue.title)
 
     # Post investigation summary as comment
     comment = f"""
@@ -845,8 +702,11 @@ def link_to_jira(report: InvestigationReport):
         auth=(os.getenv("JIRA_USER"), os.getenv("JIRA_TOKEN"))
     )
 
-# Register in hooks.py
-hooks.register("after_investigation", link_to_jira)
+# Call this after investigation completes
+def _run_investigation(self, issue: Issue) -> InvestigationReport:
+    report = await self._run_all_specialists(issue)
+    self._post_to_jira(report)
+    return report
 ```
 
 ### Recipe 4: Custom Report Formatting
@@ -854,8 +714,8 @@ hooks.register("after_investigation", link_to_jira)
 **Goal:** Generate custom report format for your team
 
 ```python
-# In .auto-claude/reporting.py
-def format_custom_report(report: InvestigationReport) -> str:
+# In issue_investigation_orchestrator.py
+def _format_custom_report(self, report: InvestigationReport) -> str:
     """Format investigation report for team consumption."""
     return f"""
 # Investigation Report: {report.issue.title}
@@ -871,25 +731,19 @@ def format_custom_report(report: InvestigationReport) -> str:
 
 ## Impact
 **Affected Users:** {report.impact.user_count:,}
-**Severity:** {report.severity.upper()}
+**Severity:** {self._calculate_severity(report).upper()}
 
 ## Recommended Fix
 {report.fix_advisor.recommendation}
 
 ## Next Steps
-1. Assign to: {suggest_assignee(report)}
-2. Estimate: {suggest_estimate(report)}
-3. Priority: {suggest_priority(report)}
+1. Assign to: {self._suggest_assignee(report)}
+2. Estimate: {self._suggest_estimate(report)}
+3. Priority: {self._suggest_priority(report)}
 
 ---
 Generated by Auto Claude | {report.generated_at}
 """
-
-# Register in hooks.py
-@hooks.register("after_investigation")
-def generate_custom_report(report: InvestigationReport) -> InvestigationReport:
-    report.custom_format = format_custom_report(report)
-    return report
 ```
 
 ---
