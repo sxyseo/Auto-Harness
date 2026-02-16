@@ -350,5 +350,16 @@
   "referenceImages": {
     "title": "Reference Images (optional)",
     "description": "Add visual references like screenshots or designs to help the AI understand your requirements."
+  },
+  "investigation": {
+    "title": "Investigation Findings",
+    "loading": "Loading investigation...",
+    "error": "Error loading investigation",
+    "rootCause": "Root Cause",
+    "recommendedFix": "Recommended Fix",
+    "patterns": "Patterns to Follow",
+    "viewFullReport": "View full investigation report",
+    "show": "Show Investigation",
+    "hide": "Hide"
   }
 }
