@@ -20,23 +20,23 @@ import type { GitHubInvestigationResult, GitHubInvestigationStatus } from '@shar
 export function useGitHubInvestigation(projectId: string | undefined, issueNumber?: number) {
   const store = useInvestigationStore();
 
-  // Get investigation state for this specific issue
-  const entry: IssueInvestigationState | null = useMemo(() => {
+  // Subscribe to investigation entry directly from store state - ensures reactivity
+  const entry: IssueInvestigationState | null = useInvestigationStore((state) => {
     if (!projectId || issueNumber == null) return null;
-    return store.getInvestigationState(projectId, issueNumber);
-  }, [store, projectId, issueNumber]);
+    return state.investigations[`${projectId}:${issueNumber}`] ?? null;
+  });
 
-  // Compute derived state
+  // Compute derived state - depends on entry so it will update when entry changes
   const investigationState: InvestigationState = useMemo(() => {
     if (!projectId || issueNumber == null) return 'new';
     return store.getDerivedState(projectId, issueNumber);
-  }, [store, projectId, issueNumber]);
+  }, [store, projectId, issueNumber, entry]);
 
   // Get active investigations for this project
-  const activeInvestigations = useMemo(() => {
+  const activeInvestigations = useInvestigationStore((state) => {
     if (!projectId) return [];
-    return store.getActiveInvestigations(projectId);
-  }, [store, projectId]);
+    return Object.values(state.investigations).filter(inv => inv.projectId === projectId && inv.isInvestigating);
+  });
 
   const startInvestigation = useCallback((..._args: unknown[]) => {
     if (projectId && issueNumber != null) {
@@ -53,10 +53,12 @@ export function useGitHubInvestigation(projectId: string | undefined, issueNumbe
   const createTask = useCallback(async () => {
     if (!projectId || issueNumber == null) return;
     const result = await window.electronAPI.github.createTaskFromInvestigation(projectId, issueNumber);
-    if (result.success) {
+    if (result.success && result.data?.specId) {
+      // Update the investigation store with the specId so the UI knows a task was created
+      store.setSpecId(projectId, issueNumber, result.data.specId);
       loadTasks(projectId);
     }
-  }, [projectId, issueNumber]);
+  }, [projectId, issueNumber, store]);
 
   const dismissIssue = useCallback(async (reason: InvestigationDismissReason) => {
     if (!projectId || issueNumber == null) return;

@@ -555,15 +555,18 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   }, [handlePostToGitHub]);
 
   // Get per-issue investigation state for the selected issue
+  // Subscribe to investigation entry directly from store state - this ensures reactivity
+  // when setSpecId() updates the store, the component will re-render immediately
+  const selectedIssueEntry = useInvestigationStore((state) => {
+    if (!selectedProject?.id || !selectedIssue) return null;
+    return state.investigations[`${selectedProject.id}:${selectedIssue.number}`] ?? null;
+  });
+
+  // Derive the state machine value from the entry
   const selectedIssueInvestigationState = useMemo(() => {
     if (!selectedProject?.id || !selectedIssue) return undefined;
     return investigationStore.getDerivedState(selectedProject.id, selectedIssue.number);
-  }, [selectedProject?.id, selectedIssue, investigationStore]);
-
-  const selectedIssueEntry = useMemo(() => {
-    if (!selectedProject?.id || !selectedIssue) return null;
-    return investigationStore.getInvestigationState(selectedProject.id, selectedIssue.number);
-  }, [selectedProject?.id, selectedIssue, investigationStore]);
+  }, [selectedProject?.id, selectedIssue, selectedIssueEntry, investigationStore]);
 
   // Not connected state
   if (!syncStatus?.connected) {
