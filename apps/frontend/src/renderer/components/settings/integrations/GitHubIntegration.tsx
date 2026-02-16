@@ -17,9 +17,9 @@ const DEBUG = process.env.NODE_ENV === 'development' || process.env.DEBUG === 't
 function debugLog(message: string, data?: unknown) {
   if (DEBUG) {
     if (data !== undefined) {
-      console.warn(`[GitHubIntegration] ${message}`, data);
+      console.debug(`[GitHubIntegration] ${message}`, data);
     } else {
-      console.warn(`[GitHubIntegration] ${message}`);
+      console.debug(`[GitHubIntegration] ${message}`);
     }
   }
 }
