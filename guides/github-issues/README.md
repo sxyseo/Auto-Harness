@@ -59,4 +59,3 @@ Extend and customize the GitHub Issues integration. Learn about:
 
 - Join the [Auto Claude community](https://github.com/AndyMik90/Auto-Claude/discussions)
 - Report issues [on GitHub](https://github.com/AndyMik90/Auto-Claude/issues)
-- Check [ARCHITECTURE.md](../ARCHITECTURE.md) for system architecture details
