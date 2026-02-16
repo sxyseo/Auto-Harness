@@ -407,38 +407,27 @@ Auto Claude automatically:
 
 ### Investigation Pipeline
 
-```
-┌──────────────────┐
-│   User clicks    │
-│  "Investigate"   │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  Investigation   │
-│  Orchestrator    │
-│  (backend)       │
-└────────┬─────────┘
-         │
-         ├─────────────────┬─────────────────┬─────────────────┐
-         ▼                 ▼                 ▼                 ▼
-    ┌─────────┐      ┌─────────┐      ┌─────────┐      ┌─────────┐
-    │  Root   │      │ Impact  │      │   Fix   │      │ Reprod  │
-    │ Cause   │      │ Assessor│      │ Advisor │      │  ucer   │
-    └────┬────┘      └────┬────┘      └────┬────┘      └────┬────┘
-         │                │                │                │
-         └────────────────┴────────────────┴────────────────┘
-                              │
-                              ▼
-                    ┌──────────────────┐
-                    │  Report Aggregator│
-                    │  (combines all)   │
-                    └─────────┬─────────┘
-                              │
-                              ▼
-                    ┌──────────────────┐
-                    │  Display to User │
-                    └──────────────────┘
+```mermaid
+graph TD
+    User[User clicks Investigate] --> Orch[Investigation Orchestrator]
+    Orch --> RCA[Root Cause Analyzer]
+    Orch --> IA[Impact Assessor]
+    Orch --> FA[Fix Advisor]
+    Orch --> Rep[Reproducer]
+    RCA --> Agg[Report Aggregator]
+    IA --> Agg
+    FA --> Agg
+    Rep --> Agg
+    Agg --> Display[Display to User]
+
+    style User fill:#e1f5ff
+    style Orch fill:#fff4e1
+    style RCA fill:#e8f5e9
+    style IA fill:#e8f5e9
+    style FA fill:#e8f5e9
+    style Rep fill:#e8f5e9
+    style Agg fill:#fff4e1
+    style Display fill:#e1f5ff
 ```
 
 ### Backend Components

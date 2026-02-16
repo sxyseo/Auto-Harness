@@ -117,36 +117,26 @@ No variable substitution occurs—context is appended as formatted text.
 
 ### Context Flow
 
-```
-┌──────────────────┐
-│  Issue Details   │
-│  (from GitHub)   │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  Context Builder │
-│  - Parse issue   │
-│  - Search code   │
-│  - Extract files │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  Context Object  │
-│  {              │
-│    issue: {...}, │
-│    repo: {...},  │
-│    code: [...]   │
-│  }              │
-└────────┬─────────┘
-         │
-         ├──────────────┬──────────────┬──────────────┐
-         ▼              ▼              ▼              ▼
-    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
-    │  Root   │    │ Impact  │    │   Fix   │    │ Reprod  │
-    │  Cause  │    │ Assessor│    │ Advisor │    │  ucer   │
-    └─────────┘    └─────────┘    └─────────┘    └─────────┘
+```mermaid
+graph TD
+    Issue[Issue Details from GitHub] --> CB[Context Builder]
+    Repo[Repository Analysis] --> CB
+    Code[Code Search Results] --> CB
+    CB --> CO[Context Object]
+    CO --> RCA[Root Cause Specialist]
+    CO --> IA[Impact Specialist]
+    CO --> FA[Fix Advisor Specialist]
+    CO --> Rep[Reproducer Specialist]
+
+    style Issue fill:#ffe1f5
+    style Repo fill:#e1f5ff
+    style Code fill:#fff4e1
+    style CB fill:#f3e5f5
+    style CO fill:#fff4e1
+    style RCA fill:#e8f5e9
+    style IA fill:#e8f5e9
+    style FA fill:#e8f5e9
+    style Rep fill:#e8f5e9
 ```
 
 ### Context Structure

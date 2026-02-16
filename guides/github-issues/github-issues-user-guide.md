@@ -169,37 +169,33 @@ Every issue tracks:
 
 The GitHub Issues integration follows a simple pipeline from issue to completed work:
 
-```
-┌─────────────────┐
-│  Import Issue   │
-│  from GitHub    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   Investigate   │
-│   with AI       │
-│  (4 specialists)│
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Create Task    │
-│  in Auto Claude │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Implement      │
-│  (autonomous    │
-│   pipeline)     │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    Merge &      │
-│   Close Issue   │
-└─────────────────┘
+```mermaid
+graph TD
+    A[Import Issue from GitHub] --> B[Run AI Investigation]
+    B --> C1[Root Cause Analyzer]
+    B --> C2[Impact Assessor]
+    B --> C3[Fix Advisor]
+    B --> C4[Reproducer]
+    C1 --> D[Aggregate Results]
+    C2 --> D
+    C3 --> D
+    C4 --> D
+    D --> E[Create Task in Auto Claude]
+    E --> F[Autonomous Implementation]
+    F --> G[Merge to Main Branch]
+    G --> H[Close GitHub Issue]
+
+    style A fill:#e1f5ff
+    style B fill:#fff4e1
+    style C1 fill:#e8f5e9
+    style C2 fill:#e8f5e9
+    style C3 fill:#e8f5e9
+    style C4 fill:#e8f5e9
+    style D fill:#fff4e1
+    style E fill:#e1f5ff
+    style F fill:#f3e5f5
+    style G fill:#e1f5ff
+    style H fill:#e8f5e9
 ```
 
 ### Stage Details
