@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync } from 'fs';
 import { AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { Project, TaskMetadata } from '../../../shared/types';
 import { withSpecNumberLock } from '../../utils/spec-number-lock';
@@ -173,6 +173,32 @@ export async function createSpecForIssue(
       JSON.stringify(metadata, null, 2),
       'utf-8'
     );
+
+    // Copy investigation data to spec directory for agent context
+    const investigationDir = path.join(project.path, '.auto-claude', 'issues', `${issueNumber}`);
+    const investigationSpecDir = specDir;
+
+    if (existsSync(investigationDir)) {
+      const filesToCopy = [
+        'investigation_report.json',
+        'investigation_logs.json',
+        'activity_log.json'
+      ];
+
+      let copiedCount = 0;
+      for (const file of filesToCopy) {
+        const src = path.join(investigationDir, file);
+        const dest = path.join(investigationSpecDir, file);
+        if (existsSync(src)) {
+          copyFileSync(src, dest);
+          copiedCount++;
+        }
+      }
+
+      if (copiedCount > 0) {
+        debugLog('github', `[spec-utils] Copied ${copiedCount} investigation files to spec ${specId}`);
+      }
+    }
 
     return {
       specId,
