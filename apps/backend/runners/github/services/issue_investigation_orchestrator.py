@@ -97,11 +97,12 @@ logger = logging.getLogger(__name__)
 
 # Per-specialist max_tokens configuration (Opus 4.6 supports up to 128K)
 # Root cause gets highest limit for deep analysis
+# Note: Values are 1 token lower than API max to reserve space for message separator
 SPECIALIST_MAX_TOKENS = {
-    "root_cause": 128000,   # Maximum for complex multi-file tracing
-    "impact": 64000,         # Standard for component mapping
-    "fix_advisor": 64000,    # Standard for fix approaches
-    "reproducer": 64000,     # Standard for test coverage analysis
+    "root_cause": 127999,   # Maximum for complex multi-file tracing (API max: 128000)
+    "impact": 63999,         # Standard for component mapping (API max: 64000)
+    "fix_advisor": 63999,    # Standard for fix approaches (API max: 64000)
+    "reproducer": 63999,     # Standard for test coverage analysis (API max: 64000)
 }
 
 # =============================================================================
