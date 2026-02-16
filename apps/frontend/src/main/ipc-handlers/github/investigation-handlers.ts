@@ -1799,6 +1799,18 @@ export function registerInvestigationHandlers(
 
           const postResult = subResult.data as { commentId: number };
           appendActivityLogEntry(project.path, issueNumber, 'Results posted to GitHub');
+
+          // Persist githubCommentId to investigation state file
+          const stateFile = path.join(project.path, '.auto-claude', 'issues', `${issueNumber}`, 'investigation_state.json');
+          const existingState: Record<string, unknown> = fs.existsSync(stateFile)
+            ? JSON.parse(fs.readFileSync(stateFile, 'utf-8'))
+            : {};
+          fs.writeFileSync(stateFile, JSON.stringify({
+            ...existingState,
+            github_comment_id: postResult.commentId,
+          }, null, 2), 'utf-8');
+          debugLog('Persisted githubCommentId to investigation state', { issueNumber, commentId: postResult.commentId });
+
           return { success: true, data: { commentId: postResult.commentId } };
         });
 
