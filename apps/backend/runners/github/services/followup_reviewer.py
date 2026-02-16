@@ -707,9 +707,11 @@ Analyze this follow-up review context and provide your structured response.
                     allowed_tools=[],
                     max_turns=2,  # Need 2 turns for structured output tool call
                     max_thinking_tokens=thinking_budget,
-                    output_format={
-                        "type": "json_schema",
-                        "schema": schema,
+                    output_config={
+                        "format": {
+                            "type": "json_schema",
+                            "schema": schema,
+                        }
                     },
                 ),
             ):
