@@ -89,6 +89,80 @@ function determineCategoryFromLabels(labels: string[]): 'feature' | 'bug_fix' | 
 }
 
 /**
+ * Build a spec.md file from an investigation report.
+ * Formats the report data into a readable markdown specification.
+ */
+function buildSpecMdFromReport(
+  report: {
+    ai_summary?: string;
+    root_cause?: {
+      identified_root_cause?: string;
+      evidence?: string;
+    };
+    fix_advice?: {
+      approaches?: Array<{
+        description?: string;
+        files_affected?: string[];
+      }>;
+      recommended_approach?: number;
+      gotchas?: string[];
+    };
+    reproduction?: {
+      reproduction_steps?: string[];
+      suggested_test_approach?: string;
+    };
+  },
+  issueNumber: number,
+  title: string,
+): string {
+  const lines: string[] = [];
+  lines.push(`# Issue #${issueNumber}: ${title}\n`);
+
+  if (report.ai_summary) {
+    lines.push(`## Summary\n${report.ai_summary}\n`);
+  }
+
+  const rootCause = report.root_cause;
+  if (rootCause?.identified_root_cause) {
+    lines.push(`## Root Cause\n${rootCause.identified_root_cause}\n`);
+    if (rootCause.evidence) {
+      lines.push(`### Evidence\n${rootCause.evidence}\n`);
+    }
+  }
+
+  const fixAdvice = report.fix_advice;
+  if (fixAdvice?.approaches && fixAdvice.approaches.length > 0) {
+    lines.push('## Fix Approaches\n');
+    for (const [i, approach] of fixAdvice.approaches.entries()) {
+      const rec = i === fixAdvice.recommended_approach ? ' (Recommended)' : '';
+      lines.push(`${i + 1}. ${approach.description}${rec}`);
+      if (approach.files_affected?.length) {
+        lines.push(`   Files: ${approach.files_affected.join(', ')}`);
+      }
+    }
+    lines.push('');
+  }
+
+  if (fixAdvice?.gotchas && fixAdvice.gotchas.length > 0) {
+    lines.push('## Gotchas\n');
+    for (const g of fixAdvice.gotchas) lines.push(`- ${g}`);
+    lines.push('');
+  }
+
+  const repro = report.reproduction;
+  if (repro?.reproduction_steps && repro.reproduction_steps.length > 0) {
+    lines.push('## Reproduction Steps\n');
+    for (const step of repro.reproduction_steps) lines.push(`1. ${step}`);
+    lines.push('');
+    if (repro.suggested_test_approach) {
+      lines.push(`## Testing\n${repro.suggested_test_approach}\n`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * Create a new spec directory and initial files
  * Uses coordinated spec numbering to prevent collisions across worktrees
  */
@@ -101,6 +175,7 @@ export async function createSpecForIssue(
   labels: string[] = [],
   baseBranch?: string,
   preAllocatedSpecNumber?: number,
+  investigationReport?: Record<string, unknown>,
 ): Promise<SpecCreationData> {
   const specsBaseDir = getSpecsDir(project.autoBuildPath);
   const specsDir = path.join(project.path, specsBaseDir);
@@ -144,11 +219,36 @@ export async function createSpecForIssue(
       'utf-8'
     );
 
-    // requirements.json
-    const requirements = {
-      task_description: safeDescription,
-      workflow_type: 'feature'
-    };
+    // requirements.json — enriched when investigation report is available
+    let requirements: Record<string, unknown>;
+    if (investigationReport) {
+      const fixAdvice = investigationReport.fix_advice as {
+        approaches?: Array<{
+          description?: string;
+          complexity?: string;
+          files_affected?: string[];
+        }>;
+      } | undefined;
+      const reqs = (fixAdvice?.approaches || []).map((approach, i: number) => ({
+        id: `REQ-${String(i + 1).padStart(3, '0')}`,
+        description: approach.description || '',
+        complexity: approach.complexity || 'moderate',
+        files: approach.files_affected || [],
+      }));
+      requirements = {
+        issue_number: issueNumber,
+        issue_title: safeTitle,
+        severity: (investigationReport.severity as string) || 'medium',
+        requirements: reqs,
+        task_description: safeDescription,
+        workflow_type: 'bugfix',
+      };
+    } else {
+      requirements = {
+        task_description: safeDescription,
+        workflow_type: 'feature',
+      };
+    }
     writeFileSync(
       path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
       JSON.stringify(requirements, null, 2),
@@ -173,6 +273,13 @@ export async function createSpecForIssue(
       JSON.stringify(metadata, null, 2),
       'utf-8'
     );
+
+    // Generate spec.md from investigation report if available
+    if (investigationReport) {
+      const specMd = buildSpecMdFromReport(investigationReport, issueNumber, safeTitle);
+      writeFileSync(path.join(specDir, 'spec.md'), specMd, 'utf-8');
+      debugLog('github', `[spec-utils] Generated spec.md for issue #${issueNumber}`);
+    }
 
     // Copy investigation data to spec directory for agent context
     const investigationDir = path.join(project.path, '.auto-claude', 'issues', `${issueNumber}`);

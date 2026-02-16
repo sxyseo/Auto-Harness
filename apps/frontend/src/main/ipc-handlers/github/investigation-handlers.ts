@@ -892,6 +892,8 @@ async function autoCreateTaskFromInvestigation(
       githubUrl,
       labels,
       project.settings?.mainBranch,
+      undefined,
+      reportData,
     );
 
     debugLog('Auto-created task from investigation', { projectId, issueNumber, specId: specData.specId });
@@ -1669,6 +1671,7 @@ export function registerInvestigationHandlers(
             labels,
             project.settings?.mainBranch,
             preAllocatedSpecNumber,
+            reportData,
           );
 
           appendActivityLogEntry(project.path, issueNumber, `Task created: ${specData.specId}`);
