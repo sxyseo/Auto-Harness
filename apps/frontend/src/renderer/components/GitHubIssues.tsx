@@ -10,8 +10,6 @@ import {
   cancelAllIssueInvestigations,
   loadPersistedInvestigations,
 } from "../stores/github";
-import { useLabelSync } from "./github-issues/hooks/useLabelSync";
-import { mapInvestigationStateToWorkflowState } from "../../shared/constants/label-sync";
 import { loadTasks } from "../stores/task-store";
 import {
   useGitHubIssues,
@@ -77,9 +75,6 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
 
   // Investigation store — multi-issue keyed state
   const investigationStore = useInvestigationStore();
-
-  // Label sync hook for automatic GitHub label updates
-  const { syncIssueLabel, config: labelSyncConfig } = useLabelSync();
 
   const storeIssues = useIssuesStore((s) => s.issues);
 
@@ -353,20 +348,8 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       const inv = investigationStore.getInvestigationState(projectId, issueNumber);
       if (!inv?.specId) continue;
 
-      // Get old state before calling syncTaskState
-      const oldDerivedState = investigationStore.getDerivedState(projectId, issueNumber);
+      // Sync task state to investigation store
       investigationStore.syncTaskState(projectId, issueNumber, task.status);
-      const newDerivedState = investigationStore.getDerivedState(projectId, issueNumber);
-
-      // Trigger label sync via callback if state changed and label sync is enabled
-      if (oldDerivedState !== newDerivedState && labelSyncConfig.enabled) {
-        const oldWorkflowState = mapInvestigationStateToWorkflowState(oldDerivedState);
-        const newWorkflowState = mapInvestigationStateToWorkflowState(newDerivedState);
-        if (oldWorkflowState && newWorkflowState && oldWorkflowState !== newWorkflowState) {
-          // Pass old state explicitly since callback can't determine it
-          syncIssueLabel(issueNumber, newWorkflowState, oldWorkflowState);
-        }
-      }
     }
 
     // Detect deleted tasks: if an investigation has a specId but no matching task exists
@@ -377,7 +360,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
         investigationStore.clearLinkedTask(projectId, inv.issueNumber);
       }
     }
-  }, [tasks, selectedProject?.id, investigationStore, labelSyncConfig.enabled, syncIssueLabel]);
+  }, [tasks, selectedProject?.id, investigationStore]);
 
   // Auto-close GitHub issues when linked task reaches "done" and autoCloseIssues is enabled
   const autoClosedRef = useRef<Set<number>>(new Set());

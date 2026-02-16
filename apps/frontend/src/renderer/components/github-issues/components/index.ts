@@ -25,7 +25,6 @@ export { IssueSplitDialog } from './IssueSplitDialog';
 export { TriageProgressOverlay } from './TriageProgressOverlay';
 
 // Phase 4 — Polish
-export { LabelSyncSettings } from './LabelSyncSettings';
 export { DependencyList } from './DependencyList';
 export { MetricsDashboard } from './MetricsDashboard';
 export { CompletenessBreakdown } from './CompletenessBreakdown';

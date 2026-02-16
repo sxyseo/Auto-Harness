@@ -41,7 +41,6 @@ describe('Phase 5 Barrel Exports', () => {
       expect(exportNames).toContain('IssueSplitDialog');
       expect(exportNames).toContain('TriageProgressOverlay');
       // Phase 4
-      expect(exportNames).toContain('LabelSyncSettings');
       expect(exportNames).toContain('DependencyList');
       expect(exportNames).toContain('MetricsDashboard');
       expect(exportNames).toContain('CompletenessBreakdown');
