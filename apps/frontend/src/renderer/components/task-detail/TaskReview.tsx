@@ -1,4 +1,5 @@
 import type { Task, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo, ImageAttachment, WorktreeCreatePRResult } from '../../../shared/types';
+import { InvestigationSummary } from '../InvestigationSummary';
 import {
   StagedSuccessMessage,
   WorkspaceStatus,
@@ -156,6 +157,17 @@ export function TaskReview({
         />
       ) : (
         <NoWorkspaceMessage task={task} onClose={onClose} />
+      )}
+
+      {/* Investigation Validation for GitHub-sourced tasks */}
+      {task.metadata?.sourceType === 'github' && (
+        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+          <h3 className="font-semibold mb-3 text-sm text-gray-900 dark:text-gray-100">
+            Investigation Context
+          </h3>
+
+          <InvestigationSummary taskId={task.id} />
+        </div>
       )}
 
       {/* QA Feedback Section */}
