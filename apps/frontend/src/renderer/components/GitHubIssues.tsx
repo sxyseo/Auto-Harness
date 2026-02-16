@@ -506,10 +506,18 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     const result = await window.electronAPI.github.createTaskFromInvestigation(
       selectedProject.id, selectedIssue.number
     );
-    if (result.success) {
+    if (result.success && result.data?.specId) {
+      // Update the investigation store with the specId so the UI knows a task was created
+      investigationStore.setSpecId(selectedProject.id, selectedIssue.number, result.data.specId);
       loadTasks(selectedProject.id);
+    } else if (!result.success) {
+      toast({
+        title: 'Failed to create task',
+        description: result?.error ?? 'Unknown error',
+        variant: 'destructive',
+      });
     }
-  }, [selectedProject?.id, selectedIssue]);
+  }, [selectedProject?.id, selectedIssue, investigationStore, loadTasks, toast]);
 
   const handleDismissIssue = useCallback(async (reason: InvestigationDismissReason) => {
     if (!selectedProject?.id || !selectedIssue) return;

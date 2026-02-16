@@ -1654,6 +1654,19 @@ export function registerInvestigationHandlers(
           );
 
           appendActivityLogEntry(project.path, issueNumber, `Task created: ${specData.specId}`);
+
+          // Persist spec_id to investigation state file so the UI knows a task was created
+          const stateFile = path.join(project.path, '.auto-claude', 'issues', `${issueNumber}`, 'investigation_state.json');
+          const existingState: Record<string, unknown> = fs.existsSync(stateFile)
+            ? JSON.parse(fs.readFileSync(stateFile, 'utf-8'))
+            : {};
+          fs.writeFileSync(stateFile, JSON.stringify({
+            ...existingState,
+            spec_id: specData.specId,
+            linked_spec_id: specData.specId, // Legacy field name for backwards compatibility
+          }, null, 2), 'utf-8');
+          debugLog('Persisted spec_id to investigation state', { issueNumber, specId: specData.specId });
+
           return { success: true, data: { specId: specData.specId } };
         });
 

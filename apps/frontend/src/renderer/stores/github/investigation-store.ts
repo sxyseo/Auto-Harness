@@ -88,6 +88,7 @@ interface InvestigationStoreState {
   clearLinkedTask: (projectId: string, issueNumber: number) => void;
   loadPersistedInvestigations: (projectId: string, states: PersistedInvestigationState[]) => void;
   setGithubCommentId: (projectId: string, issueNumber: number, commentId: number) => void;
+  setSpecId: (projectId: string, issueNumber: number, specId: string) => void;
   cancelAllInvestigations: (projectId: string) => void;
   markStaleInvestigations: (projectId: string, activeIssueNumbers: Set<number>) => void;
 
@@ -338,6 +339,29 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
           ...existing,
           githubCommentId: commentId,
           postedAt: now,
+          activityLog: log,
+        }
+      }
+    };
+  }),
+
+  setSpecId: (projectId: string, issueNumber: number, specId: string) => set((state) => {
+    const key = `${projectId}:${issueNumber}`;
+    const existing = state.investigations[key];
+    if (!existing) {
+      console.warn(`[InvestigationStore] setSpecId called for non-existent investigation ${key}`);
+      return state;
+    }
+    const now = new Date().toISOString();
+    const log = [...(existing.activityLog ?? []), { event: `task created: ${specId}`, timestamp: now }].slice(-50);
+    console.log(`[InvestigationStore] Setting specId=${specId} for ${key}`);
+    return {
+      investigations: {
+        ...state.investigations,
+        [key]: {
+          ...existing,
+          specId,
+          linkedTaskStatus: 'task_created',
           activityLog: log,
         }
       }
