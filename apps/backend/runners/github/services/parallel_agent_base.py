@@ -194,11 +194,19 @@ class ParallelAgentOrchestrator:
             # Create SDK client for this specialist
             # Use per-specialist model for betas (not the global config model)
             betas = get_model_betas(model or self.config.model or "sonnet")
-            # Use per-specialist thinking level when provided
-            effective_thinking = thinking_level or self.config.thinking_level or "medium"
-            thinking_kwargs = get_thinking_kwargs_for_model(
-                model, effective_thinking
-            )
+
+            # Get thinking budget - use explicit budget if provided, otherwise derive from thinking level
+            if thinking_budget is not None:
+                thinking_kwargs = {
+                    "max_thinking_tokens": thinking_budget
+                }
+            else:
+                # Use per-specialist thinking level when provided
+                effective_thinking = thinking_level or self.config.thinking_level or "medium"
+                thinking_kwargs = get_thinking_kwargs_for_model(
+                    model, effective_thinking
+                )
+
             # Override effort_level if explicitly provided (e.g., investigation
             # agents always use "high" effort regardless of thinking level).
             # Only applies to adaptive models (Opus 4.6+) where thinking_kwargs
