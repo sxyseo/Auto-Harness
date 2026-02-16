@@ -338,10 +338,10 @@ These global settings control which AI model and thinking level each specialist 
 
 | Specialist | Default Model | Default Thinking | Description |
 |------------|---------------|------------------|-------------|
-| **Root Cause Agent** | Opus | High | Traces the bug to its source code (most intensive) |
-| **Impact Agent** | Sonnet | Medium | Determines blast radius and severity |
-| **Fix Advisor Agent** | Sonnet | Medium | Suggests solution approaches |
-| **Reproducer Agent** | Sonnet | Low | Analyzes reproducibility and test coverage |
+| **Root Cause Analyzer** | Opus | High | Traces the bug to its source code (most intensive) |
+| **Impact Assessor** | Sonnet | Medium | Determines blast radius and user impact |
+| **Fix Advisor** | Sonnet | Medium | Suggests concrete solution approaches |
+| **Reproducer** | Sonnet | Low | Analyzes reproducibility and test coverage |
 
 **Understanding Models:**
 - **Opus** — Most capable, best for deep analysis (Root Cause)

@@ -205,21 +205,21 @@
     "investigationAgents": {
       "title": "GitHub Issues",
       "description": "Agents d'investigation des issues",
-      "root_cause": {
-        "label": "Agent Cause Racine",
+      "rootCause": {
+        "label": "Analyseur de Cause Racine",
         "description": "Trace le bug jusqu'à son code source"
       },
       "impact": {
-        "label": "Agent Impact",
-        "description": "Évalue le rayon d'impact et la sévérité"
+        "label": "Évaluateur d'Impact",
+        "description": "Détermine le rayon d'impact et l'impact utilisateur"
       },
-      "fix_advisor": {
-        "label": "Agent Correctif",
-        "description": "Propose des approches de correction concrètes"
+      "fixAdvisor": {
+        "label": "Conseiller de Correction",
+        "description": "Suggère des approches de solution concrètes"
       },
       "reproducer": {
-        "label": "Agent Reproducteur",
-        "description": "Conçoit les étapes de reproduction et les tests"
+        "label": "Reproducteur",
+        "description": "Analyse la reproductibilité et la couverture des tests"
       }
     },
     "model": "Modèle",
