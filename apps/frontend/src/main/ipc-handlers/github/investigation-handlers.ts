@@ -1800,7 +1800,7 @@ export function registerInvestigationHandlers(
           const postResult = subResult.data as { commentId: number };
           appendActivityLogEntry(project.path, issueNumber, 'Results posted to GitHub');
 
-          // Persist githubCommentId to investigation state file
+          // Persist githubCommentId and postedAt to investigation state file
           const stateFile = path.join(project.path, '.auto-claude', 'issues', `${issueNumber}`, 'investigation_state.json');
           const existingState: Record<string, unknown> = fs.existsSync(stateFile)
             ? JSON.parse(fs.readFileSync(stateFile, 'utf-8'))
@@ -1808,8 +1808,9 @@ export function registerInvestigationHandlers(
           fs.writeFileSync(stateFile, JSON.stringify({
             ...existingState,
             github_comment_id: postResult.commentId,
+            posted_at: new Date().toISOString(),
           }, null, 2), 'utf-8');
-          debugLog('Persisted githubCommentId to investigation state', { issueNumber, commentId: postResult.commentId });
+          debugLog('Persisted githubCommentId and postedAt to investigation state', { issueNumber, commentId: postResult.commentId });
 
           return { success: true, data: { commentId: postResult.commentId } };
         });
@@ -1959,6 +1960,7 @@ export function registerInvestigationHandlers(
                   completedAt: stateData.completed_at ?? undefined,
                   specId: stateData.spec_id ?? stateData.linked_spec_id ?? undefined,
                   githubCommentId: stateData.github_comment_id ?? undefined,
+                  postedAt: stateData.posted_at ?? undefined,
                   wasInterrupted: true,
                   activityLog: loadActivityLog(project.path, issueNumber),
                 };
@@ -2010,6 +2012,7 @@ export function registerInvestigationHandlers(
                 completedAt: stateData.completed_at ?? undefined,
                 specId: stateData.spec_id ?? stateData.linked_spec_id ?? undefined,
                 githubCommentId: stateData.github_comment_id ?? undefined,
+                postedAt: stateData.posted_at ?? undefined,
                 wasInterrupted: false,
                 activityLog: loadActivityLog(project.path, issueNumber),
               });

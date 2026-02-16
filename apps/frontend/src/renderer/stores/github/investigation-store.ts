@@ -43,6 +43,8 @@ export interface IssueInvestigationState {
   startedAt: string | null;
   /** Timestamp when investigation completed */
   completedAt: string | null;
+  /** Timestamp when results were posted to GitHub */
+  postedAt: string | null;
   /** Linked task status (synced from task store for building/done states) */
   linkedTaskStatus: string | null;
   /** Activity log tracking key lifecycle events */
@@ -323,13 +325,15 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
     const key = `${projectId}:${issueNumber}`;
     const existing = state.investigations[key];
     if (!existing) return state;
-    const log = [...(existing.activityLog ?? []), { event: 'posted to GitHub', timestamp: new Date().toISOString() }].slice(-50);
+    const now = new Date().toISOString();
+    const log = [...(existing.activityLog ?? []), { event: 'posted to GitHub', timestamp: now }].slice(-50);
     return {
       investigations: {
         ...state.investigations,
         [key]: {
           ...existing,
           githubCommentId: commentId,
+          postedAt: now,
           activityLog: log,
         }
       }
@@ -363,6 +367,7 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
         githubCommentId: persisted.githubCommentId ?? null,
         startedAt: null,
         completedAt: persisted.completedAt ?? null,
+        postedAt: persisted.postedAt ?? null,
         linkedTaskStatus: null,
         activityLog: persisted.activityLog ?? []
       };

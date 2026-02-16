@@ -40,6 +40,7 @@ interface InvestigationNeedsAttentionProps {
   startedAt: string | null;
   completedAt: string | null;
   githubCommentId: number | null;
+  postedAt: string | null;
   specId: string | null;
   issueNumber: number;
   projectId: string;
@@ -60,7 +61,7 @@ type StepStatus = 'completed' | 'current' | 'pending' | 'failed' | 'actionable';
 
 export function InvestigationNeedsAttention({
   state, progress, report, error, startedAt, completedAt,
-  githubCommentId, specId, issueNumber, projectId,
+  githubCommentId, postedAt, specId, issueNumber, projectId,
   onCancel, onInvestigate, onCreateTask, onPostToGitHub, isPostingToGitHub,
   onDismissIssue, onCloseIssue, onReopenIssue, isClosingIssue, isReopeningIssue, issueState,
 }: InvestigationNeedsAttentionProps) {
@@ -208,6 +209,7 @@ export function InvestigationNeedsAttention({
         ? t('investigation.timeline.posted', 'Posted to GitHub')
         : t('investigation.timeline.pendingPost', 'Post to GitHub'),
       status: githubCommentId ? 'completed' : 'actionable',
+      date: postedAt ?? undefined,
     });
   }
 

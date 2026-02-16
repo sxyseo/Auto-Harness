@@ -64,6 +64,7 @@ export function IssueDetail({
   onRejectLabel,
   isPostingToGitHub,
   githubCommentId,
+  postedAt,
   investigationActivityLog,
 }: IssueDetailProps) {
   const { t } = useTranslation('common');
@@ -286,6 +287,7 @@ export function IssueDetail({
               startedAt={investigationStartedAt ?? null}
               completedAt={investigationCompletedAt ?? null}
               githubCommentId={githubCommentId ?? null}
+              postedAt={postedAt ?? null}
               specId={investigationSpecId ?? null}
               issueNumber={issue.number}
               projectId={projectId}

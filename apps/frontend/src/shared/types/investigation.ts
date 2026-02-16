@@ -253,6 +253,8 @@ export interface PersistedInvestigationState {
   completedAt?: string;
   specId?: string;
   githubCommentId?: number;
+  /** Timestamp when results were posted to GitHub */
+  postedAt?: string;
   /** True if the investigation was in-progress when the app shut down */
   wasInterrupted?: boolean;
   /** Persisted activity log entries */

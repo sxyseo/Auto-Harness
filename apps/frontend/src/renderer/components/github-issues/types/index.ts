@@ -152,6 +152,8 @@ export interface IssueDetailProps {
   isPostingToGitHub?: boolean;
   /** GitHub comment ID if investigation results have been posted */
   githubCommentId?: number | null;
+  /** Timestamp when investigation results were posted to GitHub */
+  postedAt?: string | null;
   /** Activity log entries for the investigation lifecycle */
   investigationActivityLog?: Array<{ event: string; timestamp: string }>;
 }

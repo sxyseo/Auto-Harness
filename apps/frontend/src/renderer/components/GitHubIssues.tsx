@@ -661,6 +661,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
                 onPostToGitHub={handlePostToGitHubWrapped}
                 isPostingToGitHub={isPostingToGitHub}
                 githubCommentId={selectedIssueEntry?.githubCommentId ?? null}
+                postedAt={selectedIssueEntry?.postedAt ?? null}
                 investigationActivityLog={selectedIssueEntry?.activityLog}
               />
             ) : (
