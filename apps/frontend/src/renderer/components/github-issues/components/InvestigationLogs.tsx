@@ -15,6 +15,7 @@ import {
 import { Badge } from '../../ui/badge';
 import { cn } from '../../../lib/utils';
 import { CollapsibleCard } from '../../github-prs/components/CollapsibleCard';
+import { useInvestigationPolling } from '../hooks/useInvestigationPolling';
 import type {
   InvestigationLogs as InvestigationLogsType,
   InvestigationAgentType,
@@ -71,34 +72,17 @@ export function InvestigationLogs({
   const [logs, setLogs] = useState<InvestigationLogsType | null>(null);
   const [expandedAgents, setExpandedAgents] = useState<Set<AgentKey>>(new Set());
 
-  const fetchLogs = useCallback(async () => {
-    try {
-      const result = await window.electronAPI.github.getInvestigationLogs(projectId, issueNumber);
-      if (result) setLogs(result);
-    } catch {
-      // Silently ignore fetch errors
-    }
-  }, [projectId, issueNumber]);
-
-  useEffect(() => {
-    fetchLogs();
-    if (!isInvestigating) return;
-
-    const interval = setInterval(fetchLogs, 1500);
-    const cleanup = window.electronAPI.github.onInvestigationLogsUpdated(
-      (eventProjectId, data) => {
-        if (eventProjectId === projectId && data.issueNumber === issueNumber) {
-          fetchLogs();
-        }
-      },
-    );
-    return () => {
-      clearInterval(interval);
-      cleanup();
-    };
-  }, [isInvestigating, projectId, issueNumber, fetchLogs]);
+  // Use shared polling hook - prevents duplicate IPC calls
+  useInvestigationPolling({
+    projectId,
+    issueNumber,
+    isInvestigating,
+    fetchOnComplete: false, // Let InvestigationNeedsAttention handle final fetch
+    onLogs: setLogs,
+  });
 
   // Auto-expand active agents during investigation
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!logs || !isInvestigating) return;
     const activeAgents = new Set(expandedAgents);
@@ -110,7 +94,8 @@ export function InvestigationLogs({
     if (activeAgents.size !== expandedAgents.size) {
       setExpandedAgents(activeAgents);
     }
-  }, [logs, isInvestigating]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Intentionally omit expandedAgents - we only want to update when logs or investigation status changes
+  }, [logs, isInvestigating]);
 
   const toggleAgent = (agent: AgentKey) => {
     setExpandedAgents(prev => {

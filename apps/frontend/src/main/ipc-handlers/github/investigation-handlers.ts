@@ -579,6 +579,12 @@ const MAX_AUTO_RESUME = 3;
 /** Delay before auto-resuming interrupted investigations on startup */
 const AUTO_RESUME_DELAY_MS = 3000;
 
+/** Maximum number of auto-resume attempts for interrupted investigations */
+const MAX_AUTO_RESUME_ATTEMPTS = 3;
+
+/** Track auto-resume attempts per investigation key: `${projectId}:${issueNumber}` */
+const autoResumeAttempts = new Map<string, number>();
+
 /**
  * Get the max parallel investigations setting for a project.
  * Reads from the project's GitHub config on disk (same source as the settings handler).
@@ -1264,6 +1270,8 @@ async function runInvestigation(
         result = await promise;
       } finally {
         activeInvestigations.delete(processKey);
+        // Reset auto-resume counter on successful completion or manual cancellation
+        autoResumeAttempts.delete(processKey);
       }
 
       logCollector.finalize(!!result.success);
@@ -1466,11 +1474,15 @@ export function registerInvestigationHandlers(
 
       const processKey = `${projectId}:${issueNumber}`;
 
-      // Cancel any existing investigation for this issue
-      const existingProcess = activeInvestigations.get(processKey);
-      if (existingProcess && !existingProcess.killed) {
-        killProcessGracefully(existingProcess);
-        activeInvestigations.delete(processKey);
+      // Guard against concurrent investigation start for the same process key
+      // This prevents race conditions where multiple calls try to start the same investigation
+      if (activeInvestigations.has(processKey)) {
+        const existingProcess = activeInvestigations.get(processKey);
+        if (existingProcess && !existingProcess.killed) {
+          debugLog('Investigation already active, cancelling previous', { projectId, issueNumber });
+          killProcessGracefully(existingProcess);
+          activeInvestigations.delete(processKey);
+        }
       }
 
       // Also remove from queue if already queued (re-start scenario)
@@ -1537,6 +1549,8 @@ export function registerInvestigationHandlers(
 
       if (project) appendActivityLogEntry(project.path, issueNumber, 'Investigation cancelled');
       activeInvestigations.delete(processKey);
+      // Reset auto-resume counter on manual cancellation
+      autoResumeAttempts.delete(processKey);
     },
   );
 
@@ -2081,8 +2095,16 @@ export function registerInvestigationHandlers(
             });
             setTimeout(() => {
               for (const issueNum of interruptedIssues) {
-                // Skip if already active or already queued (e.g. user manually started during delay)
                 const processKey = `${projectId}:${issueNum}`;
+
+                // Check max retry limit to prevent infinite loops
+                const attempts = autoResumeAttempts.get(processKey) ?? 0;
+                if (attempts >= MAX_AUTO_RESUME_ATTEMPTS) {
+                  debugLog('Auto-resume: max attempts reached, skipping', { projectId, issueNumber: issueNum, attempts });
+                  continue;
+                }
+
+                // Skip if already active or already queued (e.g. user manually started during delay)
                 if (activeInvestigations.has(processKey)) {
                   debugLog('Auto-resume: skipping already-active investigation', { projectId, issueNumber: issueNum });
                   continue;
@@ -2091,7 +2113,10 @@ export function registerInvestigationHandlers(
                   debugLog('Auto-resume: skipping already-queued investigation', { projectId, issueNumber: issueNum });
                   continue;
                 }
-                debugLog('Auto-resuming interrupted investigation', { projectId, issueNumber: issueNum });
+
+                // Increment attempt counter
+                autoResumeAttempts.set(processKey, attempts + 1);
+                debugLog('Auto-resuming interrupted investigation', { projectId, issueNumber: issueNum, attempt: attempts + 1 });
                 investigationQueue.push({
                   projectId,
                   issueNumber: issueNum,

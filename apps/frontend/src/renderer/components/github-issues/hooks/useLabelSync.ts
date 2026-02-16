@@ -52,14 +52,16 @@ export function useLabelSync() {
     }
   }, [projectId]);
 
-  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Use per-issue debounce timers to avoid losing pending syncs for different issues
+  const syncTimerRefsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Clean up debounce timer on unmount
+  // Clean up all debounce timers on unmount
   useEffect(() => {
     return () => {
-      if (syncTimerRef.current) {
-        clearTimeout(syncTimerRef.current);
+      for (const timer of syncTimerRefsRef.current.values()) {
+        clearTimeout(timer);
       }
+      syncTimerRefsRef.current.clear();
     };
   }, []);
 
@@ -70,20 +72,27 @@ export function useLabelSync() {
   ) => {
     if (!projectId || !useLabelSyncStore.getState().config.enabled) return;
 
-    if (syncTimerRef.current) {
-      clearTimeout(syncTimerRef.current);
+    // Clear existing timer for this specific issue
+    const existingTimer = syncTimerRefsRef.current.get(issueNumber);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
     }
 
-    syncTimerRef.current = setTimeout(async () => {
+    // Set new timer for this issue
+    const timer = setTimeout(async () => {
       try {
         await window.electronAPI.github.syncIssueLabel(projectId, issueNumber, newState, oldState);
+        syncTimerRefsRef.current.delete(issueNumber);
       } catch (err) {
         // Log error but don't disrupt workflow - label sync failures are non-blocking
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         console.warn(`[LabelSync] Failed to sync label for issue #${issueNumber}: ${errorMessage}`);
         useLabelSyncStore.getState().setError(`Issue #${issueNumber}: ${errorMessage}`);
+        syncTimerRefsRef.current.delete(issueNumber);
       }
     }, SYNC_DEBOUNCE_MS);
+
+    syncTimerRefsRef.current.set(issueNumber, timer);
   }, [projectId]);
 
   const bulkLabelSync = useCallback(async (issueNumbers: number[]) => {

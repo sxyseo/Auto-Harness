@@ -9,6 +9,7 @@ import { Progress } from '../../ui/progress';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../../ui/dropdown-menu';
 import { cn } from '../../../lib/utils';
 import { CollapsibleCard } from '../../github-prs/components/CollapsibleCard';
+import { useInvestigationPolling } from '../hooks/useInvestigationPolling';
 import type {
   InvestigationState,
   InvestigationProgress,
@@ -82,35 +83,14 @@ export function InvestigationNeedsAttention({
     return t('investigation.duration.minutesSeconds', '{{min}}m {{sec}}s', { min: minutes, sec: remainingSeconds });
   };
 
-  // Fetch logs to get per-agent status
-  const fetchLogs = useCallback(async () => {
-    try {
-      const result = await window.electronAPI.github.getInvestigationLogs(projectId, issueNumber);
-      if (result) setLogs(result);
-    } catch {
-      // Silently ignore
-    }
-  }, [projectId, issueNumber]);
-
-  useEffect(() => {
-    if (!isInvestigating) {
-      if (isComplete || isFailed) fetchLogs();
-      return;
-    }
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 1500);
-    const cleanup = window.electronAPI.github.onInvestigationLogsUpdated(
-      (eventProjectId, data) => {
-        if (eventProjectId === projectId && data.issueNumber === issueNumber) {
-          fetchLogs();
-        }
-      },
-    );
-    return () => {
-      clearInterval(interval);
-      cleanup();
-    };
-  }, [isInvestigating, isComplete, isFailed, projectId, issueNumber, fetchLogs]);
+  // Use shared polling hook - prevents duplicate IPC calls when both components are mounted
+  useInvestigationPolling({
+    projectId,
+    issueNumber,
+    isInvestigating,
+    fetchOnComplete: true, // Fetch final state on completion
+    onLogs: (result) => setLogs(result),
+  });
 
   // Tick every second to update elapsed times for active agents
   const [, forceUpdate] = useState(0);

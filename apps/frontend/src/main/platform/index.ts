@@ -463,11 +463,19 @@ export function killProcessGracefully(
   // Attempt graceful termination (may throw if process dead)
   try {
     if (isWindows()) {
-      childProcess.kill();  // Windows: no signal argument
+      // On Windows, use taskkill to terminate the process tree
+      // This ensures child processes are also terminated
+      if (pid) {
+        spawn(getTaskkillExePath(), ['/pid', pid.toString(), '/t'], {
+          stdio: 'ignore',
+          detached: false
+        }).unref();
+      }
+      log('Graceful kill signal sent (taskkill /t)');
     } else {
       childProcess.kill('SIGTERM');
+      log('Graceful kill signal sent (SIGTERM)');
     }
-    log('Graceful kill signal sent');
   } catch (err) {
     log('Graceful kill failed (process likely dead):',
       err instanceof Error ? err.message : String(err));

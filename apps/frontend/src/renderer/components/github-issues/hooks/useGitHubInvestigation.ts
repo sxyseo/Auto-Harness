@@ -27,15 +27,32 @@ export function useGitHubInvestigation(projectId: string | undefined, issueNumbe
   });
 
   // Compute derived state - depends on entry so it will update when entry changes
-  const investigationState: InvestigationState = useMemo(() => {
+  // Use store selector directly to avoid re-rendering on all store changes
+  const investigationState: InvestigationState = useInvestigationStore((state) => {
     if (!projectId || issueNumber == null) return 'new';
-    return store.getDerivedState(projectId, issueNumber);
-  }, [store, projectId, issueNumber, entry]);
+    const key = `${projectId}:${issueNumber}`;
+    const inv = state.investigations[key];
+    if (!inv) return 'new';
+    if (inv.isInvestigating && inv.progress?.phase === 'queued') return 'queued';
+    if (inv.isInvestigating) return 'investigating';
+    if (inv.error === 'investigation.interrupted' && !inv.specId) return 'interrupted';
+    if (inv.error && !inv.specId) return 'failed';
+    if (inv.report?.likelyResolved && !inv.specId) return 'resolved';
+    if (inv.report && !inv.specId) return 'findings_ready';
+    if (inv.specId) {
+      if (inv.linkedTaskStatus === 'done') return 'done';
+      if (inv.linkedTaskStatus === 'building') return 'building';
+      return 'task_created';
+    }
+    return 'new';
+  });
 
-  // Get active investigations for this project
+  // Get active investigations for this project - use store selector directly
+  // Only re-renders when investigations for this project change
   const activeInvestigations = useInvestigationStore((state) => {
     if (!projectId) return [];
-    return Object.values(state.investigations).filter(inv => inv.projectId === projectId && inv.isInvestigating);
+    return Object.values(state.investigations)
+      .filter(inv => inv.projectId === projectId && inv.isInvestigating);
   });
 
   const startInvestigation = useCallback((..._args: unknown[]) => {

@@ -177,9 +177,13 @@ export function useMutations(projectId: string) {
     }
   }, [projectId, startMutation, endMutation, updateIssue]);
 
+  // Get mutating issues set reactively - updates when set changes
+  const mutatingIssues = useMutationStore((state) => state.mutatingIssues);
+
+  // isMutating is now reactive - will update when mutatingIssues changes
   const isMutating = useCallback(
-    (issueNumber: number) => useMutationStore.getState().mutatingIssues.has(issueNumber),
-    [],
+    (issueNumber: number) => mutatingIssues.has(issueNumber),
+    [mutatingIssues],
   );
 
   return useMemo(() => ({

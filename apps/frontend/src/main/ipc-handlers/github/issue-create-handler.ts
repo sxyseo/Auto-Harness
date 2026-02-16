@@ -7,6 +7,7 @@
 
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
+import { spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -40,6 +41,47 @@ function cleanupTempFile(tmpPath: string): void {
   } catch {
     // Already cleaned up or never created
   }
+}
+
+/**
+ * Spawn a command and return stdout as a promise.
+ * Non-blocking alternative to execFileSync.
+ */
+function spawnAsync(
+  command: string,
+  args: string[],
+  options: { cwd: string; env?: Record<string, string> }
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let stdout = '';
+    let stderr = '';
+
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: options.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    child.stdout?.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr?.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve(stdout);
+      } else {
+        reject(new Error(`Command failed with code ${code}: ${stderr}`));
+      }
+    });
+
+    child.on('error', (err) => {
+      reject(err);
+    });
+  });
 }
 
 /**
@@ -99,8 +141,6 @@ export function registerIssueCreateHandler(
 
         const tmpPath = writeTempFile('gh-create-body', params.body || '');
         try {
-          const { execFileSync } = await import('child_process');
-
           const ghArgs = ['issue', 'create', '--title', params.title, '--body-file', tmpPath];
 
           if (params.labels && params.labels.length > 0) {
@@ -111,12 +151,12 @@ export function registerIssueCreateHandler(
             ghArgs.push('--assignee', params.assignees.join(','));
           }
 
-          const output = execFileSync(getToolPath('gh'), ghArgs, {
+          const output = await spawnAsync(getToolPath('gh'), ghArgs, {
             cwd: project.path,
             env: getAugmentedEnv(),
           });
 
-          const result = parseIssueUrl(output.toString());
+          const result = parseIssueUrl(output);
           debugLog('Issue created', { number: result.number, url: result.url });
           return result;
         } finally {

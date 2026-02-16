@@ -722,7 +722,29 @@ export async function validateGitHubModule(project: Project): Promise<GitHubModu
 }
 
 /**
+ * Find the matching bracket position in a string.
+ * Returns the index of the closing bracket, or -1 if not found.
+ */
+function findMatchingBracket(str: string, start: number, open: string, close: string): number {
+  let depth = 1;
+  let i = start + 1;
+  const len = str.length;
+
+  while (i < len && depth > 0) {
+    if (str[i] === open) {
+      depth++;
+    } else if (str[i] === close) {
+      depth--;
+    }
+    i++;
+  }
+
+  return depth === 0 ? i - 1 : -1;
+}
+
+/**
  * Parse JSON from stdout (finds JSON block in output)
+ * Uses proper bracket matching to handle nested JSON correctly.
  */
 export function parseJSONFromOutput<T>(stdout: string): T {
   // Look for JSON after the "JSON Output" marker to avoid debug output
@@ -739,13 +761,13 @@ export function parseJSONFromOutput<T>(stdout: string): T {
 
   // Determine if it's an array or object (whichever comes first)
   if (arrayStart >= 0 && (objectStart < 0 || arrayStart < objectStart)) {
-    // It's an array
+    // It's an array - use bracket matching to find the closing bracket
     jsonStart = arrayStart;
-    jsonEnd = stdout.lastIndexOf(']');
+    jsonEnd = findMatchingBracket(stdout, arrayStart, '[', ']');
   } else if (objectStart >= 0) {
-    // It's an object
+    // It's an object - use bracket matching to find the closing bracket
     jsonStart = objectStart;
-    jsonEnd = stdout.lastIndexOf('}');
+    jsonEnd = findMatchingBracket(stdout, objectStart, '{', '}');
   }
 
   if (jsonStart >= 0 && jsonEnd > jsonStart) {
