@@ -92,6 +92,22 @@ except (ImportError, ValueError, SystemError):
 logger = logging.getLogger(__name__)
 
 # =============================================================================
+# Specialist Timeout Configuration
+# =============================================================================
+
+SPECIALIST_TIMEOUT_SECONDS = 900  # 15 minutes per specialist
+
+
+async def _run_with_timeout(coro, name: str, timeout: int = SPECIALIST_TIMEOUT_SECONDS):
+    """Run a coroutine with a timeout, returning a TimeoutError on expiry."""
+    try:
+        return await asyncio.wait_for(coro, timeout=timeout)
+    except asyncio.TimeoutError:
+        logger.error(f"Specialist {name} timed out after {timeout}s")
+        return TimeoutError(f"Specialist {name} timed out after {timeout}s")
+
+
+# =============================================================================
 # Per-Specialist Max Tokens Configuration
 # =============================================================================
 
@@ -162,6 +178,14 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
     - _run_parallel_specialists() — asyncio.gather wrapper
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._cancel_event = asyncio.Event()
+
+    def cancel(self):
+        """Signal the investigation to cancel."""
+        self._cancel_event.set()
+
     async def investigate(
         self,
         issue_number: int,
@@ -202,6 +226,41 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
             issue_number=issue_number,
         )
 
+        # Check for cancellation before context gathering
+        if self._cancel_event.is_set():
+            logger.info("Investigation cancelled before context gathering")
+            emit_json_event("investigation_cancelled", "orchestrator")
+            return InvestigationReport(
+                issue_number=issue_number,
+                issue_title=issue_title,
+                investigation_id=investigation_id,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                ai_summary="Investigation was cancelled.",
+                severity="medium",
+                likely_resolved=False,
+                root_cause=RootCauseAnalysis(
+                    identified_root_cause="Investigation cancelled",
+                    confidence="low",
+                    evidence="",
+                ),
+                impact=ImpactAssessment(
+                    severity="medium",
+                    blast_radius="Unknown (cancelled)",
+                    user_impact="Unknown (cancelled)",
+                    regression_risk="Unknown",
+                ),
+                fix_advice=FixAdvice(),
+                reproduction=ReproductionAnalysis(
+                    reproducible="unlikely",
+                    test_coverage={
+                        "has_existing_tests": False,
+                        "test_files": [],
+                        "coverage_assessment": "Unknown (cancelled)",
+                    },
+                    suggested_test_approach="Unknown (cancelled)",
+                ),
+            )
+
         # Build issue context for all specialists
         issue_context = self._build_issue_context(
             issue_number=issue_number,
@@ -226,6 +285,41 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
             f"specialist_config={specialist_config}"
         )
 
+        # Check for cancellation before specialist dispatch
+        if self._cancel_event.is_set():
+            logger.info("Investigation cancelled before specialist dispatch")
+            emit_json_event("investigation_cancelled", "orchestrator")
+            return InvestigationReport(
+                issue_number=issue_number,
+                issue_title=issue_title,
+                investigation_id=investigation_id,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                ai_summary="Investigation was cancelled.",
+                severity="medium",
+                likely_resolved=False,
+                root_cause=RootCauseAnalysis(
+                    identified_root_cause="Investigation cancelled",
+                    confidence="low",
+                    evidence="",
+                ),
+                impact=ImpactAssessment(
+                    severity="medium",
+                    blast_radius="Unknown (cancelled)",
+                    user_impact="Unknown (cancelled)",
+                    regression_risk="Unknown",
+                ),
+                fix_advice=FixAdvice(),
+                reproduction=ReproductionAnalysis(
+                    reproducible="unlikely",
+                    test_coverage={
+                        "has_existing_tests": False,
+                        "test_files": [],
+                        "coverage_assessment": "Unknown (cancelled)",
+                    },
+                    suggested_test_approach="Unknown (cancelled)",
+                ),
+            )
+
         self._report_progress(
             "investigating",
             20,
@@ -243,6 +337,41 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
             issue_number=issue_number,
             resume_sessions=resume_sessions,
         )
+
+        # Check for cancellation after specialist execution
+        if self._cancel_event.is_set():
+            logger.info("Investigation cancelled after specialist execution")
+            emit_json_event("investigation_cancelled", "orchestrator")
+            return InvestigationReport(
+                issue_number=issue_number,
+                issue_title=issue_title,
+                investigation_id=investigation_id,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                ai_summary="Investigation was cancelled.",
+                severity="medium",
+                likely_resolved=False,
+                root_cause=RootCauseAnalysis(
+                    identified_root_cause="Investigation cancelled",
+                    confidence="low",
+                    evidence="",
+                ),
+                impact=ImpactAssessment(
+                    severity="medium",
+                    blast_radius="Unknown (cancelled)",
+                    user_impact="Unknown (cancelled)",
+                    regression_risk="Unknown",
+                ),
+                fix_advice=FixAdvice(),
+                reproduction=ReproductionAnalysis(
+                    reproducible="unlikely",
+                    test_coverage={
+                        "has_existing_tests": False,
+                        "test_files": [],
+                        "coverage_assessment": "Unknown (cancelled)",
+                    },
+                    suggested_test_approach="Unknown (cancelled)",
+                ),
+            )
 
         self._report_progress(
             "investigating",
@@ -556,20 +685,35 @@ the root cause — focus on your specialty using these findings as ground truth.
             progress_base: int,
             progress_step: int,
         ):
-            """Wrap a specialist coroutine with agent_started/agent_done events."""
+            """Wrap a specialist coroutine with timeout and agent_started/agent_done events."""
             nonlocal _agents_done
 
             emit_json_event("agent_started", cfg.name)
 
             try:
-                result = await coro
-                success = not (result and result.get("error"))
-                emit_json_event(
-                    "agent_done",
-                    cfg.name,
-                    success=success,
-                    error=result.get("error") if not success else None,
-                )
+                result = await _run_with_timeout(coro, cfg.name, SPECIALIST_TIMEOUT_SECONDS)
+                # _run_with_timeout returns a TimeoutError instance (not raised) on timeout
+                if isinstance(result, TimeoutError):
+                    emit_json_event(
+                        "agent_done",
+                        cfg.name,
+                        success=False,
+                        error=str(result)[:200],
+                    )
+                    result = {
+                        "result_text": "",
+                        "structured_output": None,
+                        "error": str(result),
+                        "msg_count": 0,
+                    }
+                else:
+                    success = not (result and result.get("error"))
+                    emit_json_event(
+                        "agent_done",
+                        cfg.name,
+                        success=success,
+                        error=result.get("error") if not success else None,
+                    )
             except Exception as e:
                 emit_json_event(
                     "agent_done",
@@ -629,6 +773,21 @@ the root cause — focus on your specialty using these findings as ground truth.
             "root_cause", phase_1_result_map, RootCauseAnalysis
         )
         root_cause_ctx = self._build_root_cause_context(root_cause_parsed)
+
+        # Check for cancellation between Phase 1 and Phase 2
+        if self._cancel_event.is_set():
+            logger.info("Investigation cancelled between Phase 1 and Phase 2")
+            emit_json_event("investigation_cancelled", "orchestrator")
+            # Return phase 1 results only (phase 2 will have defaults)
+            phase_2_result_map: dict[str, dict[str, Any]] = {}
+            for cfg in phase_2_specs:
+                phase_2_result_map[cfg.name] = {
+                    "result_text": "",
+                    "structured_output": None,
+                    "error": "Specialist cancelled",
+                    "msg_count": 0,
+                }
+            return {**phase_1_result_map, **phase_2_result_map}
 
         # === Phase 2: impact + fix_advisor (with root cause context) ===
         self._report_progress(
