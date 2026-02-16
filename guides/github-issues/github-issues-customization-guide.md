@@ -644,6 +644,8 @@ def _build_issue_context(self, issue: Issue) -> dict:
 
 ## Examples & Recipes
 
+> **Note:** All recipes below are example code showing how to extend the system. These are not built-in features—you would need to implement them yourself by modifying the orchestrator.
+
 ### Recipe 1: Add Project-Specific Context
 
 **Goal:** Include project documentation in investigations
@@ -697,6 +699,8 @@ def _calculate_severity(self, report: InvestigationReport) -> str:
 ```
 
 ### Recipe 3: Integrate with Issue Tracker
+
+> **Note:** This is an example recipe showing how to extend the system. Jira/Linear integration is not built-in—you would need to implement this yourself.
 
 **Goal:** Link investigations to external issue tracker (Jira, Linear)
 
