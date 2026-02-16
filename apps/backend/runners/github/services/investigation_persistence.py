@@ -27,10 +27,10 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from ...core.file_utils import write_json_atomic
+    from ...core.file_utils import atomic_write, write_json_atomic
     from .investigation_models import InvestigationReport, InvestigationState
 except (ImportError, ValueError, SystemError):
-    from core.file_utils import write_json_atomic
+    from core.file_utils import atomic_write, write_json_atomic
     try:
         from services.investigation_models import InvestigationReport, InvestigationState
     except (ImportError, ModuleNotFoundError):
@@ -182,7 +182,7 @@ def save_agent_log(
     agent_name: str,
     log_content: str,
 ) -> Path:
-    """Save an agent's log output to disk.
+    """Save an agent's log output to disk (atomic write).
 
     Args:
         project_dir: Project root directory
@@ -196,7 +196,9 @@ def save_agent_log(
     logs_dir = get_issue_dir(project_dir, issue_number) / "agent_logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     log_file = logs_dir / f"{agent_name}.log"
-    log_file.write_text(log_content, encoding="utf-8")
+    # Use atomic write to prevent corruption from concurrent access
+    with atomic_write(log_file, "w", encoding="utf-8") as f:
+        f.write(log_content)
     logger.debug(f"Saved agent log for issue #{issue_number}/{agent_name}")
     return log_file
 
@@ -211,7 +213,7 @@ def save_github_comment_id(
     issue_number: int,
     comment_id: int,
 ) -> None:
-    """Save the GitHub comment ID for the posted investigation results.
+    """Save the GitHub comment ID for the posted investigation results (atomic write).
 
     Also updates the investigation state with the comment ID.
 
@@ -220,10 +222,12 @@ def save_github_comment_id(
         issue_number: GitHub issue number
         comment_id: GitHub comment ID
     """
-    # Save to dedicated file for quick lookup
+    # Save to dedicated file for quick lookup (atomic write)
     issue_path = get_issue_dir(project_dir, issue_number)
     comment_file = issue_path / "github_comment_id"
-    comment_file.write_text(str(comment_id), encoding="utf-8")
+    # Use atomic write to prevent corruption from concurrent access
+    with atomic_write(comment_file, "w", encoding="utf-8") as f:
+        f.write(str(comment_id))
 
     # Also update state if it exists
     state = load_investigation_state(project_dir, issue_number)
@@ -323,7 +327,13 @@ def save_specialist_session(
     """Save a specialist's SDK session ID for resume support.
 
     Updates the sessions dict in investigation_state.json using atomic
-    read-modify-write to prevent race conditions.
+    write to prevent file corruption.
+
+    Note: While the write itself is atomic, there remains a theoretical
+    TOCTOU (time-of-check-time-of-use) race between read and write if
+    multiple processes update the same issue state simultaneously. In
+    practice, investigations are single-process per issue, so this is
+    acceptable for the low-severity nature of session tracking.
 
     Args:
         project_dir: Project root directory

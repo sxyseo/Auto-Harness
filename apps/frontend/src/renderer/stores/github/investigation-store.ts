@@ -191,6 +191,8 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
     // Don't overwrite cancelled state with late completion
     if (existing?.isCancelled) return state;
     const log = [...(existing?.activityLog ?? []), { event: 'investigation completed', timestamp: result.completedAt }].slice(-50);
+    // Schedule cleanup after setting result (deferred to avoid batching issues)
+    setTimeout(cleanupOldInvestigations, 0);
     return {
       investigations: {
         ...state.investigations,
@@ -715,6 +717,91 @@ export function investigateGitHubIssue(
 }
 
 // ============================================
+// Cleanup Configuration
+// ============================================
+
+const MAX_STORED_INVESTIGATIONS = 100;
+const CLEANUP_AGE_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Cleanup old completed investigations to prevent unbounded state accumulation.
+ * Keeps:
+ * - Active investigations (isInvestigating=true)
+ * - Investigations with errors
+ * - Recently completed investigations (within CLEANUP_AGE_MS)
+ *
+ * Removes:
+ * - Old completed investigations beyond the age threshold
+ * - Oldest entries if total count exceeds MAX_STORED_INVESTIGATIONS
+ */
+function cleanupOldInvestigations(): void {
+  useInvestigationStore.setState((state) => {
+    const entries = Object.entries(state.investigations);
+
+    // If under the limit, no cleanup needed
+    if (entries.length <= MAX_STORED_INVESTIGATIONS) {
+      return state;
+    }
+
+    const now = Date.now();
+    const newInvestigations: Record<string, IssueInvestigationState> = {};
+
+    // First pass: keep active, errored, and recently completed investigations
+    for (const [key, inv] of entries) {
+      // Keep active investigations
+      if (inv.isInvestigating) {
+        newInvestigations[key] = inv;
+        continue;
+      }
+
+      // Keep investigations with errors (they may need retry)
+      if (inv.error) {
+        newInvestigations[key] = inv;
+        continue;
+      }
+
+      // Keep recently completed investigations
+      if (inv.completedAt) {
+        const completedTime = new Date(inv.completedAt).getTime();
+        if (now - completedTime < CLEANUP_AGE_MS) {
+          newInvestigations[key] = inv;
+          continue;
+        }
+      }
+
+      // Keep investigations with linked tasks (they may be in progress)
+      if (inv.specId) {
+        newInvestigations[key] = inv;
+      }
+    }
+
+    // If still over the limit, remove the oldest completed investigations
+    const remainingEntries = Object.entries(newInvestigations);
+    if (remainingEntries.length > MAX_STORED_INVESTIGATIONS) {
+      // Sort by completion time (oldest first), keeping active/error at the end
+      const sorted = remainingEntries.sort(([_, a], [__, b]) => {
+        // Active and error investigations should be kept (sort to end)
+        if (a.isInvestigating || a.error) return 1;
+        if (b.isInvestigating || b.error) return -1;
+
+        // Sort by completedAt (nulls first - older/unknown)
+        const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+        const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+        return aTime - bTime;
+      });
+
+      // Keep only the MAX_STORED_INVESTIGATIONS most recent
+      const pruned = sorted.slice(-MAX_STORED_INVESTIGATIONS);
+      return {
+        investigations: Object.fromEntries(pruned),
+      };
+    }
+
+    return { investigations: newInvestigations };
+  });
+}
+
+// ============================================
 // Investigation Watchdog
 // ============================================
 
@@ -725,8 +812,9 @@ let watchdogTimer: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Start the investigation watchdog timer.
- * Checks every 5 minutes for investigations that have been running
- * for more than 30 minutes and marks them as timed out.
+ * Checks every 5 minutes for:
+ * - Investigations running for more than 30 minutes (marks as timed out)
+ * - Old completed investigations (runs cleanup)
  */
 export function startInvestigationWatchdog(): void {
   if (watchdogTimer) return;
@@ -749,6 +837,9 @@ export function startInvestigationWatchdog(): void {
         );
       }
     }
+
+    // Run cleanup periodically
+    cleanupOldInvestigations();
   }, WATCHDOG_INTERVAL_MS);
 }
 
@@ -760,4 +851,12 @@ export function stopInvestigationWatchdog(): void {
     clearInterval(watchdogTimer);
     watchdogTimer = null;
   }
+}
+
+/**
+ * Manually trigger investigation cleanup.
+ * Can be called after bulk operations to free memory.
+ */
+export function triggerInvestigationCleanup(): void {
+  cleanupOldInvestigations();
 }

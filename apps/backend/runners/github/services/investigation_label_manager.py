@@ -8,6 +8,11 @@ so label failures never crash the investigation pipeline.
 
 Includes debounce logic (5s) on set_investigation_label() to avoid
 rapid-fire GitHub API calls during fast state transitions.
+
+Debounce implementation:
+- Non-terminal states are debounced within a 5-second window
+- Terminal states (findings_ready, task_created, done) bypass debounce
+- Pending state is tracked and applied on the next non-debounced call
 """
 
 from __future__ import annotations

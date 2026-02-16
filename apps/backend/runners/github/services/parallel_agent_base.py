@@ -384,17 +384,25 @@ class ParallelAgentOrchestrator:
                 retry_results = await asyncio.gather(
                     *retry_coroutines, return_exceptions=True
                 )
+                still_failing = []
                 for (idx, _), retry_result in zip(retryable, retry_results):
                     if isinstance(retry_result, Exception):
                         logger.error(
                             f"[{orchestrator_name}] Retry also failed for specialist {idx}: {retry_result}"
                         )
+                        still_failing.append(idx)
                     else:
                         safe_print(
                             f"[{orchestrator_name}] Retry succeeded for specialist {idx}",
                             flush=True,
                         )
                         result_map[idx] = retry_result
+
+                # Log final summary of permanently failed specialists
+                if still_failing:
+                    logger.error(
+                        f"[{orchestrator_name}] Specialists {still_failing} failed permanently after retry"
+                    )
 
         succeeded = len(result_map)
         safe_print(

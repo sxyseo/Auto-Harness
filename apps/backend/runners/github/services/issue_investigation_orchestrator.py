@@ -271,6 +271,9 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
             project_root=working_dir,
         )
 
+        # Yield to event loop to ensure cancellation event propagates
+        await asyncio.sleep(0)
+
         # Resolve per-specialist config
         specialist_config = self.config.specialist_config or {}
 
@@ -540,10 +543,16 @@ Use Read, Grep, and Glob tools to explore the codebase.
 
         code_paths_str = ""
         if hasattr(root_cause, 'code_paths') and root_cause.code_paths:
-            if isinstance(root_cause.code_paths, list):
-                code_paths_str = "\n".join(f"- {p}" for p in root_cause.code_paths)
+            # Validate code_paths is a list of strings before formatting
+            paths = root_cause.code_paths
+            if isinstance(paths, list) and all(isinstance(p, str) for p in paths):
+                code_paths_str = "\n".join(f"- {p}" for p in paths)
+            elif isinstance(paths, list):
+                # Handle non-string items in the list
+                code_paths_str = "\n".join(f"- {str(p)}" for p in paths)
             else:
-                code_paths_str = str(root_cause.code_paths)
+                # Fallback for non-list types
+                code_paths_str = str(paths)
 
         return f"""
 ## Root Cause Analysis (from prior investigation phase)
@@ -816,6 +825,9 @@ the root cause — focus on your specialty using these findings as ground truth.
             "root_cause", phase_1_result_map, RootCauseAnalysis
         )
         root_cause_ctx = self._build_root_cause_context(root_cause_parsed)
+
+        # Yield to event loop to ensure cancellation event propagates
+        await asyncio.sleep(0)
 
         # Check for cancellation between Phase 1 and Phase 2
         if self._cancel_event.is_set():
