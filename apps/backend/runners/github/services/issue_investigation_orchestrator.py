@@ -679,6 +679,42 @@ the root cause — focus on your specialty using these findings as ground truth.
 
             return factory
 
+        async def _retry_lifecycle_wrapper(agent_name: str, coro):
+            """Wrap a retry coroutine with agent_started/agent_done events."""
+            emit_json_event("agent_started", agent_name)
+            try:
+                result = await _run_with_timeout(coro, agent_name, SPECIALIST_TIMEOUT_SECONDS)
+                if isinstance(result, TimeoutError):
+                    emit_json_event(
+                        "agent_done",
+                        agent_name,
+                        success=False,
+                        error=str(result)[:200],
+                    )
+                    result = {
+                        "result_text": "",
+                        "structured_output": None,
+                        "error": str(result),
+                        "msg_count": 0,
+                    }
+                else:
+                    success = not (result and result.get("error"))
+                    emit_json_event(
+                        "agent_done",
+                        agent_name,
+                        success=success,
+                        error=result.get("error") if not success else None,
+                    )
+            except Exception as e:
+                emit_json_event(
+                    "agent_done",
+                    agent_name,
+                    success=False,
+                    error=str(e)[:200],
+                )
+                raise
+            return result
+
         async def _agent_lifecycle_wrapper(
             cfg: SpecialistConfig,
             coro,
@@ -745,6 +781,7 @@ the root cause — focus on your specialty using these findings as ground truth.
         _agents_done = 0
         phase_1_coroutines = []
         phase_1_retry_factories = []
+        phase_1_retry_configs = []
         for cfg in phase_1_specs:
             model, budget, thinking_lvl = _resolve_specialist(cfg.name)
             factory = _make_specialist_factory(cfg, model, budget, thinking_lvl=thinking_lvl)
@@ -752,11 +789,17 @@ the root cause — focus on your specialty using these findings as ground truth.
                 _agent_lifecycle_wrapper(cfg, factory(), 20, 15)
             )
             phase_1_retry_factories.append(factory)
+            # Create a simplified lifecycle wrapper for retries (without progress tracking)
+            phase_1_retry_configs.append({
+                "name": cfg.name,
+                "lifecycle_wrapper": lambda name, coro: _retry_lifecycle_wrapper(name, coro),
+            })
 
         phase_1_results = await self._run_parallel_specialists(
             tasks=phase_1_coroutines,
             orchestrator_name="IssueInvestigation:Phase1",
             retry_tasks=phase_1_retry_factories,
+            retry_configs=phase_1_retry_configs,
         )
 
         # Map phase 1 results
@@ -799,6 +842,7 @@ the root cause — focus on your specialty using these findings as ground truth.
         _agents_done = 0
         phase_2_coroutines = []
         phase_2_retry_factories = []
+        phase_2_retry_configs = []
         for cfg in phase_2_specs:
             model, budget, thinking_lvl = _resolve_specialist(cfg.name)
             factory = _make_specialist_factory(cfg, model, budget, thinking_lvl=thinking_lvl, root_cause_ctx=root_cause_ctx)
@@ -806,11 +850,17 @@ the root cause — focus on your specialty using these findings as ground truth.
                 _agent_lifecycle_wrapper(cfg, factory(), 55, 13)
             )
             phase_2_retry_factories.append(factory)
+            # Create a simplified lifecycle wrapper for retries (without progress tracking)
+            phase_2_retry_configs.append({
+                "name": cfg.name,
+                "lifecycle_wrapper": lambda name, coro: _retry_lifecycle_wrapper(name, coro),
+            })
 
         phase_2_results = await self._run_parallel_specialists(
             tasks=phase_2_coroutines,
             orchestrator_name="IssueInvestigation:Phase2",
             retry_tasks=phase_2_retry_factories,
+            retry_configs=phase_2_retry_configs,
         )
 
         # Map phase 2 results

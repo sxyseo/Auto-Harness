@@ -368,17 +368,28 @@ async def cmd_investigate(args) -> int:
         progress_callback=print_progress,
     )
 
-    result = await orchestrator.investigate_issue(
-        args.issue_number,
-        resume_sessions=resume_sessions,
-    )
+    try:
+        result = await orchestrator.investigate_issue(
+            args.issue_number,
+            resume_sessions=resume_sessions,
+        )
 
-    # Output JSON for the Electron frontend to parse
-    safe_print("\nJSON Output")
-    safe_print(f"{'=' * 60}")
-    safe_print(json.dumps(result, indent=2))
+        # Check if investigation failed (result may contain error info)
+        # The investigate_issue method raises on failure, but we check result anyway
+        if not result:
+            safe_print("Error: Investigation returned no result")
+            return 1
 
-    return 0
+        # Output JSON for the Electron frontend to parse
+        safe_print("\nJSON Output")
+        safe_print(f"{'=' * 60}")
+        safe_print(json.dumps(result, indent=2))
+
+        return 0
+    except Exception as e:
+        # Return non-zero exit code on investigation failure
+        safe_print(f"Error: Investigation failed: {e}")
+        return 1
 
 
 async def cmd_post_investigation(args) -> int:

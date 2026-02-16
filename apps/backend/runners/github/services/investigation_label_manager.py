@@ -199,11 +199,14 @@ class InvestigationLabelManager:
             )
 
         try:
-            # Remove all existing auto-claude: labels first
-            await self.remove_all_investigation_labels(gh_client, issue_number)
-
-            # Add the new label
+            # Add the new label first (atomic with existing labels via GitHub's API)
             await gh_client.issue_add_labels(issue_number, [label_name])
+
+            # Then remove all other auto-claude: labels (excluding the one we just added)
+            other_labels = [name for name in self.all_label_names if name != label_name]
+            if other_labels:
+                await gh_client.issue_remove_labels(issue_number, other_labels)
+
             self._last_label_time[issue_number] = now
             logger.info("Set label %s on issue #%d", label_name, issue_number)
         except Exception as e:

@@ -312,6 +312,7 @@ class ParallelAgentOrchestrator:
         tasks: list[asyncio.Task | Any],
         orchestrator_name: str = "ParallelOrchestrator",
         retry_tasks: list[Any] | None = None,
+        retry_configs: list[dict[str, Any]] | None = None,
     ) -> list[Any]:
         """Run pre-built async tasks in parallel and collect results.
 
@@ -329,6 +330,10 @@ class ParallelAgentOrchestrator:
             retry_tasks: Optional list of 0-arg callables that recreate
                         the coroutine for each task (same order as tasks).
                         If None, failed tasks are not retried.
+            retry_configs: Optional list of dicts with retry configuration:
+                        - name: Specialist name for logging
+                        - lifecycle_wrapper: Optional callable that wraps a coroutine
+                          with lifecycle events (agent_started, agent_done)
 
         Returns:
             List of results preserving original task order.
@@ -363,7 +368,19 @@ class ParallelAgentOrchestrator:
                     f"[{orchestrator_name}] Retrying {len(retryable)} failed specialist(s)...",
                     flush=True,
                 )
-                retry_coroutines = [factory() for _, factory in retryable]
+                # Apply lifecycle wrapper to retry coroutines if provided
+                retry_coroutines = []
+                for idx, factory in retryable:
+                    coro = factory()
+                    # Apply lifecycle wrapper if available for this task
+                    if retry_configs and idx < len(retry_configs):
+                        config = retry_configs[idx]
+                        wrapper = config.get("lifecycle_wrapper")
+                        if wrapper:
+                            spec_name = config.get("name", f"specialist_{idx}")
+                            coro = wrapper(spec_name, coro)
+                    retry_coroutines.append(coro)
+
                 retry_results = await asyncio.gather(
                     *retry_coroutines, return_exceptions=True
                 )

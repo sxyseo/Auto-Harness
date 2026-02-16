@@ -322,7 +322,8 @@ def save_specialist_session(
 ) -> None:
     """Save a specialist's SDK session ID for resume support.
 
-    Updates the sessions dict in investigation_state.json.
+    Updates the sessions dict in investigation_state.json using atomic
+    read-modify-write to prevent race conditions.
 
     Args:
         project_dir: Project root directory

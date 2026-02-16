@@ -1515,33 +1515,48 @@ class GitHubOrchestrator:
     # ISSUE INVESTIGATION WORKFLOW
     # =========================================================================
 
-    async def investigate_issue(
+    async def _run_investigation_with_state_management(
         self,
         issue_number: int,
+        issue_title: str,
+        issue_body: str,
+        issue_labels: list[str],
+        issue_comments: list[str],
         project_root: Path | None = None,
         resume_sessions: dict[str, str] | None = None,
-    ) -> dict:
+        return_dict: bool = True,
+    ):
         """
-        Run an AI investigation on a GitHub issue.
+        Core investigation logic with state and label management.
 
-        Launches 4 specialist agents in parallel (root cause, impact,
-        fix advisor, reproducer) to explore the codebase and produce
-        a structured investigation report.
+        This helper method encapsulates the common pattern of:
+        1. Saving initial "investigating" state
+        2. Syncing lifecycle labels
+        3. Running the investigation
+        4. Updating state to "findings_ready" or "failed"
+        5. Syncing final labels
 
         Args:
-            issue_number: The GitHub issue number to investigate
-            project_root: Working directory for agents (e.g., worktree path).
-                         Defaults to self.project_dir.
-            resume_sessions: Optional dict mapping specialist name to SDK
-                           session ID for resuming interrupted investigations.
+            issue_number: The GitHub issue number
+            issue_title: The issue title
+            issue_body: The issue body text
+            issue_labels: List of label names
+            issue_comments: List of comment bodies
+            project_root: Working directory for agents
+            resume_sessions: Optional dict mapping specialist name to SDK session ID
+            return_dict: If True, return report.model_dump(); otherwise return report
 
         Returns:
-            Dict with investigation results (InvestigationReport as dict)
+            InvestigationReport (as dict if return_dict=True, else as object)
+
+        Raises:
+            Exception: If investigation fails
         """
         from datetime import datetime, timezone
 
         try:
             from .services.investigation_persistence import (
+                load_investigation_state,
                 save_investigation_state,
             )
             from .services.issue_investigation_orchestrator import (
@@ -1549,35 +1564,14 @@ class GitHubOrchestrator:
             )
         except (ImportError, ValueError, SystemError):
             from services.investigation_persistence import (
+                load_investigation_state,
                 save_investigation_state,
             )
             from services.issue_investigation_orchestrator import (
                 IssueInvestigationOrchestrator,
             )
 
-        self._report_progress(
-            "fetching",
-            5,
-            f"Fetching issue #{issue_number}...",
-            issue_number=issue_number,
-        )
-
-        # Fetch issue data
-        issue = await self._fetch_issue_data(issue_number)
-        issue_title = issue.get("title", f"Issue #{issue_number}")
-        issue_body = issue.get("body", "")
-        issue_labels = [label.get("name", "") for label in issue.get("labels", [])]
-
-        # Fetch comments
-        issue_comments = []
-        try:
-            comments_data = await self.gh_client.issue_comments(issue_number)
-            issue_comments = [c.get("body", "") for c in comments_data if c.get("body")]
-        except Exception as e:
-            safe_print(
-                f"[Investigation] Warning: Could not fetch comments: {e}",
-                flush=True,
-            )
+        working_dir = project_root or self.project_dir
 
         # Save initial state
         save_investigation_state(
@@ -1600,8 +1594,6 @@ class GitHubOrchestrator:
         except Exception as e:
             safe_print(f"[Investigation] Label sync warning: {e}", flush=True)
 
-        working_dir = project_root or self.project_dir
-
         try:
             # Create investigation orchestrator
             orchestrator = IssueInvestigationOrchestrator(
@@ -1622,14 +1614,19 @@ class GitHubOrchestrator:
                 resume_sessions=resume_sessions,
             )
 
-            # Update state to findings_ready
+            # Update state to findings_ready, preserving started_at
+            existing_state = load_investigation_state(self.project_dir, issue_number)
+            started_at = (
+                existing_state.started_at if existing_state else datetime.now(timezone.utc).isoformat()
+            )
+
             save_investigation_state(
                 self.project_dir,
                 issue_number,
                 {
                     "issue_number": issue_number,
                     "status": "findings_ready",
-                    "started_at": datetime.now(timezone.utc).isoformat(),
+                    "started_at": started_at,
                     "completed_at": datetime.now(timezone.utc).isoformat(),
                     "model_used": self.config.model or "sonnet",
                 },
@@ -1643,7 +1640,7 @@ class GitHubOrchestrator:
             except Exception as e:
                 safe_print(f"[Investigation] Label sync warning: {e}", flush=True)
 
-            return report.model_dump(mode="json")
+            return report.model_dump(mode="json") if return_dict else report
 
         except Exception as e:
             # Update state to failed
@@ -1677,6 +1674,64 @@ class GitHubOrchestrator:
             )
             raise
 
+    async def investigate_issue(
+        self,
+        issue_number: int,
+        project_root: Path | None = None,
+        resume_sessions: dict[str, str] | None = None,
+    ) -> dict:
+        """
+        Run an AI investigation on a GitHub issue.
+
+        Launches 4 specialist agents in parallel (root cause, impact,
+        fix advisor, reproducer) to explore the codebase and produce
+        a structured investigation report.
+
+        Args:
+            issue_number: The GitHub issue number to investigate
+            project_root: Working directory for agents (e.g., worktree path).
+                         Defaults to self.project_dir.
+            resume_sessions: Optional dict mapping specialist name to SDK
+                           session ID for resuming interrupted investigations.
+
+        Returns:
+            Dict with investigation results (InvestigationReport as dict)
+        """
+        self._report_progress(
+            "fetching",
+            5,
+            f"Fetching issue #{issue_number}...",
+            issue_number=issue_number,
+        )
+
+        # Fetch issue data
+        issue = await self._fetch_issue_data(issue_number)
+        issue_title = issue.get("title", f"Issue #{issue_number}")
+        issue_body = issue.get("body", "")
+        issue_labels = [label.get("name", "") for label in issue.get("labels", [])]
+
+        # Fetch comments
+        issue_comments = []
+        try:
+            comments_data = await self.gh_client.issue_comments(issue_number)
+            issue_comments = [c.get("body", "") for c in comments_data if c.get("body")]
+        except Exception as e:
+            safe_print(
+                f"[Investigation] Warning: Could not fetch comments: {e}",
+                flush=True,
+            )
+
+        return await self._run_investigation_with_state_management(
+            issue_number=issue_number,
+            issue_title=issue_title,
+            issue_body=issue_body,
+            issue_labels=issue_labels,
+            issue_comments=issue_comments,
+            project_root=project_root,
+            resume_sessions=resume_sessions,
+            return_dict=True,
+        )
+
     async def start_investigation(
         self,
         issue_number: int,
@@ -1688,8 +1743,8 @@ class GitHubOrchestrator:
         """
         Start an AI investigation on a GitHub issue (typed API).
 
-        This is a higher-level wrapper around investigate_issue() that accepts
-        pre-fetched issue data and returns a typed InvestigationReport.
+        This is a higher-level wrapper that accepts pre-fetched issue data
+        and returns a typed InvestigationReport.
 
         Args:
             issue_number: The GitHub issue number
@@ -1701,115 +1756,16 @@ class GitHubOrchestrator:
         Returns:
             InvestigationReport from the investigation
         """
-        from datetime import datetime, timezone
-
-        try:
-            from .services.investigation_persistence import (
-                save_investigation_state,
-            )
-            from .services.issue_investigation_orchestrator import (
-                IssueInvestigationOrchestrator,
-            )
-        except (ImportError, ValueError, SystemError):
-            from services.investigation_persistence import (
-                save_investigation_state,
-            )
-            from services.issue_investigation_orchestrator import (
-                IssueInvestigationOrchestrator,
-            )
-
-        # Save initial state
-        save_investigation_state(
-            self.project_dir,
-            issue_number,
-            {
-                "issue_number": issue_number,
-                "status": "investigating",
-                "started_at": datetime.now(timezone.utc).isoformat(),
-                "model_used": self.config.model or "sonnet",
-            },
+        return await self._run_investigation_with_state_management(
+            issue_number=issue_number,
+            issue_title=issue_title,
+            issue_body=issue_body,
+            issue_labels=issue_labels or [],
+            issue_comments=issue_comments or [],
+            project_root=self.project_dir,
+            resume_sessions=None,
+            return_dict=False,
         )
-
-        # Sync lifecycle label to GitHub
-        try:
-            await self.label_manager.ensure_labels_exist(self.gh_client)
-            await self.label_manager.set_investigation_label(
-                self.gh_client, issue_number, "investigating"
-            )
-        except Exception as e:
-            safe_print(f"[Investigation] Label sync warning: {e}", flush=True)
-
-        try:
-            orchestrator = IssueInvestigationOrchestrator(
-                project_dir=self.project_dir,
-                github_dir=self.github_dir,
-                config=self.config,
-                progress_callback=self.progress_callback,
-            )
-
-            report = await orchestrator.investigate(
-                issue_number=issue_number,
-                issue_title=issue_title,
-                issue_body=issue_body,
-                issue_labels=issue_labels or [],
-                issue_comments=issue_comments or [],
-                project_root=self.project_dir,
-            )
-
-            # Update state to findings_ready
-            save_investigation_state(
-                self.project_dir,
-                issue_number,
-                {
-                    "issue_number": issue_number,
-                    "status": "findings_ready",
-                    "started_at": datetime.now(timezone.utc).isoformat(),
-                    "completed_at": datetime.now(timezone.utc).isoformat(),
-                    "model_used": self.config.model or "sonnet",
-                },
-            )
-
-            # Sync lifecycle label to GitHub
-            try:
-                await self.label_manager.set_investigation_label(
-                    self.gh_client, issue_number, "findings_ready"
-                )
-            except Exception as e:
-                safe_print(f"[Investigation] Label sync warning: {e}", flush=True)
-
-            return report
-
-        except Exception as e:
-            # Update state to failed
-            save_investigation_state(
-                self.project_dir,
-                issue_number,
-                {
-                    "issue_number": issue_number,
-                    "status": "failed",
-                    "started_at": datetime.now(timezone.utc).isoformat(),
-                    "completed_at": datetime.now(timezone.utc).isoformat(),
-                    "error": str(e),
-                    "model_used": self.config.model or "sonnet",
-                },
-            )
-
-            # Remove lifecycle labels on failure
-            try:
-                await self.label_manager.remove_all_investigation_labels(
-                    self.gh_client, issue_number
-                )
-            except Exception as label_err:
-                safe_print(
-                    f"[Investigation] Label cleanup warning: {label_err}",
-                    flush=True,
-                )
-
-            safe_print(
-                f"[Investigation] start_investigation failed for issue #{issue_number}: {e}",
-                flush=True,
-            )
-            raise
 
     # =========================================================================
     # ENRICHMENT WORKFLOW
