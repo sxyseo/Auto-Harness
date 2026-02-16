@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import subprocess
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -194,6 +195,7 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
             issue_body=issue_body,
             issue_labels=issue_labels or [],
             issue_comments=issue_comments or [],
+            project_root=working_dir,
         )
 
         # Resolve per-specialist config
@@ -266,6 +268,53 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
 
         return report
 
+    def _get_recent_commits(self, project_root: Path, max_count: int = 20) -> str:
+        """
+        Fetch recent git commits to provide context for investigation.
+
+        Args:
+            project_root: Path to the git repository
+            max_count: Maximum number of commits to fetch
+
+        Returns:
+            Formatted string with recent commits, or error message if failed
+        """
+        try:
+            result = subprocess.run(
+                ["git", "log", "--oneline", "-n", str(max_count), "--date=short",
+                 "--format=%h | %ad | %s"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+
+            if result.returncode != 0:
+                logger.warning(f"Git log failed: {result.stderr}")
+                return ""
+
+            commits = result.stdout.strip()
+            if not commits:
+                return ""
+
+            return f"""
+### Recent Commits (last {max_count})
+
+```
+{commits}
+```
+"""
+
+        except subprocess.TimeoutExpired:
+            logger.warning("Git log timed out")
+            return ""
+        except FileNotFoundError:
+            logger.warning("Git not found in project")
+            return ""
+        except Exception as e:
+            logger.warning(f"Failed to fetch git log: {e}")
+            return ""
+
     def _build_issue_context(
         self,
         issue_number: int,
@@ -273,6 +322,7 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
         issue_body: str,
         issue_labels: list[str],
         issue_comments: list[str],
+        project_root: Path,
     ) -> str:
         """Build the issue context string injected into all specialist prompts."""
         labels_str = ", ".join(issue_labels) if issue_labels else "(none)"
@@ -289,6 +339,9 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
 {chr(10).join(comments_list)}
 """
 
+        # Fetch recent git commits for context
+        commits_section = self._get_recent_commits(project_root, max_count=20)
+
         return f"""
 ## GitHub Issue #{issue_number}
 
@@ -298,6 +351,7 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
 ### Description
 {issue_body or "(No description provided)"}
 {comments_section}
+{commits_section}
 """
 
     def _build_specialist_prompt(
