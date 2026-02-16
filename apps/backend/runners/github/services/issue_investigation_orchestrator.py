@@ -92,6 +92,19 @@ except (ImportError, ValueError, SystemError):
 logger = logging.getLogger(__name__)
 
 # =============================================================================
+# Per-Specialist Max Tokens Configuration
+# =============================================================================
+
+# Per-specialist max_tokens configuration (Opus 4.6 supports up to 128K)
+# Root cause gets highest limit for deep analysis
+SPECIALIST_MAX_TOKENS = {
+    "root_cause": 128000,   # Maximum for complex multi-file tracing
+    "impact": 64000,         # Standard for component mapping
+    "fix_advisor": 64000,    # Standard for fix approaches
+    "reproducer": 64000,     # Standard for test coverage analysis
+}
+
+# =============================================================================
 # Specialist Configurations
 # =============================================================================
 
@@ -466,7 +479,8 @@ the root cause — focus on your specialty using these findings as ground truth.
             if not model_str.startswith("claude-"):
                 model_str = resolve_model_id(model_str)
             thinking_lvl = sc.get("thinking", fallback_thinking_level)
-            budget = get_thinking_budget(thinking_lvl)
+            # Use per-specialist max_tokens if available, otherwise fallback to thinking level
+            budget = SPECIALIST_MAX_TOKENS.get(cfg_name, get_thinking_budget(thinking_lvl))
             return model_str, budget, thinking_lvl
 
         # Build coroutine factories so failed specialists can be retried
