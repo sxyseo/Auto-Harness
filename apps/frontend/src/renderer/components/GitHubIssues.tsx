@@ -509,15 +509,13 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     );
     console.log('[GitHubIssues] Task creation result:', result);
     if (result.success && result.data?.specId) {
-      console.log('[GitHubIssues] Calling setSpecId with', result.data.specId);
+      console.log('[GitHubIssues] Loading tasks to ensure task list is up-to-date');
+      // Load tasks FIRST so the new task is in the list when we update the store
+      // This prevents the tasks-changed effect from clearing the specId due to race condition
+      await loadTasks(selectedProject.id);
+      console.log('[GitHubIssues] Tasks loaded, now calling setSpecId with', result.data.specId);
       // Update the investigation store with the specId so the UI knows a task was created
       investigationStore.setSpecId(selectedProject.id, selectedIssue.number, result.data.specId);
-      loadTasks(selectedProject.id);
-      // Check if the store update worked
-      setTimeout(() => {
-        const updated = investigationStore.getInvestigationState(selectedProject.id, selectedIssue.number);
-        console.log('[GitHubIssues] After setSpecId, store entry specId is:', updated?.specId);
-      }, 100);
     } else if (!result.success) {
       toast({
         title: 'Failed to create task',

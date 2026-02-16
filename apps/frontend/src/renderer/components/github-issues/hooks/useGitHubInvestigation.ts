@@ -54,9 +54,11 @@ export function useGitHubInvestigation(projectId: string | undefined, issueNumbe
     if (!projectId || issueNumber == null) return;
     const result = await window.electronAPI.github.createTaskFromInvestigation(projectId, issueNumber);
     if (result.success && result.data?.specId) {
+      // Load tasks FIRST so the new task is in the list when we update the store
+      // This prevents the tasks-changed effect from clearing the specId due to race condition
+      await loadTasks(projectId);
       // Update the investigation store with the specId so the UI knows a task was created
       store.setSpecId(projectId, issueNumber, result.data.specId);
-      loadTasks(projectId);
     }
   }, [projectId, issueNumber, store]);
 
