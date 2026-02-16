@@ -236,6 +236,8 @@ export interface InvestigationSettings {
   labelConsentGiven?: boolean;
   /** Custom investigation label configuration */
   labelCustomization?: InvestigationLabelCustomization;
+  /** Enable Opus 4.6 Fast Mode for investigations (2.5x faster, higher cost) */
+  fastInvestigations?: boolean;
 }
 
 // ============================================
