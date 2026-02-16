@@ -503,13 +503,21 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
 
   const handleCreateTask = useCallback(async () => {
     if (!selectedProject?.id || !selectedIssue) return;
+    console.log('[GitHubIssues] Creating task for issue', selectedIssue.number);
     const result = await window.electronAPI.github.createTaskFromInvestigation(
       selectedProject.id, selectedIssue.number
     );
+    console.log('[GitHubIssues] Task creation result:', result);
     if (result.success && result.data?.specId) {
+      console.log('[GitHubIssues] Calling setSpecId with', result.data.specId);
       // Update the investigation store with the specId so the UI knows a task was created
       investigationStore.setSpecId(selectedProject.id, selectedIssue.number, result.data.specId);
       loadTasks(selectedProject.id);
+      // Check if the store update worked
+      setTimeout(() => {
+        const updated = investigationStore.getInvestigationState(selectedProject.id, selectedIssue.number);
+        console.log('[GitHubIssues] After setSpecId, store entry specId is:', updated?.specId);
+      }, 100);
     } else if (!result.success) {
       toast({
         title: 'Failed to create task',
@@ -559,7 +567,10 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   // when setSpecId() updates the store, the component will re-render immediately
   const selectedIssueEntry = useInvestigationStore((state) => {
     if (!selectedProject?.id || !selectedIssue) return null;
-    return state.investigations[`${selectedProject.id}:${selectedIssue.number}`] ?? null;
+    const key = `${selectedProject.id}:${selectedIssue.number}`;
+    const entry = state.investigations[key] ?? null;
+    console.log('[GitHubIssues] Selector called for', key, 'specId:', entry?.specId);
+    return entry;
   });
 
   // Derive the state machine value from the entry
