@@ -176,6 +176,7 @@ export async function createSpecForIssue(
   baseBranch?: string,
   preAllocatedSpecNumber?: number,
   investigationReport?: Record<string, unknown>,
+  pipelineMode: 'full' | 'skip_to_planning' | 'minimal' = 'full',
 ): Promise<SpecCreationData> {
   const specsBaseDir = getSpecsDir(project.autoBuildPath);
   const specsDir = path.join(project.path, specsBaseDir);
@@ -204,13 +205,17 @@ export async function createSpecForIssue(
     // Create initial files
     const now = new Date().toISOString();
 
-    // implementation_plan.json
+    // implementation_plan.json - status and phases based on pipelineMode
+    // - full: pending with empty phases (agent will populate)
+    // - skip_to_planning: planning (skip investigation phase, go straight to planning)
+    // - minimal: pending with minimal setup
     const implementationPlan = {
       feature: safeTitle,
       description: safeDescription,
       created_at: now,
       updated_at: now,
-      status: 'pending',
+      status: pipelineMode === 'skip_to_planning' ? 'planning' : 'pending',
+      pipeline_mode: pipelineMode,
       phases: []
     };
     writeFileSync(

@@ -108,6 +108,17 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
   const [repoLabels, setRepoLabels] = useState<Array<{ name: string; color: string }>>([]);
   const [labelsLoading, setLabelsLoading] = useState(false);
 
+  // Fetch investigation settings from backend on mount
+  // This ensures settings are loaded from disk even if store is empty (e.g., after app reload)
+  useEffect(() => {
+    if (!projectId) return;
+    window.electronAPI?.github?.getInvestigationSettings?.(projectId).then((res) => {
+      if (res?.success && res.data) {
+        setStoreSettings(projectId, res.data);
+      }
+    }).catch(() => { /* non-critical */ });
+  }, [projectId, setStoreSettings]);
+
   // Fetch repo labels on mount
   useEffect(() => {
     if (!projectId) return;
@@ -120,7 +131,7 @@ export function InvestigationSettings({ projectId }: InvestigationSettingsProps)
       .finally(() => setLabelsLoading(false));
   }, [projectId]);
 
-  // Load settings from store on mount / projectId change
+  // Sync local state when store settings change
   useEffect(() => {
     if (storeSettings) {
       setSettings(storeSettings);

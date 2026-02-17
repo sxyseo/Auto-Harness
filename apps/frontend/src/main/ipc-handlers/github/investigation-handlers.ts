@@ -855,6 +855,131 @@ function buildTaskDescriptionFromReport(
 }
 
 /**
+ * Fetch issue labels from GitHub API.
+ * Used for label filtering when auto-creating tasks from investigations.
+ */
+async function fetchIssueLabels(projectId: string, issueNumber: number): Promise<string[]> {
+  try {
+    const project = projectStore.getProject(projectId);
+    if (!project) return [];
+
+    const config = getGitHubConfig(project);
+    if (!config) return [];
+
+    const normalizedRepo = config.repo.includes('/') ? config.repo : undefined;
+    if (!normalizedRepo) return [];
+
+    const issue = await githubFetch(
+      config.token,
+      `/repos/${normalizedRepo}/issues/${issueNumber}`
+    ) as { labels: Array<{ name: string }> } | undefined;
+
+    return issue?.labels?.map(l => l.name) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Auto-post investigation results to GitHub comment.
+ * Extracted from the IPC handler for reuse in auto-post flow.
+ */
+async function autoPostInvestigationToGitHub(
+  projectId: string,
+  issueNumber: number,
+): Promise<{ success: boolean; commentId?: number; error?: string }> {
+  try {
+    const project = projectStore.getProject(projectId);
+    if (!project) return { success: false, error: 'Project not found' };
+
+    const validation = await validateGitHubModule(project);
+    if (!validation.valid) {
+      return { success: false, error: validation.error ?? 'GitHub module not available' };
+    }
+
+    const backendPath = validation.backendPath ?? '';
+    const { model, thinkingLevel } = getGitHubIssuesSettings();
+
+    const args = buildRunnerArgs(
+      getRunnerPath(backendPath),
+      project.path,
+      'post-investigation',
+      [String(issueNumber)],
+      { model, thinkingLevel },
+    );
+
+    const subprocessEnv = await getRunnerEnv();
+    const { promise } = runPythonSubprocess<{ commentId: number }>({
+      pythonPath: getPythonPath(backendPath),
+      args,
+      cwd: backendPath,
+      env: subprocessEnv,
+      onComplete: (stdout) => parseJSONFromOutput<{ commentId: number }>(stdout),
+      onStdout: (line) => debugLog('STDOUT:', line),
+      onStderr: (line) => debugLog('STDERR:', line),
+    });
+
+    const subResult = await promise;
+
+    if (!subResult.success) {
+      return { success: false, error: subResult.error ?? 'Failed to post to GitHub' };
+    }
+
+    const postResult = subResult.data as { commentId: number };
+    appendActivityLogEntry(project.path, issueNumber, 'Results posted to GitHub');
+
+    // Persist githubCommentId and postedAt to investigation state file
+    const stateFile = path.join(project.path, '.auto-claude', 'issues', `${issueNumber}`, 'investigation_state.json');
+    const existingState: Record<string, unknown> = fs.existsSync(stateFile)
+      ? JSON.parse(fs.readFileSync(stateFile, 'utf-8'))
+      : {};
+    fs.writeFileSync(stateFile, JSON.stringify({
+      ...existingState,
+      github_comment_id: postResult.commentId,
+      posted_at: new Date().toISOString(),
+    }, null, 2), 'utf-8');
+    debugLog('Auto-posted investigation to GitHub', { issueNumber, commentId: postResult.commentId });
+
+    return { success: true, commentId: postResult.commentId };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to post to GitHub',
+    };
+  }
+}
+
+/**
+ * Check if issue labels pass the include/exclude filters.
+ * Returns true if the issue should auto-create task.
+ */
+function passesLabelFilters(
+  issueLabels: string[],
+  includeFilter: string[],
+  excludeFilter: string[],
+): boolean {
+  // If exclude filter matches, never create task
+  if (excludeFilter.length > 0) {
+    const hasExcludedLabel = issueLabels.some(label => excludeFilter.includes(label));
+    if (hasExcludedLabel) {
+      debugLog('Issue excluded by label filter', { issueLabels, excludeFilter });
+      return false;
+    }
+  }
+
+  // If include filter is set, only create if issue has at least one included label
+  if (includeFilter.length > 0) {
+    const hasIncludedLabel = issueLabels.some(label => includeFilter.includes(label));
+    if (!hasIncludedLabel) {
+      debugLog('Issue not in include filter', { issueLabels, includeFilter });
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * Auto-create a task from a completed investigation report.
  * Mirrors the logic in the GITHUB_INVESTIGATION_CREATE_TASK handler.
  * Returns the specId if successful, or null on failure.
@@ -862,6 +987,7 @@ function buildTaskDescriptionFromReport(
 async function autoCreateTaskFromInvestigation(
   projectId: string,
   issueNumber: number,
+  pipelineMode: 'full' | 'skip_to_planning' | 'minimal' = 'full',
 ): Promise<{ specId: string; specDir: string; taskDescription: string; metadata: import('./spec-utils').SpecCreationData['metadata'] } | null> {
   try {
     const project = projectStore.getProject(projectId);
@@ -900,6 +1026,7 @@ async function autoCreateTaskFromInvestigation(
       project.settings?.mainBranch,
       undefined,
       reportData,
+      pipelineMode,
     );
 
     debugLog('Auto-created task from investigation', { projectId, issueNumber, specId: specData.specId });
@@ -1305,38 +1432,79 @@ async function runInvestigation(
 
       appendActivityLogEntry(project.path, issueNumber, 'Investigation completed');
 
-      // --- Auto-create task if setting is enabled ---
+      // --- Get investigation settings ---
       const settings = getInvestigationSettings(projectId);
-      if (settings.autoCreateTasks) {
-        const specData = await autoCreateTaskFromInvestigation(projectId, issueNumber);
-        if (specData) {
-          appendActivityLogEntry(project.path, issueNumber, `Task created: ${specData.specId}`);
+
+      // --- Auto-post to GitHub if enabled ---
+      if (settings.autoPostToGitHub) {
+        try {
+          await autoPostInvestigationToGitHub(projectId, issueNumber);
+        } catch (postError) {
+          debugLog('Failed to auto-post investigation to GitHub', {
+            projectId,
+            issueNumber,
+            error: postError instanceof Error ? postError.message : String(postError),
+          });
         }
-        if (specData && settings.autoStartTasks && agentManager) {
-          // Auto-start the build pipeline for the newly created task
-          try {
-            const proj = projectStore.getProject(projectId);
-            if (proj) {
-              agentManager.startSpecCreation(
-                specData.specId,
-                proj.path,
-                specData.taskDescription,
-                specData.specDir,
-                specData.metadata,
-              );
-              updateImplementationPlanStatus(specData.specDir, 'planning');
-              debugLog('Auto-started build for investigation task', {
+      }
+
+      // --- Auto-create task if setting is enabled ---
+      if (settings.autoCreateTasks) {
+        // Fetch issue labels for filter checking
+        const issueLabels = await fetchIssueLabels(projectId, issueNumber);
+
+        // Check label filters before creating task
+        if (!passesLabelFilters(
+          issueLabels,
+          settings.labelIncludeFilter ?? [],
+          settings.labelExcludeFilter ?? [],
+        )) {
+          debugLog('Skipping auto-create task due to label filters', {
+            projectId,
+            issueNumber,
+            issueLabels,
+            includeFilter: settings.labelIncludeFilter,
+            excludeFilter: settings.labelExcludeFilter,
+          });
+          appendActivityLogEntry(project.path, issueNumber, 'Task creation skipped due to label filters');
+        } else {
+          const specData = await autoCreateTaskFromInvestigation(
+            projectId,
+            issueNumber,
+            settings.pipelineMode ?? 'full',
+          );
+          if (specData) {
+            appendActivityLogEntry(project.path, issueNumber, `Task created: ${specData.specId}`);
+          }
+          if (specData && settings.autoStartTasks && agentManager) {
+            // Auto-start the build pipeline for the newly created task
+            try {
+              const proj = projectStore.getProject(projectId);
+              if (proj) {
+                agentManager.startSpecCreation(
+                  specData.specId,
+                  proj.path,
+                  specData.taskDescription,
+                  specData.specDir,
+                  specData.metadata,
+                );
+                // Only update status if not already in planning (for skip_to_planning mode)
+                if (settings.pipelineMode !== 'skip_to_planning') {
+                  updateImplementationPlanStatus(specData.specDir, 'planning');
+                }
+                debugLog('Auto-started build for investigation task', {
+                  projectId,
+                  issueNumber,
+                  specId: specData.specId,
+                });
+              }
+            } catch (startError) {
+              debugLog('Failed to auto-start build for investigation task', {
                 projectId,
                 issueNumber,
-                specId: specData.specId,
+                error: startError instanceof Error ? startError.message : String(startError),
               });
             }
-          } catch (startError) {
-            debugLog('Failed to auto-start build for investigation task', {
-              projectId,
-              issueNumber,
-              error: startError instanceof Error ? startError.message : String(startError),
-            });
           }
         }
       }
