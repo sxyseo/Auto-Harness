@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import subprocess
 import uuid
 from datetime import datetime, timezone
@@ -93,6 +94,41 @@ except (ImportError, ValueError, SystemError):
 
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Image URL Extraction
+# =============================================================================
+
+_IMAGE_URL_PATTERNS = [
+    # Markdown: ![alt](url) or ![alt](url "title")
+    re.compile(r'!\[.*?\]\((https?://[^\s)]+)\)'),
+    # HTML: <img src="url"> or <img src='url'>
+    re.compile(r'<img[^>]+src=["\'](https?://[^"\']+)["\']', re.IGNORECASE),
+]
+
+
+def extract_image_urls(text: str) -> list[str]:
+    """Extract image URLs from GitHub issue markdown.
+
+    Supports both markdown syntax (![](url)) and HTML <img> tags.
+    Returns a deduplicated list of HTTP/HTTPS image URLs.
+
+    Args:
+        text: Issue body or comment text
+
+    Returns:
+        List of unique image URLs found in the text
+    """
+    if not text:
+        return []
+
+    urls: set[str] = set()
+    for pattern in _IMAGE_URL_PATTERNS:
+        urls.update(pattern.findall(text))
+
+    # Return sorted list for deterministic ordering
+    return sorted(urls)
+
 
 # =============================================================================
 # Specialist Timeout Configuration
