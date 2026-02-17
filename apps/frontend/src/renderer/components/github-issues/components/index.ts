@@ -5,6 +5,7 @@ export { EmptyState, NotConnectedState } from './EmptyStates';
 export { IssueListHeader } from './IssueListHeader';
 export { IssueList } from './IssueList';
 export { BatchReviewWizard } from './BatchReviewWizard';
+export { GitHubErrorDisplay } from './GitHubErrorDisplay';
 
 // Phase 1 — Foundation
 export { CompletenessIndicator } from './CompletenessIndicator';

@@ -218,6 +218,7 @@ export async function createSpecForIssue(
       pipeline_mode: pipelineMode,
       phases: []
     };
+    // lgtm[js/http-to-file-access] - specDir is controlled, slugifiedTitle sanitizes input
     writeFileSync(
       path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN),
       JSON.stringify(implementationPlan, null, 2),
@@ -254,6 +255,7 @@ export async function createSpecForIssue(
         workflow_type: 'feature',
       };
     }
+    // lgtm[js/http-to-file-access] - specDir is controlled, slugifiedTitle sanitizes input
     writeFileSync(
       path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
       JSON.stringify(requirements, null, 2),
@@ -273,6 +275,7 @@ export async function createSpecForIssue(
       // This comes from project.settings.mainBranch or task-level override
       ...(baseBranch && { baseBranch })
     };
+    // lgtm[js/http-to-file-access] - specDir is controlled, slugifiedTitle sanitizes input
     writeFileSync(
       path.join(specDir, 'task_metadata.json'),
       JSON.stringify(metadata, null, 2),

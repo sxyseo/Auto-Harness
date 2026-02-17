@@ -20,6 +20,7 @@ import { isWindows, isMacOS } from '../../../platform';
 import { getEffectiveSourcePath } from '../../../updater/path-resolver';
 import { pythonEnvManager, getConfiguredPythonPath } from '../../../python-env-manager';
 import { getTaskkillExePath, getWhereExePath } from '../../../utils/windows-paths';
+import { safeCaptureException } from '../../../sentry';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -245,6 +246,17 @@ export function runPythonSubprocess<T = unknown>(
     let killedDueToAuthFailure = false; // Track if subprocess was killed due to auth failure
     let billingFailureEmitted = false; // Track if we've already emitted a billing failure
     let killedDueToBillingFailure = false; // Track if subprocess was killed due to billing failure
+    let receivedOutput = false; // Track if any stdout/stderr has been received
+
+    // Health-check: report to Sentry if no output received within 120 seconds
+    const healthCheckTimeout = setTimeout(() => {
+      if (!receivedOutput) {
+        safeCaptureException(
+          new Error('[SubprocessRunner] No output received from subprocess after 120s'),
+          { extra: { pythonPath: options.pythonPath, args: options.args, cwd: options.cwd, envKeys: options.env ? Object.keys(options.env) : [] } }
+        );
+      }
+    }, 120_000);
 
     // Default progress pattern: [ 30%] message OR [30%] message
     const progressPattern = options.progressPattern ?? /\[\s*(\d+)%\]\s*(.+)/;
@@ -371,6 +383,7 @@ export function runPythonSubprocess<T = unknown>(
     const stderrLineBuffer = new LineBuffer();
 
     child.stdout.on('data', (data: Buffer) => {
+      receivedOutput = true;
       const text = data.toString('utf-8');
       stdout += text;
 
@@ -396,6 +409,7 @@ export function runPythonSubprocess<T = unknown>(
     });
 
     child.stderr.on('data', (data: Buffer) => {
+      receivedOutput = true;
       const text = data.toString('utf-8');
       stderr += text;
 
@@ -424,6 +438,7 @@ export function runPythonSubprocess<T = unknown>(
         checkBillingFailure(line);
       }
 
+      clearTimeout(healthCheckTimeout);
       // Treat null exit code (killed with SIGKILL) as failure, not success
       const exitCode = code ?? -1;
 
@@ -503,6 +518,7 @@ export function runPythonSubprocess<T = unknown>(
     });
 
     child.on('error', (err: Error) => {
+      clearTimeout(healthCheckTimeout);
       options.onError?.(err.message);
       resolve({
         success: false,

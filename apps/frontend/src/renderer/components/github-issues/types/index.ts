@@ -194,6 +194,10 @@ export interface IssueListProps {
   onSelectIssue: (issueNumber: number) => void;
   onInvestigate: (issue: GitHubIssue) => void;
   onLoadMore?: () => void;
+  /** Callback for retry button in error display */
+  onRetry?: () => void;
+  /** Callback for settings button in error display */
+  onOpenSettings?: () => void;
   selectedIssueNumbers?: Set<number>;
   onToggleSelect?: (issueNumber: number) => void;
   compact?: boolean;

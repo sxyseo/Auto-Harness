@@ -5,6 +5,7 @@
 
 import { getClaudeProfileManager } from './claude-profile-manager';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
+import { debugLog } from '../shared/utils/debug-logger';
 
 /**
  * Regex pattern to detect Claude Code rate limit messages
@@ -496,6 +497,14 @@ export async function getBestAvailableProfileEnv(): Promise<BestProfileEnvResult
 
   const activeProfile = profileManager.getActiveProfile();
 
+  debugLog('[RateLimitDetector] getBestAvailableProfileEnv() called:', {
+    activeProfileId: activeProfile.id,
+    activeProfileName: activeProfile.name,
+    hasConfigDir: !!activeProfile.configDir,
+    configDir: activeProfile.configDir,
+    weeklyUsagePercent: activeProfile.usage?.weeklyUsagePercent,
+  });
+
   // Check for explicit rate limit (from previous API errors)
   const rateLimitStatus = profileManager.isProfileRateLimited(activeProfile.id);
 
@@ -512,16 +521,14 @@ export async function getBestAvailableProfileEnv(): Promise<BestProfileEnvResult
       : undefined;
 
   if (needsSwap) {
-    if (process.env.DEBUG === 'true') {
-      console.warn('[RateLimitDetector] Active profile needs swap:', {
-        activeProfile: activeProfile.name,
-        isRateLimited: rateLimitStatus.limited,
-        isAtCapacity,
-        weeklyUsage: activeProfile.usage?.weeklyUsagePercent,
-        limitType: rateLimitStatus.type,
-        resetAt: rateLimitStatus.resetAt
-      });
-    }
+    debugLog('[RateLimitDetector] Active profile needs swap:', {
+      activeProfile: activeProfile.name,
+      isRateLimited: rateLimitStatus.limited,
+      isAtCapacity,
+      weeklyUsage: activeProfile.usage?.weeklyUsagePercent,
+      limitType: rateLimitStatus.type,
+      resetAt: rateLimitStatus.resetAt
+    });
 
     // Use unified selection to find best account (OAuth or API)
     const bestAccount = await profileManager.getBestAvailableUnifiedAccount(activeProfile.id);
@@ -597,6 +604,14 @@ export async function getBestAvailableProfileEnv(): Promise<BestProfileEnvResult
         ? profileManager.getProfileEnv(bestAccount.id)
         : profileManager.getActiveProfileEnv();
 
+      debugLog('[RateLimitDetector] Profile env for swapped profile:', {
+        profileId: bestAccount.id,
+        hasClaudeConfigDir: !!profileEnv.CLAUDE_CONFIG_DIR,
+        claudeConfigDir: profileEnv.CLAUDE_CONFIG_DIR,
+        hasOAuthToken: !!profileEnv.CLAUDE_CODE_OAUTH_TOKEN,
+        envKeys: Object.keys(profileEnv),
+      });
+
       return {
         env: ensureCleanProfileEnv(profileEnv),
         profileId: bestAccount.id,
@@ -609,14 +624,21 @@ export async function getBestAvailableProfileEnv(): Promise<BestProfileEnvResult
         }
       };
     } else {
-      if (process.env.DEBUG === 'true') {
-        console.warn('[RateLimitDetector] No alternative profile available, using rate-limited/at-capacity profile');
-      }
+      debugLog('[RateLimitDetector] No alternative profile available, using rate-limited/at-capacity profile');
     }
   }
 
   // Use active profile (either it's fine, or no better alternative exists)
   const activeEnv = profileManager.getActiveProfileEnv();
+
+  debugLog('[RateLimitDetector] Using active profile env (no swap):', {
+    profileId: activeProfile.id,
+    hasClaudeConfigDir: !!activeEnv.CLAUDE_CONFIG_DIR,
+    claudeConfigDir: activeEnv.CLAUDE_CONFIG_DIR,
+    hasOAuthToken: !!activeEnv.CLAUDE_CODE_OAUTH_TOKEN,
+    envKeys: Object.keys(activeEnv),
+  });
+
   return {
     env: ensureCleanProfileEnv(activeEnv),
     profileId: activeProfile.id,
@@ -628,23 +650,55 @@ export async function getBestAvailableProfileEnv(): Promise<BestProfileEnvResult
 /**
  * Ensure the profile environment is clean for subprocess invocation.
  *
- * When CLAUDE_CONFIG_DIR is set, we MUST clear CLAUDE_CODE_OAUTH_TOKEN to prevent
- * the Claude Agent SDK from using a hardcoded/cached token (e.g., from .env file)
- * instead of reading fresh credentials from the specified config directory.
+ * When CLAUDE_CONFIG_DIR is set, we MUST clear both CLAUDE_CODE_OAUTH_TOKEN and
+ * ANTHROPIC_API_KEY to prevent the Claude Agent SDK from using hardcoded/cached
+ * tokens or API keys (e.g., from .env file or shell environment) instead of reading
+ * fresh credentials from the specified config directory.
+ *
+ * ANTHROPIC_API_KEY is cleared to prevent Claude Code from using API keys present
+ * in the shell environment, which would cause it to show "Claude API" instead of
+ * "Claude Max" and bypass the intended config dir credentials.
  *
  * This is critical for multi-account switching: when switching from a rate-limited
  * account to an available one, the subprocess must use the new account's credentials.
  *
+ * Also warns if the profile env is empty, which indicates a misconfigured profile.
+ *
  * @param env - Profile environment from getProfileEnv() or getActiveProfileEnv()
- * @returns Environment with CLAUDE_CODE_OAUTH_TOKEN cleared if CLAUDE_CONFIG_DIR is set
+ * @returns Environment with CLAUDE_CODE_OAUTH_TOKEN and ANTHROPIC_API_KEY cleared if CLAUDE_CONFIG_DIR is set
  */
-function ensureCleanProfileEnv(env: Record<string, string>): Record<string, string> {
+export function ensureCleanProfileEnv(env: Record<string, string>): Record<string, string> {
+  debugLog('[RateLimitDetector] ensureCleanProfileEnv() input:', {
+    hasClaudeConfigDir: !!env.CLAUDE_CONFIG_DIR,
+    claudeConfigDir: env.CLAUDE_CONFIG_DIR,
+    hasOAuthToken: !!env.CLAUDE_CODE_OAUTH_TOKEN,
+    willClearOAuthToken: !!env.CLAUDE_CONFIG_DIR,
+    willClearApiKey: !!env.CLAUDE_CONFIG_DIR,
+  });
+
+  // Warn if the profile environment is empty — this likely indicates a misconfigured profile
+  if (Object.keys(env).length === 0) {
+    console.warn('[RateLimitDetector] ensureCleanProfileEnv() received empty profile env — profile may be misconfigured');
+  }
+
   if (env.CLAUDE_CONFIG_DIR) {
-    // Clear CLAUDE_CODE_OAUTH_TOKEN to ensure SDK uses credentials from CLAUDE_CONFIG_DIR
-    return {
+    // Clear CLAUDE_CODE_OAUTH_TOKEN and ANTHROPIC_API_KEY to ensure SDK uses credentials from CLAUDE_CONFIG_DIR
+    // ANTHROPIC_API_KEY must also be cleared to prevent Claude Code from using
+    // API keys that may be present in the shell environment instead of the config dir credentials.
+    const cleanedEnv = {
       ...env,
-      CLAUDE_CODE_OAUTH_TOKEN: ''
+      CLAUDE_CODE_OAUTH_TOKEN: '',
+      ANTHROPIC_API_KEY: ''
     };
+
+    debugLog('[RateLimitDetector] ensureCleanProfileEnv() output:', {
+      claudeConfigDirPreserved: 'CLAUDE_CONFIG_DIR' in cleanedEnv,
+      claudeConfigDir: (cleanedEnv as Record<string, string>).CLAUDE_CONFIG_DIR,
+      oauthTokenCleared: cleanedEnv.CLAUDE_CODE_OAUTH_TOKEN === '',
+      envKeys: Object.keys(cleanedEnv),
+    });
+
+    return cleanedEnv;
   }
   return env;
 }
