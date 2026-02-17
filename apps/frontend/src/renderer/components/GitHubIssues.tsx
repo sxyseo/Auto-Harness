@@ -71,7 +71,13 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
-  const tasks = useTaskStore((state) => state.tasks.filter(t => t.metadata?.githubIssueNumber));
+  const allTasks = useTaskStore((state) => state.tasks);
+
+  // Memoize filtered tasks to avoid creating new array references
+  const tasks = useMemo(() => {
+    return allTasks.filter(t => t.metadata?.githubIssueNumber);
+  }, [allTasks]);
+
   const debouncedTasks = useDebounce(tasks, 300); // Debounce by 300ms
 
   const {
@@ -93,7 +99,9 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   } = useGitHubIssues(selectedProject?.id);
 
   // Investigation store — multi-issue keyed state
-  const investigationStore = useInvestigationStore();
+  // Subscribe only to the investigations object for state, use store for methods
+  const investigations = useInvestigationStore((s) => s.investigations);
+  const investigationStore = useInvestigationStore(); // For method calls only
 
   const storeIssues = useIssuesStore((s) => s.issues);
 
@@ -149,7 +157,6 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     // Early return if no filters active
     if (investigationStateFilter.length === 0 && !showDismissed) return filteredIssues;
 
-    const investigations = investigationStore.investigations;
     const projectPrefix = projectId ? `${projectId}:` : '';
 
     return filteredIssues.filter((issue) => {
@@ -181,7 +188,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       }
       return investigationStateFilter.includes(state);
     });
-  }, [filteredIssues, investigationStateFilter, showDismissed, investigationStore.investigations, selectedProject?.id]);
+  }, [filteredIssues, investigationStateFilter, showDismissed, investigations, selectedProject?.id]);
 
   // Build investigation state counts
   const investigationStateCounts = useMemo(() => {
@@ -189,7 +196,6 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     const projectId = selectedProject?.id;
     if (!projectId) return counts;
 
-    const investigations = investigationStore.investigations;
     const projectPrefix = `${projectId}:`;
 
     for (const issue of filteredIssues) {
@@ -213,13 +219,16 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       counts[state] = (counts[state] ?? 0) + 1;
     }
     return counts;
-  }, [filteredIssues, investigationStore.investigations, selectedProject?.id]);
+  }, [filteredIssues, investigations, selectedProject?.id]);
 
   // Active investigation count
   const activeInvestigations = useMemo(() => {
     if (!selectedProject?.id) return [];
-    return investigationStore.getActiveInvestigations(selectedProject.id);
-  }, [investigationStore, selectedProject?.id]);
+    // Filter active investigations from the investigations object
+    const projectPrefix = `${selectedProject.id}:`;
+    return Object.values(investigations)
+      .filter(inv => inv.projectId === selectedProject.id && inv.isInvestigating);
+  }, [investigations, selectedProject?.id]);
 
   // Build investigation states map for IssueList
   const investigationStatesMap = useMemo(() => {
@@ -227,7 +236,6 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
     const projectId = selectedProject?.id;
     if (!projectId) return map;
 
-    const investigations = investigationStore.investigations;
     const projectPrefix = `${projectId}:`;
 
     for (const issue of investigationFilteredIssues) {
@@ -259,7 +267,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       };
     }
     return map;
-  }, [investigationFilteredIssues, investigationStore.investigations, selectedProject?.id]);
+  }, [investigationFilteredIssues, investigations, selectedProject?.id]);
 
   // Bulk operations
   const { executeBulk, isOperating: isBulkOperating } = useBulkOperations(selectedProject?.id ?? '');
