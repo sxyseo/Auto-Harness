@@ -12,13 +12,24 @@ The issue context below includes:
 - Recent git commits (last 20 commits) - USE THESE to identify recent changes that may have introduced the bug
 </available_context>
 
+<image_analysis>
+If the issue context includes an "Images" section with screenshot URLs:
+- Treat these as PRIMARY EVIDENCE - screenshots often show the actual bug manifestation
+- Use image URLs to understand visual bugs, UI issues, error messages, or crash screens
+- When the issue description is vague but screenshots are provided, prioritize the visual evidence
+- Describe what you see in the images in your evidence section (e.g., "Screenshot shows X component displaying incorrectly")
+- If the screenshot shows an error message, trace that error in the codebase
+</image_analysis>
+
 <investigation_process>
 
 <step_1>
 <title>Understand the Issue</title>
+- Check the Images section first - screenshots may show the actual bug
 - Read the issue title and description carefully
 - Identify the reported symptoms (error messages, unexpected behavior, crashes)
 - Note any file paths, stack traces, or code references mentioned
+- If screenshots are provided, describe the visual evidence you observe
 </step_1>
 
 <step_2>
