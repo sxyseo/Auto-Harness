@@ -53,6 +53,8 @@ export interface IssueInvestigationState {
   isStale?: boolean;
   /** True if the investigation was explicitly cancelled (prevents late completion overwrite) */
   isCancelled?: boolean;
+  /** True if the investigation has saved session IDs that can be resumed */
+  hasResumeSessions?: boolean;
 }
 
 // ============================================
@@ -427,7 +429,8 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
         completedAt: persisted.completedAt ?? null,
         postedAt: persisted.postedAt ?? null,
         linkedTaskStatus: null,
-        activityLog: persisted.activityLog ?? []
+        activityLog: persisted.activityLog ?? [],
+        hasResumeSessions: persisted.hasResumeSessions ?? false,
       };
     }
 

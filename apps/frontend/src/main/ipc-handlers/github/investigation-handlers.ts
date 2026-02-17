@@ -1310,6 +1310,9 @@ async function runInvestigation(
       }
 
       // Read session IDs for interrupted investigation resume
+      // Resume sessions if:
+      // 1. Sessions exist on disk, AND
+      // 2. Investigation hasn't successfully completed (no completed_at or status is 'investigating')
       let resumeSessionsArg: string[] = [];
       try {
         const stateFile = path.join(
@@ -1318,9 +1321,15 @@ async function runInvestigation(
         if (fs.existsSync(stateFile)) {
           const stateData = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
           if (stateData.sessions && Object.keys(stateData.sessions).length > 0) {
-            // Only pass sessions if this is a resume (status was 'investigating')
-            if (stateData.status === 'investigating') {
+            // Check if investigation is incomplete (no completed_at or still investigating)
+            const isIncomplete = !stateData.completed_at || stateData.status === 'investigating' || stateData.status === 'failed' || stateData.status === 'cancelled';
+            if (isIncomplete) {
               resumeSessionsArg = ['--resume-sessions', JSON.stringify(stateData.sessions)];
+              debugLog('Resuming investigation with saved sessions', {
+                issueNumber,
+                sessionCount: Object.keys(stateData.sessions).length,
+                currentStatus: stateData.status
+              });
             }
           }
         }
@@ -2156,6 +2165,7 @@ export function registerInvestigationHandlers(
             githubCommentId?: number;
             postedAt?: string;
             wasInterrupted?: boolean;
+            hasResumeSessions?: boolean;
             activityLog?: ActivityLogEntry[];
           }> = [];
           const interruptedIssues: number[] = [];
@@ -2177,6 +2187,10 @@ export function registerInvestigationHandlers(
 
               // If the investigation was in-progress when the app shut down, mark it as failed
               if (status === 'investigating') {
+                // Check if there are saved session IDs for resume
+                const sessions = stateData.sessions;
+                const hasResumeSessions = sessions && typeof sessions === 'object' && Object.keys(sessions).length > 0;
+
                 const item: (typeof persisted)[number] = {
                   issueNumber,
                   status: 'failed',
@@ -2185,6 +2199,7 @@ export function registerInvestigationHandlers(
                   githubCommentId: stateData.github_comment_id ?? undefined,
                   postedAt: stateData.posted_at ?? undefined,
                   wasInterrupted: true,
+                  hasResumeSessions,
                   activityLog: loadActivityLog(project.path, issueNumber),
                 };
 

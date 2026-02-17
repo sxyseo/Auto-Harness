@@ -669,6 +669,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
                 githubCommentId={selectedIssueEntry?.githubCommentId ?? null}
                 postedAt={selectedIssueEntry?.postedAt ?? null}
                 investigationActivityLog={selectedIssueEntry?.activityLog}
+                investigationHasResumeSessions={selectedIssueEntry?.hasResumeSessions ?? false}
               />
             ) : (
               <EmptyState message={t('issues.selectToView')} />

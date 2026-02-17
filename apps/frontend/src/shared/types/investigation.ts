@@ -259,6 +259,8 @@ export interface PersistedInvestigationState {
   postedAt?: string;
   /** True if the investigation was in-progress when the app shut down */
   wasInterrupted?: boolean;
+  /** True if the investigation has saved session IDs that can be resumed */
+  hasResumeSessions?: boolean;
   /** Persisted activity log entries */
   activityLog?: Array<{ event: string; timestamp: string }>;
 }

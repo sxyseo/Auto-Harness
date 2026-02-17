@@ -156,6 +156,8 @@ export interface IssueDetailProps {
   postedAt?: string | null;
   /** Activity log entries for the investigation lifecycle */
   investigationActivityLog?: Array<{ event: string; timestamp: string }>;
+  /** Whether the investigation has saved sessions that can be resumed */
+  investigationHasResumeSessions?: boolean;
 }
 
 export interface IssueListHeaderProps {

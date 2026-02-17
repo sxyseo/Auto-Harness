@@ -66,6 +66,7 @@ export function IssueDetail({
   githubCommentId,
   postedAt,
   investigationActivityLog,
+  investigationHasResumeSessions,
 }: IssueDetailProps) {
   const { t } = useTranslation('common');
   const [isClosing, setIsClosing] = useState(false);
@@ -226,6 +227,7 @@ export function IssueDetail({
               state={derivedState}
               progress={investigationProgress}
               hasError={!!investigationError}
+              hasResumeSessions={investigationHasResumeSessions}
               onInvestigate={onInvestigate}
               onCancel={onCancelInvestigation ?? (() => {})}
               onViewResults={() => {/* scroll to results handled inline */}}

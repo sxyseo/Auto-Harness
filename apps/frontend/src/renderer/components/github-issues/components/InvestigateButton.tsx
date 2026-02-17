@@ -11,6 +11,8 @@ interface InvestigateButtonProps {
   progress?: number;
   /** Whether there was a failure (shows retry) */
   hasError?: boolean;
+  /** Whether the investigation can be resumed from saved sessions */
+  hasResumeSessions?: boolean;
   onInvestigate: () => void;
   onCancel: () => void;
   onViewResults: () => void;
@@ -31,6 +33,7 @@ export const InvestigateButton = memo(function InvestigateButton({
   state,
   progress,
   hasError,
+  hasResumeSessions,
   onInvestigate,
   onCancel,
   onViewResults,
@@ -40,18 +43,28 @@ export const InvestigateButton = memo(function InvestigateButton({
 }: InvestigateButtonProps) {
   const { t } = useTranslation('common');
 
-  // Failed state — show retry
+  // Failed state — show retry or resume
   if (state === 'failed' || hasError) {
+    const canResume = hasResumeSessions ?? false;
     return (
       <Button
-        variant="destructive"
+        variant={canResume ? "default" : "destructive"}
         size="sm"
         onClick={onInvestigate}
         disabled={disabled}
         className={className}
       >
-        <XCircle className="h-4 w-4 mr-1.5" />
-        {t('investigation.button.retry', 'Retry Investigation')}
+        {canResume ? (
+          <>
+            <RefreshCw className="h-4 w-4 mr-1.5" />
+            {t('investigation.button.resume', 'Resume Investigation')}
+          </>
+        ) : (
+          <>
+            <XCircle className="h-4 w-4 mr-1.5" />
+            {t('investigation.button.retry', 'Retry Investigation')}
+          </>
+        )}
       </Button>
     );
   }
