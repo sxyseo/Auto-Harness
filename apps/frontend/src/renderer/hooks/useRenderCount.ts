@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 
 /**
  * Hook to track component render count for performance monitoring (dev only).
- * Usage: useRenderCount('GitHubIssues', 5000);
+ * Usage: useRenderCount('GitHubIssues', 100);
  */
 export function useRenderCount(componentName: string, logInterval = 100) {
   const renderCount = useRef(0);
@@ -13,7 +13,7 @@ export function useRenderCount(componentName: string, logInterval = 100) {
 
   useEffect(() => {
     // Only log in development
-    if (import.meta.env.PROD) {
+    if (!import.meta.env.DEV) {
       return;
     }
 
