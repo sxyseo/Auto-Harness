@@ -130,13 +130,11 @@ export class TaskLogService extends EventEmitter {
       updated_at: worktreeLogs.updated_at > mainLogs.updated_at ? worktreeLogs.updated_at : mainLogs.updated_at,
       phases: {
         planning: mainLogs.phases.planning || worktreeLogs.phases.planning,
-        // Use worktree logs for coding/validation if they have entries, otherwise fall back to main
-        coding: (worktreeLogs.phases.coding?.entries?.length > 0 || worktreeLogs.phases.coding?.status !== 'pending')
-          ? worktreeLogs.phases.coding
-          : mainLogs.phases.coding,
-        validation: (worktreeLogs.phases.validation?.entries?.length > 0 || worktreeLogs.phases.validation?.status !== 'pending')
-          ? worktreeLogs.phases.validation
-          : mainLogs.phases.validation
+        // Use worktree logs for coding/validation if the worktree phase exists (not null/undefined),
+        // otherwise fall back to main. The ?? operator avoids flip-flopping when the worktree
+        // coding/validation phase resets to 'pending' during agent retries.
+        coding: worktreeLogs.phases.coding ?? mainLogs.phases.coding,
+        validation: worktreeLogs.phases.validation ?? mainLogs.phases.validation
       }
     };
 
@@ -149,8 +147,8 @@ export class TaskLogService extends EventEmitter {
       },
       source: {
         planning: mainLogs.phases.planning ? 'main' : 'worktree',
-        coding: (worktreeLogs.phases.coding?.entries?.length > 0 || worktreeLogs.phases.coding?.status !== 'pending') ? 'worktree' : 'main',
-        validation: (worktreeLogs.phases.validation?.entries?.length > 0 || worktreeLogs.phases.validation?.status !== 'pending') ? 'worktree' : 'main'
+        coding: worktreeLogs.phases.coding != null ? 'worktree' : 'main',
+        validation: worktreeLogs.phases.validation != null ? 'worktree' : 'main'
       }
     });
 
