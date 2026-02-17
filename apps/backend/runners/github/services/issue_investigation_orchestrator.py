@@ -101,7 +101,7 @@ logger = logging.getLogger(__name__)
 
 _IMAGE_URL_PATTERNS = [
     # Markdown: ![alt](url) or ![alt](url "title")
-    re.compile(r'!\[.*?\]\((https?://[^\s)]+)\)'),
+    re.compile(r"!\[.*?\]\((https?://[^\s)]+)\)"),
     # HTML: <img src="url"> or <img src='url'>
     re.compile(r'<img[^>]+src=["\'](https?://[^"\']+)["\']', re.IGNORECASE),
 ]
@@ -525,7 +525,9 @@ class IssueInvestigationOrchestrator(ParallelAgentOrchestrator):
         # Build images section if any were found
         images_section = ""
         if all_images:
-            images_list = "\n".join(f"- {url}" for url in all_images[:20])  # Limit to 20 images
+            images_list = "\n".join(
+                f"- {url}" for url in all_images[:20]
+            )  # Limit to 20 images
             images_section = f"""
 
 ### Images ({len(all_images)} found)

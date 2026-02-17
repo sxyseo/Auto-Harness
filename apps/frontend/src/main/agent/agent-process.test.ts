@@ -817,7 +817,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
 
       // Profile provides CLAUDE_CONFIG_DIR (OAuth subscription profile)
-      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockResolvedValue({
         env: {
           CLAUDE_CONFIG_DIR: '/home/user/.config/claude-profile-1',
           CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-abc'
@@ -844,7 +844,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
 
       // Profile provides CLAUDE_CONFIG_DIR
-      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockResolvedValue({
         env: {
           CLAUDE_CONFIG_DIR: '/home/user/.config/claude-profile-2',
           CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-def'
@@ -875,7 +875,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
 
       // Profile env without CLAUDE_CONFIG_DIR (API profile mode)
-      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockResolvedValue({
         env: {},
         profileId: 'api-profile-1',
         profileName: 'Custom API',
@@ -901,7 +901,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
 
       // Profile provides CLAUDE_CONFIG_DIR - agent should use config dir for auth
-      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
+      vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockResolvedValue({
         env: {
           CLAUDE_CONFIG_DIR: '/home/user/.config/claude-profile-3',
           CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-ghi'
