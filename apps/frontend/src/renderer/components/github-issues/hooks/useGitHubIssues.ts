@@ -1,22 +1,30 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from "react";
 import {
   useIssuesStore,
+  useIssuesStoreWithSelector,
   useSyncStatusStore,
   loadGitHubIssues,
   loadMoreGitHubIssues,
   loadAllGitHubIssues,
   checkGitHubConnection,
+  shallow,
 } from "../../../stores/github";
 import type { FilterState } from "../types";
 
 export function useGitHubIssues(projectId: string | undefined) {
-  const issues = useIssuesStore((s) => s.issues);
-  const isLoading = useIssuesStore((s) => s.isLoading);
-  const isLoadingMore = useIssuesStore((s) => s.isLoadingMore);
-  const error = useIssuesStore((s) => s.error);
-  const selectedIssueNumber = useIssuesStore((s) => s.selectedIssueNumber);
-  const filterState = useIssuesStore((s) => s.filterState);
-  const hasMore = useIssuesStore((s) => s.hasMore);
+  const { issues, isLoading, isLoadingMore, error, selectedIssueNumber, filterState, hasMore } = useIssuesStoreWithSelector(
+    (s) => ({
+      issues: s.issues,
+      isLoading: s.isLoading,
+      isLoadingMore: s.isLoadingMore,
+      error: s.error,
+      selectedIssueNumber: s.selectedIssueNumber,
+      filterState: s.filterState,
+      hasMore: s.hasMore,
+    }),
+    shallow
+  );
+
   const selectIssue = useIssuesStore((s) => s.selectIssue);
   const setFilterState = useIssuesStore((s) => s.setFilterState);
 
@@ -98,6 +106,8 @@ export function useGitHubIssues(projectId: string | undefined) {
     return issues.find((i) => i.number === selectedIssueNumber) || null;
   }, [issues, selectedIssueNumber]);
 
+    const getOpenIssuesCount = useCallback(() => useIssuesStore.getState().getOpenIssuesCount(), []);
+
   return {
     issues,
     syncStatus,
@@ -109,7 +119,7 @@ export function useGitHubIssues(projectId: string | undefined) {
     filterState,
     hasMore: !isSearchActive && hasMore, // No "load more" when search is active
     selectIssue,
-    getOpenIssuesCount: useIssuesStore.getState().getOpenIssuesCount,
+    getOpenIssuesCount,
     handleRefresh,
     handleFilterChange,
     handleLoadMore,

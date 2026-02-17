@@ -12,6 +12,7 @@
 // Issues Store
 export {
   useIssuesStore,
+  useIssuesStoreWithSelector,
   loadGitHubIssues,
   loadMoreGitHubIssues,
   loadAllGitHubIssues,
@@ -50,6 +51,9 @@ export {
   useSyncStatusStore,
   checkGitHubConnection
 } from './sync-status-store';
+
+// Utilities
+export { shallow } from '../utils';
 
 /**
  * Initialize all global GitHub listeners.
