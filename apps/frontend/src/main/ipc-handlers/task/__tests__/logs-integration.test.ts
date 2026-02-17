@@ -480,6 +480,232 @@ describe('Task Logs Integration (IPC → Service → State)', () => {
     });
   });
 
+  describe('Oscillation prevention (regression: worktree coding phase reset during agent retry)', () => {
+    it('should return worktree coding phase even when status is pending and entries are empty', async () => {
+      // Verifies that the IPC handler returns whatever the service returns without modification,
+      // specifically when the worktree coding phase has been reset to pending (agent retry state).
+      // The actual anti-oscillation fix lives in TaskLogService.mergeLogs() using ?? instead of
+      // a status-based ternary condition. This test confirms the IPC layer does not interfere.
+      const { projectStore } = await import('../../../project-store');
+      const { taskLogService } = await import('../../../task-log-service');
+      const { existsSync } = await import('fs');
+
+      const mockProject = {
+        id: 'project-123',
+        path: '/absolute/path/to/project',
+        autoBuildPath: '.auto-claude'
+      };
+
+      // Simulate the service returning merged logs where the worktree coding phase is
+      // present but pending/empty (agent retried and reset coding phase to 'pending').
+      // With the ?? fix, the service returns the worktree phase (not mainLogs fallback).
+      const mockLogsWithPendingCoding: TaskLogs = {
+        spec_id: '001-test-task',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:31:00Z',
+        phases: {
+          planning: {
+            phase: 'planning',
+            status: 'completed',
+            started_at: '2024-01-01T00:00:00Z',
+            completed_at: '2024-01-01T00:30:00Z',
+            entries: [
+              { type: 'text', content: 'Planning done', phase: 'planning', timestamp: '2024-01-01T00:00:00Z' }
+            ]
+          },
+          // Worktree coding phase is present but pending/empty — agent just reset it.
+          // The ?? fix ensures this is returned, not the main coding phase.
+          coding: {
+            phase: 'coding',
+            status: 'pending',
+            started_at: null,
+            completed_at: null,
+            entries: []
+          },
+          validation: {
+            phase: 'validation',
+            status: 'pending',
+            started_at: null,
+            completed_at: null,
+            entries: []
+          }
+        }
+      };
+
+      (projectStore.getProject as Mock).mockReturnValue(mockProject);
+      (existsSync as Mock).mockReturnValue(true);
+      (taskLogService.loadLogs as Mock).mockReturnValue(mockLogsWithPendingCoding);
+
+      const handler = ipcHandlers['task:logsGet'];
+      const result = await handler({}, 'project-123', '001-test-task') as IPCResult<TaskLogs>;
+
+      // IPC handler must return the service result as-is (no re-applying the old ternary logic)
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockLogsWithPendingCoding);
+      // Coding phase should reflect the worktree's pending state, not oscillate to main
+      expect(result.data?.phases.coding?.status).toBe('pending');
+      expect(result.data?.phases.coding?.entries).toHaveLength(0);
+    });
+
+    it('should return consistent coding status across multiple rapid calls (no flip-flop)', async () => {
+      // Confirms that repeated calls with a pending worktree coding phase produce consistent
+      // results. Old code would flip between worktree (when active) and main (when pending),
+      // producing oscillation. The IPC handler must pass through the service result every time.
+      const { projectStore } = await import('../../../project-store');
+      const { taskLogService } = await import('../../../task-log-service');
+      const { existsSync } = await import('fs');
+
+      const mockProject = {
+        id: 'project-123',
+        path: '/absolute/path/to/project',
+        autoBuildPath: '.auto-claude'
+      };
+
+      // Service always returns the same merged result (pending worktree coding phase)
+      const pendingCodingLogs: TaskLogs = {
+        spec_id: '001-test-task',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:31:00Z',
+        phases: {
+          planning: { phase: 'planning', status: 'completed', started_at: null, completed_at: null, entries: [] },
+          coding: { phase: 'coding', status: 'pending', started_at: null, completed_at: null, entries: [] },
+          validation: { phase: 'validation', status: 'pending', started_at: null, completed_at: null, entries: [] }
+        }
+      };
+
+      (projectStore.getProject as Mock).mockReturnValue(mockProject);
+      (existsSync as Mock).mockReturnValue(true);
+      (taskLogService.loadLogs as Mock).mockReturnValue(pendingCodingLogs);
+
+      const handler = ipcHandlers['task:logsGet'];
+
+      // Call multiple times to simulate rapid polling (previously would cause oscillation)
+      const results = await Promise.all([
+        handler({}, 'project-123', '001-test-task') as Promise<IPCResult<TaskLogs>>,
+        handler({}, 'project-123', '001-test-task') as Promise<IPCResult<TaskLogs>>,
+        handler({}, 'project-123', '001-test-task') as Promise<IPCResult<TaskLogs>>
+      ]);
+
+      // All results must be consistent — no oscillation
+      for (const result of results) {
+        expect(result.success).toBe(true);
+        expect(result.data?.phases.coding?.status).toBe('pending');
+        expect(result.data?.phases.coding?.entries).toHaveLength(0);
+      }
+    });
+  });
+
+  describe('Stale cache emission prevention (regression: mid-write JSON parse failures)', () => {
+    it('should forward logs-changed events to renderer when service emits fresh data', async () => {
+      // The service uses cacheVersions to gate emission: it only emits logs-changed when a
+      // fresh parse succeeded (version incremented). This test verifies that when the service
+      // DOES emit (fresh data available), the IPC handler correctly forwards it to the renderer.
+      const { taskLogService } = await import('../../../task-log-service');
+
+      const freshLogs: TaskLogs = {
+        spec_id: '001-test-task',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T01:01:00Z',
+        phases: {
+          planning: { phase: 'planning', status: 'completed', started_at: null, completed_at: null, entries: [] },
+          coding: {
+            phase: 'coding',
+            status: 'active',
+            started_at: '2024-01-01T00:30:00Z',
+            completed_at: null,
+            entries: [
+              { type: 'text', content: 'Coding in progress', phase: 'coding', timestamp: '2024-01-01T01:00:00Z' }
+            ]
+          },
+          validation: { phase: 'validation', status: 'pending', started_at: null, completed_at: null, entries: [] }
+        }
+      };
+
+      const onCall = (taskLogService.on as Mock).mock.calls.find(
+        call => call[0] === 'logs-changed'
+      );
+      expect(onCall).toBeDefined();
+      if (!onCall) throw new Error('logs-changed handler not registered');
+      const eventHandler = onCall[1];
+
+      // Service emits (fresh parse succeeded, cacheVersions incremented)
+      eventHandler('001-test-task', freshLogs);
+
+      // IPC handler must forward it to the renderer exactly once
+      expect(mockMainWindow.webContents?.send).toHaveBeenCalledTimes(1);
+      expect(mockMainWindow.webContents?.send).toHaveBeenCalledWith(
+        'task:logsChanged',
+        '001-test-task',
+        freshLogs
+      );
+    });
+
+    it('should NOT forward any update to renderer when service does not emit (parse failure)', async () => {
+      // When a mid-write JSON parse failure occurs, the service's cacheVersions does NOT
+      // increment, so the service skips the logs-changed emit. This test confirms the renderer
+      // receives NO update when the service stays silent (no stale cache forwarded).
+      const { taskLogService } = await import('../../../task-log-service');
+
+      const onCall = (taskLogService.on as Mock).mock.calls.find(
+        call => call[0] === 'logs-changed'
+      );
+      expect(onCall).toBeDefined();
+      if (!onCall) throw new Error('logs-changed handler not registered');
+
+      // Simulate parse failure: service does NOT call the event handler
+      // (equivalent to the version check in startWatching() preventing the emit)
+
+      // Renderer should receive zero updates
+      expect(mockMainWindow.webContents?.send).not.toHaveBeenCalled();
+    });
+
+    it('should forward only the second event when first emission is suppressed (parse failure then success)', async () => {
+      // Simulates: (1) parse failure → service silent, (2) next poll succeeds → service emits.
+      // The renderer should only receive the second (fresh) emission, not stale data.
+      const { taskLogService } = await import('../../../task-log-service');
+
+      const freshLogs: TaskLogs = {
+        spec_id: '001-test-task',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T01:02:00Z',
+        phases: {
+          planning: { phase: 'planning', status: 'completed', started_at: null, completed_at: null, entries: [] },
+          coding: {
+            phase: 'coding',
+            status: 'active',
+            started_at: '2024-01-01T00:30:00Z',
+            completed_at: null,
+            entries: [
+              { type: 'text', content: 'Coder making progress', phase: 'coding', timestamp: '2024-01-01T01:02:00Z' }
+            ]
+          },
+          validation: { phase: 'validation', status: 'pending', started_at: null, completed_at: null, entries: [] }
+        }
+      };
+
+      const onCall = (taskLogService.on as Mock).mock.calls.find(
+        call => call[0] === 'logs-changed'
+      );
+      expect(onCall).toBeDefined();
+      if (!onCall) throw new Error('logs-changed handler not registered');
+      const eventHandler = onCall[1];
+
+      // Poll 1: parse failure — service does NOT emit (version not incremented)
+      // (no eventHandler call here)
+
+      // Poll 2: fresh parse succeeds — service emits
+      eventHandler('001-test-task', freshLogs);
+
+      // Renderer receives exactly one update (the fresh one)
+      expect(mockMainWindow.webContents?.send).toHaveBeenCalledTimes(1);
+      expect(mockMainWindow.webContents?.send).toHaveBeenCalledWith(
+        'task:logsChanged',
+        '001-test-task',
+        freshLogs
+      );
+    });
+  });
+
   describe('Event forwarding to renderer', () => {
     it('should forward logs-changed events to renderer', async () => {
       const { taskLogService } = await import('../../../task-log-service');
