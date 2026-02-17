@@ -1575,16 +1575,21 @@ class GitHubOrchestrator:
 
         working_dir = project_root or self.project_dir
 
-        # Save initial state
+        # Save initial state, preserving any existing sessions (for resume scenarios)
+        existing_state = load_investigation_state(self.project_dir, issue_number)
+        initial_state = {
+            "issue_number": issue_number,
+            "status": "investigating",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "model_used": self.config.model or "sonnet",
+        }
+        # Preserve existing sessions if present (resume scenario)
+        if existing_state and existing_state.sessions:
+            initial_state["sessions"] = existing_state.sessions
         save_investigation_state(
             self.project_dir,
             issue_number,
-            {
-                "issue_number": issue_number,
-                "status": "investigating",
-                "started_at": datetime.now(timezone.utc).isoformat(),
-                "model_used": self.config.model or "sonnet",
-            },
+            initial_state,
         )
 
         # Sync lifecycle label to GitHub
@@ -1616,7 +1621,7 @@ class GitHubOrchestrator:
                 resume_sessions=resume_sessions,
             )
 
-            # Update state to findings_ready, preserving started_at
+            # Update state to findings_ready, preserving started_at and sessions
             existing_state = load_investigation_state(self.project_dir, issue_number)
             started_at = (
                 existing_state.started_at
@@ -1624,16 +1629,21 @@ class GitHubOrchestrator:
                 else datetime.now(timezone.utc).isoformat()
             )
 
+            success_state = {
+                "issue_number": issue_number,
+                "status": "findings_ready",
+                "started_at": started_at,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "model_used": self.config.model or "sonnet",
+            }
+            # Preserve existing sessions if present (for edge case where user might want to re-run)
+            if existing_state and existing_state.sessions:
+                success_state["sessions"] = existing_state.sessions
+
             save_investigation_state(
                 self.project_dir,
                 issue_number,
-                {
-                    "issue_number": issue_number,
-                    "status": "findings_ready",
-                    "started_at": started_at,
-                    "completed_at": datetime.now(timezone.utc).isoformat(),
-                    "model_used": self.config.model or "sonnet",
-                },
+                success_state,
             )
 
             # Sync lifecycle label to GitHub
@@ -1647,18 +1657,27 @@ class GitHubOrchestrator:
             return report.model_dump(mode="json") if return_dict else report
 
         except Exception as e:
-            # Update state to failed
+            # Update state to failed, preserving any existing sessions for resume support
+            existing_state = load_investigation_state(self.project_dir, issue_number)
+            failed_state = {
+                "issue_number": issue_number,
+                "status": "failed",
+                "started_at": (
+                    existing_state.started_at
+                    if existing_state and existing_state.started_at
+                    else datetime.now(timezone.utc).isoformat()
+                ),
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "error": str(e),
+                "model_used": self.config.model or "sonnet",
+            }
+            # Preserve existing sessions if present (critical for resume feature)
+            if existing_state and existing_state.sessions:
+                failed_state["sessions"] = existing_state.sessions
             save_investigation_state(
                 self.project_dir,
                 issue_number,
-                {
-                    "issue_number": issue_number,
-                    "status": "failed",
-                    "started_at": datetime.now(timezone.utc).isoformat(),
-                    "completed_at": datetime.now(timezone.utc).isoformat(),
-                    "error": str(e),
-                    "model_used": self.config.model or "sonnet",
-                },
+                failed_state,
             )
 
             # Remove lifecycle labels on failure

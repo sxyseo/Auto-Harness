@@ -84,7 +84,7 @@ interface InvestigationStoreState {
   startInvestigation: (projectId: string, issueNumber: number) => void;
   setProgress: (projectId: string, progress: InvestigationProgress) => void;
   setResult: (projectId: string, result: InvestigationResult) => void;
-  setError: (projectId: string, issueNumber: number, error: string) => void;
+  setError: (projectId: string, issueNumber: number, error: string, hasResumeSessions?: boolean) => void;
   dismiss: (projectId: string, issueNumber: number, reason: InvestigationDismissReason) => void;
   clearIssueInvestigation: (projectId: string, issueNumber: number) => void;
   setSettings: (projectId: string, settings: InvestigationSettings) => void;
@@ -152,6 +152,7 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
           linkedTaskStatus: existing?.linkedTaskStatus ?? null,
           activityLog: log,
           isCancelled: false, // clear cancelled flag on new investigation
+          hasResumeSessions: false, // new investigation starts fresh (old sessions were for previous run)
         }
       }
     };
@@ -220,10 +221,12 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
     };
   }),
 
-  setError: (projectId: string, issueNumber: number, error: string) => set((state) => {
+  setError: (projectId: string, issueNumber: number, error: string, hasResumeSessions?: boolean) => set((state) => {
     const key = `${projectId}:${issueNumber}`;
     const existing = state.investigations[key];
     const log = [...(existing?.activityLog ?? []), { event: 'investigation failed', timestamp: new Date().toISOString() }].slice(-50);
+    // Use the provided hasResumeSessions flag, or fall back to existing value, or default to false
+    const hasResumeSessionsFlag = hasResumeSessions ?? existing?.hasResumeSessions ?? false;
     return {
       investigations: {
         ...state.investigations,
@@ -244,6 +247,7 @@ export const useInvestigationStore = create<InvestigationStoreState>((set, get) 
           linkedTaskStatus: existing?.linkedTaskStatus ?? null,
           activityLog: log,
           isCancelled: existing?.isCancelled ?? false,
+          hasResumeSessions: hasResumeSessionsFlag,
         }
       }
     };
@@ -562,13 +566,14 @@ export function initializeInvestigationListeners(): void {
 
   // Listen for investigation error events
   const cleanupError = window.electronAPI.github.onInvestigationError(
-    (projectId: string, errorPayload: string | { error: string; issueNumber?: number }) => {
+    (projectId: string, errorPayload: string | { error: string; issueNumber?: number; hasResumeSessions?: boolean }) => {
       const errorMsg = typeof errorPayload === 'string' ? errorPayload : errorPayload.error;
       const issueNum = typeof errorPayload === 'object' ? errorPayload.issueNumber : undefined;
+      const hasResumeSessions = typeof errorPayload === 'object' ? errorPayload.hasResumeSessions : undefined;
 
       if (issueNum) {
         // Target the specific investigation that failed
-        store.setError(projectId, issueNum, errorMsg);
+        store.setError(projectId, issueNum, errorMsg, hasResumeSessions);
         toast({
           title: i18next.t('common:investigation.toast.investigationFailed', { issueNumber: issueNum }),
           variant: 'destructive',
@@ -662,7 +667,8 @@ export function cancelIssueInvestigation(
     }));
   }
 
-  // Mark as not investigating immediately
+  // Mark as not investigating immediately, but don't set hasResumeSessions yet
+  // The backend will send an error response with hasResumeSessions if sessions exist
   store.setError(projectId, issueNumber, 'Investigation cancelled');
   window.electronAPI.github.cancelInvestigation(projectId, issueNumber);
 }

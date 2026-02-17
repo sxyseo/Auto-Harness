@@ -1420,7 +1420,18 @@ async function runInvestigation(
 
       if (!result.success) {
         appendActivityLogEntry(project.path, issueNumber, `Investigation failed: ${result.error ?? 'unknown error'}`);
-        sendError({ error: result.error ?? 'Investigation failed', issueNumber });
+        // Check if there are saved sessions for resume before sending error
+        const stateFile = path.join(project.path, '.auto-claude', 'issues', String(issueNumber), 'investigation_state.json');
+        let hasResumeSessions = false;
+        try {
+          if (fs.existsSync(stateFile)) {
+            const stateData = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+            hasResumeSessions = stateData.sessions && typeof stateData.sessions === 'object' && Object.keys(stateData.sessions).length > 0;
+          }
+        } catch {
+          // Non-fatal: if we can't read the state file, assume no sessions
+        }
+        sendError({ error: result.error ?? 'Investigation failed', issueNumber, hasResumeSessions });
         return;
       }
 
@@ -1728,6 +1739,32 @@ export function registerInvestigationHandlers(
       if (proc && !proc.killed) {
         killProcessGracefully(proc);
         debugLog('Investigation process killed', { processKey });
+
+        // Check for saved sessions and send error response
+        const mainWindow = getMainWindow();
+        if (mainWindow && project) {
+          const stateFile = path.join(project.path, '.auto-claude', 'issues', String(issueNumber), 'investigation_state.json');
+          let hasResumeSessions = false;
+          try {
+            if (fs.existsSync(stateFile)) {
+              const stateData = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+              hasResumeSessions = stateData.sessions && typeof stateData.sessions === 'object' && Object.keys(stateData.sessions).length > 0;
+            }
+          } catch {
+            // Non-fatal: if we can't read the state file, assume no sessions
+          }
+
+          const { sendError } = createIPCCommunicators<InvestigationProgress, InvestigationResult>(
+            mainWindow,
+            {
+              progress: IPC_CHANNELS.GITHUB_INVESTIGATION_PROGRESS,
+              error: IPC_CHANNELS.GITHUB_INVESTIGATION_ERROR,
+              complete: IPC_CHANNELS.GITHUB_INVESTIGATION_COMPLETE,
+            },
+            projectId,
+          );
+          sendError({ error: 'Investigation cancelled', issueNumber, hasResumeSessions });
+        }
       }
 
       if (project) appendActivityLogEntry(project.path, issueNumber, 'Investigation cancelled');

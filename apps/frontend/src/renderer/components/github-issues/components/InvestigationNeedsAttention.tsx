@@ -56,6 +56,8 @@ interface InvestigationNeedsAttentionProps {
   isClosingIssue?: boolean;
   isReopeningIssue?: boolean;
   issueState: 'open' | 'closed';
+  /** True if the investigation has saved session IDs that can be resumed */
+  hasResumeSessions?: boolean;
 }
 
 type StepStatus = 'completed' | 'current' | 'pending' | 'failed' | 'actionable';
@@ -65,6 +67,7 @@ export function InvestigationNeedsAttention({
   githubCommentId, postedAt, specId, issueNumber, projectId,
   onCancel, onInvestigate, onCreateTask, onPostToGitHub, isPostingToGitHub,
   onDismissIssue, onCloseIssue, onReopenIssue, isClosingIssue, isReopeningIssue, issueState,
+  hasResumeSessions,
 }: InvestigationNeedsAttentionProps) {
   const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(true);
@@ -403,13 +406,19 @@ export function InvestigationNeedsAttention({
             </Button>
           )
         )}
-        {/* Re-investigate — orange */}
+        {/* Re-investigate — orange, or Resume if sessions available */}
         {(isComplete || isFailed) && (
           <Button size="sm" variant="outline" onClick={onInvestigate}
-            className="border-orange-500/40 text-orange-500 hover:bg-orange-500/10"
+            className={hasResumeSessions
+              ? "border-primary/40 text-primary hover:bg-primary/10"
+              : "border-orange-500/40 text-orange-500 hover:bg-orange-500/10"
+            }
           >
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            {t('investigation.actions.retry', 'Re-investigate')}
+            {hasResumeSessions
+              ? t('investigation.button.resume', 'Resume Investigation')
+              : t('investigation.actions.retry', 'Re-investigate')
+            }
           </Button>
         )}
       </div>

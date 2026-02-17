@@ -304,6 +304,7 @@ export function IssueDetail({
               isClosingIssue={isClosing}
               isReopeningIssue={isReopening}
               issueState={issue.state}
+              hasResumeSessions={investigationHasResumeSessions ?? false}
             />
 
             {investigationReport && (
