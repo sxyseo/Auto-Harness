@@ -30,8 +30,24 @@ export function useIssueListFiltering(issues: GitHubIssue[]) {
     );
   }, [issues]);
 
-  // Filter and sort issues
+  // Filter and sort issues - memoized to avoid recomputation
   const filteredIssues = useMemo(() => {
+    // Early return if no filters active (except default status filter)
+    if (
+      !filters.searchQuery &&
+      filters.reporters.length === 0 &&
+      filters.statuses.length === 1 &&
+      filters.statuses[0] === 'open' &&
+      filters.sortBy === 'newest'
+    ) {
+      // Just apply sorting
+      return issues.slice().sort((a, b) => {
+        const aTime = new Date(a.createdAt).getTime();
+        const bTime = new Date(b.createdAt).getTime();
+        return bTime - aTime;
+      });
+    }
+
     const filtered = issues.filter((issue) => {
       // Search filter — matches title, body, and issue number
       if (filters.searchQuery) {
@@ -62,14 +78,10 @@ export function useIssueListFiltering(issues: GitHubIssue[]) {
       return true;
     });
 
-    // Pre-compute timestamps for sort performance
-    const timestamps = new Map(
-      filtered.map((issue) => [issue.number, new Date(issue.createdAt).getTime()])
-    );
-
+    // Sort with stable timestamp cache
     return filtered.sort((a, b) => {
-      const aTime = timestamps.get(a.number)!;
-      const bTime = timestamps.get(b.number)!;
+      const aTime = new Date(a.createdAt).getTime();
+      const bTime = new Date(b.createdAt).getTime();
 
       switch (filters.sortBy) {
         case 'newest':
