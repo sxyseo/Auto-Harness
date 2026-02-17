@@ -126,11 +126,18 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
 
   // Apply investigation state filter to issues
   const investigationFilteredIssues = useMemo(() => {
-    if (investigationStateFilter.length === 0 && showDismissed) return filteredIssues;
+    const projectId = selectedProject?.id;
+    // Early return if no filters active
+    if (investigationStateFilter.length === 0 && !showDismissed) return filteredIssues;
+
+    const investigations = investigationStore.investigations;
+    const projectPrefix = projectId ? `${projectId}:` : '';
+
     return filteredIssues.filter((issue) => {
-      const projectId = selectedProject?.id;
       if (!projectId) return true;
-      const entry = investigationStore.getInvestigationState(projectId, issue.number);
+
+      // Direct O(1) lookup instead of calling getInvestigationState
+      const entry = investigations[projectPrefix + issue.number];
 
       // Filter out dismissed unless showDismissed is on
       if (entry?.dismissReason && !showDismissed) return false;
@@ -138,21 +145,56 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       // If no investigation state filter, show all non-dismissed
       if (investigationStateFilter.length === 0) return true;
 
-      const state = investigationStore.getDerivedState(projectId, issue.number);
+      // Compute derived state inline to avoid store method call
+      let state: InvestigationState = 'new';
+      if (entry) {
+        if (entry.isInvestigating && entry.progress?.phase === 'queued') state = 'queued';
+        else if (entry.isInvestigating) state = 'investigating';
+        else if (entry.error === 'investigation.interrupted' && !entry.specId) state = 'interrupted';
+        else if (entry.error && !entry.specId) state = 'failed';
+        else if (entry.report?.likelyResolved && !entry.specId) state = 'resolved';
+        else if (entry.report && !entry.specId) state = 'findings_ready';
+        else if (entry.specId) {
+          if (entry.linkedTaskStatus === 'done') state = 'done';
+          else if (entry.linkedTaskStatus === 'building') state = 'building';
+          else state = 'task_created';
+        }
+      }
       return investigationStateFilter.includes(state);
     });
-  }, [filteredIssues, investigationStateFilter, showDismissed, investigationStore, selectedProject?.id]);
+  }, [filteredIssues, investigationStateFilter, showDismissed, investigationStore.investigations, selectedProject?.id]);
 
   // Build investigation state counts
   const investigationStateCounts = useMemo(() => {
     const counts: Partial<Record<InvestigationState, number>> = {};
-    if (!selectedProject?.id) return counts;
+    const projectId = selectedProject?.id;
+    if (!projectId) return counts;
+
+    const investigations = investigationStore.investigations;
+    const projectPrefix = `${projectId}:`;
+
     for (const issue of filteredIssues) {
-      const state = investigationStore.getDerivedState(selectedProject.id, issue.number);
+      // Direct O(1) lookup and inline state computation
+      const entry = investigations[projectPrefix + issue.number];
+
+      let state: InvestigationState = 'new';
+      if (entry) {
+        if (entry.isInvestigating && entry.progress?.phase === 'queued') state = 'queued';
+        else if (entry.isInvestigating) state = 'investigating';
+        else if (entry.error === 'investigation.interrupted' && !entry.specId) state = 'interrupted';
+        else if (entry.error && !entry.specId) state = 'failed';
+        else if (entry.report?.likelyResolved && !entry.specId) state = 'resolved';
+        else if (entry.report && !entry.specId) state = 'findings_ready';
+        else if (entry.specId) {
+          if (entry.linkedTaskStatus === 'done') state = 'done';
+          else if (entry.linkedTaskStatus === 'building') state = 'building';
+          else state = 'task_created';
+        }
+      }
       counts[state] = (counts[state] ?? 0) + 1;
     }
     return counts;
-  }, [filteredIssues, investigationStore, selectedProject?.id]);
+  }, [filteredIssues, investigationStore.investigations, selectedProject?.id]);
 
   // Active investigation count
   const activeInvestigations = useMemo(() => {
@@ -163,10 +205,32 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   // Build investigation states map for IssueList
   const investigationStatesMap = useMemo(() => {
     const map: Record<string, { state: InvestigationState; progress?: number; linkedTaskId?: string; isStale?: boolean }> = {};
-    if (!selectedProject?.id) return map;
+    const projectId = selectedProject?.id;
+    if (!projectId) return map;
+
+    const investigations = investigationStore.investigations;
+    const projectPrefix = `${projectId}:`;
+
     for (const issue of investigationFilteredIssues) {
-      const state = investigationStore.getDerivedState(selectedProject.id, issue.number);
-      const entry = investigationStore.getInvestigationState(selectedProject.id, issue.number);
+      // Direct O(1) lookup instead of calling getInvestigationState
+      const entry = investigations[projectPrefix + issue.number];
+
+      // Compute derived state inline
+      let state: InvestigationState = 'new';
+      if (entry) {
+        if (entry.isInvestigating && entry.progress?.phase === 'queued') state = 'queued';
+        else if (entry.isInvestigating) state = 'investigating';
+        else if (entry.error === 'investigation.interrupted' && !entry.specId) state = 'interrupted';
+        else if (entry.error && !entry.specId) state = 'failed';
+        else if (entry.report?.likelyResolved && !entry.specId) state = 'resolved';
+        else if (entry.report && !entry.specId) state = 'findings_ready';
+        else if (entry.specId) {
+          if (entry.linkedTaskStatus === 'done') state = 'done';
+          else if (entry.linkedTaskStatus === 'building') state = 'building';
+          else state = 'task_created';
+        }
+      }
+
       const issueKey = String(issue.number);
       map[issueKey] = {
         state,
@@ -176,7 +240,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       };
     }
     return map;
-  }, [investigationFilteredIssues, investigationStore, selectedProject?.id]);
+  }, [investigationFilteredIssues, investigationStore.investigations, selectedProject?.id]);
 
   // Bulk operations
   const { executeBulk, isOperating: isBulkOperating } = useBulkOperations(selectedProject?.id ?? '');
