@@ -35,7 +35,7 @@ export function loadFileBasedMemories(
         const specPath = path.join(specsDir, f);
         return statSync(specPath).isDirectory();
       } catch {
-        return false;
+              return false;
       }
     })
     .sort()
@@ -76,7 +76,7 @@ export function loadFileBasedMemories(
             });
           }
         } catch {
-          // Skip invalid files
+                // Skip invalid files
         }
       }
     }
@@ -97,7 +97,7 @@ export function loadFileBasedMemories(
           });
         }
       } catch {
-        // Skip invalid files
+              // Skip invalid files
       }
     }
   }
@@ -126,7 +126,7 @@ export function searchFileBasedMemories(
         const specPath = path.join(specsDir, f);
         return statSync(specPath).isDirectory();
       } catch {
-        return false;
+              return false;
       }
     });
 
@@ -151,7 +151,7 @@ export function searchFileBasedMemories(
           });
         }
       } catch {
-        // Skip invalid files
+              // Skip invalid files
       }
     }
   }

@@ -161,7 +161,7 @@ export function Insights({ projectId }: InsightsProps) {
   useEffect(() => {
     setTaskCreated(new Set());
     setCreatingTask(new Set());
-  }, [session?.id]);
+  }, []);
 
   const handleSend = () => {
     const message = inputValue.trim();

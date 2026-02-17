@@ -174,7 +174,7 @@ class BufferPersistence {
       const serialized = managed.serializeAddon.serialize();
       return serialized.length;
     } catch {
-      return null;
+            return null;
     }
   }
 

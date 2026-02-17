@@ -70,7 +70,7 @@ export class ProjectStore {
         }));
         return data;
       } catch {
-        return { projects: [], settings: {} };
+              return { projects: [], settings: {} };
       }
     }
     return { projects: [], settings: {} };
@@ -350,6 +350,7 @@ export class ProjectStore {
         const newIsMain = task.location === 'main';
 
         if (existingIsMain && !newIsMain) {
+          // Existing is main, keep it
         } else if (!existingIsMain && newIsMain) {
           // New is main, replace existing worktree
           taskMap.set(task.id, task);
@@ -454,7 +455,7 @@ export class ProjectStore {
                 description = requirements.task_description;
               }
             } catch {
-              // Ignore parse errors
+                    // Ignore parse errors
             }
           }
         }
@@ -471,7 +472,7 @@ export class ProjectStore {
               description = overviewMatch[1].trim();
             }
           } catch {
-            // Ignore read errors
+                  // Ignore read errors
           }
         }
 
@@ -483,7 +484,7 @@ export class ProjectStore {
             const content = readFileSync(metadataPath, 'utf-8');
             metadata = JSON.parse(content);
           } catch {
-            // Ignore parse errors
+                  // Ignore parse errors
           }
         }
 
@@ -537,7 +538,7 @@ export class ProjectStore {
               title = titleMatch[1].trim();
             }
           } catch {
-            // Keep the original title on error
+                  // Keep the original title on error
           }
         }
 

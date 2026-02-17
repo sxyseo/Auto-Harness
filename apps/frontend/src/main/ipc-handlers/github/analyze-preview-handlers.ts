@@ -148,7 +148,7 @@ function getBatches(project: Project): IssueBatch[] {
   try {
     files = fs.readdirSync(batchesDir);
   } catch {
-    return [];
+          return [];
   }
 
   const batches: IssueBatch[] = [];
@@ -175,7 +175,7 @@ function getBatches(project: Project): IssueBatch[] {
           updatedAt: data.updated_at,
         });
       } catch {
-        // Skip invalid files
+              // Skip invalid files
       }
     }
   }

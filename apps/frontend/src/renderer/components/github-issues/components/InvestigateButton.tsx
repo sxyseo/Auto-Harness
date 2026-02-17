@@ -57,12 +57,12 @@ export const InvestigateButton = memo(function InvestigateButton({
         {canResume ? (
           <>
             <RefreshCw className="h-4 w-4 mr-1.5" />
-            {t('investigation.button.resume', 'Resume Investigation')}
+            {t('investigation.button.resume')}
           </>
         ) : (
           <>
             <XCircle className="h-4 w-4 mr-1.5" />
-            {t('investigation.button.retry', 'Retry Investigation')}
+            {t('investigation.button.retry')}
           </>
         )}
       </Button>
@@ -80,7 +80,7 @@ export const InvestigateButton = memo(function InvestigateButton({
           className={className}
         >
           <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-          {t('investigation.button.investigating', 'Investigating...')}
+          {t('investigation.button.investigating')}
           {progress != null && progress > 0 && (
             <span className="ml-1 text-xs opacity-70">{progress}%</span>
           )}
@@ -90,7 +90,7 @@ export const InvestigateButton = memo(function InvestigateButton({
           size="sm"
           onClick={onCancel}
         >
-          {t('investigation.button.cancel', 'Cancel')}
+          {t('investigation.button.cancel')}
         </Button>
       </div>
     );
@@ -107,7 +107,7 @@ export const InvestigateButton = memo(function InvestigateButton({
           className={`border-green-500/50 text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/30 ${className ?? ''}`}
         >
           <CheckCircle2 className="h-4 w-4 mr-1.5" />
-          {t('investigation.button.viewResults', 'View Results')}
+          {t('investigation.button.viewResults')}
         </Button>
         <Button
           variant="default"
@@ -116,7 +116,7 @@ export const InvestigateButton = memo(function InvestigateButton({
           className="bg-purple-600 hover:bg-purple-700 text-white"
         >
           <PlusCircle className="h-4 w-4 mr-1.5" />
-          {t('investigation.button.createTask', 'Create Task')}
+          {t('investigation.button.createTask')}
         </Button>
       </div>
     );
@@ -135,10 +135,10 @@ export const InvestigateButton = memo(function InvestigateButton({
         >
           <CheckCircle2 className="h-4 w-4 mr-1.5" />
           {state === 'done'
-            ? t('investigation.button.done', 'Done')
+            ? t('investigation.button.done')
             : state === 'building'
-              ? t('investigation.button.building', 'Building...')
-              : t('investigation.button.taskCreated', 'Task Created')
+              ? t('investigation.button.building')
+              : t('investigation.button.taskCreated')
           }
         </Button>
         <Button
@@ -146,8 +146,8 @@ export const InvestigateButton = memo(function InvestigateButton({
           size="sm"
           onClick={onInvestigate}
           disabled={disabled}
-          title={t('investigation.button.reInvestigate', 'Re-Investigate')}
-          aria-label={t('investigation.button.reInvestigate', 'Re-Investigate')}
+          title={t('investigation.button.reInvestigate')}
+          aria-label={t('investigation.button.reInvestigate')}
         >
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>
@@ -166,14 +166,14 @@ export const InvestigateButton = memo(function InvestigateButton({
           className={className}
         >
           <Loader2 className="h-4 w-4 mr-1.5 animate-spin opacity-50" />
-          {t('investigation.button.queued', 'Queued...')}
+          {t('investigation.button.queued')}
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={onCancel}
         >
-          {t('investigation.button.cancel', 'Cancel')}
+          {t('investigation.button.cancel')}
         </Button>
       </div>
     );
@@ -189,7 +189,7 @@ export const InvestigateButton = memo(function InvestigateButton({
       className={className}
     >
       <Search className="h-4 w-4 mr-1.5" />
-      {t('investigation.button.investigate', 'AI Investigate')}
+      {t('investigation.button.investigate')}
     </Button>
   );
 });

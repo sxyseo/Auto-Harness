@@ -75,7 +75,7 @@ export async function readEnrichmentFile(projectPath: string): Promise<Enrichmen
       try {
         await rename(filePath, `${filePath}.corrupted`);
       } catch {
-        // Best effort
+              // Best effort
       }
       return createEmptyEnrichmentFile();
     }
@@ -84,7 +84,7 @@ export async function readEnrichmentFile(projectPath: string): Promise<Enrichmen
     try {
       await rename(filePath, `${filePath}.corrupted`);
     } catch {
-      // Best effort
+            // Best effort
     }
     return createEmptyEnrichmentFile();
   }
@@ -128,7 +128,7 @@ export async function readTransitionsFile(projectPath: string): Promise<Transiti
     const raw = await readFile(filePath, 'utf-8');
     return JSON.parse(raw) as TransitionsFile;
   } catch {
-    return { transitions: [] };
+          return { transitions: [] };
   }
 }
 
@@ -198,12 +198,12 @@ export async function migrateFromTriageFiles(projectPath: string): Promise<Enric
             enrichmentFile.issues[String(issueNumber)] = enrichment;
           }
         } catch {
-          logger.debug(`Failed to parse legacy triage file: ${file}`);
+                logger.debug(`Failed to parse legacy triage file: ${file}`);
         }
       }
     }
   } catch {
-    // Directory doesn't exist or can't be read — return empty
+          // Directory doesn't exist or can't be read — return empty
   }
 
   await writeEnrichmentFile(projectPath, enrichmentFile);

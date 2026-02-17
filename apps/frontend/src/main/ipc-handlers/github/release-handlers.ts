@@ -22,7 +22,7 @@ function checkGhCli(): { installed: boolean; error?: string } {
     execFileSync(getWhichCommand(), ['gh'], { encoding: 'utf-8', stdio: 'pipe' });
     return { installed: true };
   } catch {
-    return {
+          return {
       installed: false,
       error: 'GitHub CLI (gh) not found. Please install it: https://cli.github.com/'
     };
@@ -37,7 +37,7 @@ function checkGhAuth(projectPath: string): { authenticated: boolean; error?: str
     execFileSync(getToolPath('gh'), ['auth', 'status'], { cwd: projectPath, encoding: 'utf-8', stdio: 'pipe' });
     return { authenticated: true };
   } catch {
-    return {
+          return {
       authenticated: false,
       error: 'Not authenticated with GitHub. Run "gh auth login" in terminal first.'
     };
@@ -132,7 +132,7 @@ function getLatestTag(projectPath: string): string | null {
     }).trim();
     return tag || null;
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -162,7 +162,7 @@ function getCommitsSinceTag(projectPath: string, tag: string | null): GitCommit[
       };
     });
   } catch {
-    return [];
+          return [];
   }
 }
 
@@ -178,7 +178,7 @@ function getCurrentVersion(projectPath: string): string {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
     return pkg.version || '0.0.0';
   } catch {
-    return '0.0.0';
+          return '0.0.0';
   }
 }
 

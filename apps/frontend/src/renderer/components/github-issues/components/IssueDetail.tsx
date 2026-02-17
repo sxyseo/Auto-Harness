@@ -229,9 +229,9 @@ export function IssueDetail({
               hasError={!!investigationError}
               hasResumeSessions={investigationHasResumeSessions}
               onInvestigate={onInvestigate}
-              onCancel={onCancelInvestigation ?? (() => {})}
+              onCancel={onCancelInvestigation ?? (() => { /* noop */ })}
               onViewResults={() => {/* scroll to results handled inline */}}
-              onCreateTask={onCreateTask ?? (() => {})}
+              onCreateTask={onCreateTask ?? (() => { /* noop */ })}
               disabled={isInvestigating && !onCancelInvestigation}
             />
           ) : null}
@@ -293,9 +293,9 @@ export function IssueDetail({
               specId={investigationSpecId ?? null}
               issueNumber={issue.number}
               projectId={projectId}
-              onCancel={onCancelInvestigation ?? (() => {})}
+              onCancel={onCancelInvestigation ?? (() => { /* noop */ })}
               onInvestigate={onInvestigate}
-              onCreateTask={onCreateTask ?? (() => {})}
+              onCreateTask={onCreateTask ?? (() => { /* noop */ })}
               onPostToGitHub={onPostToGitHub}
               isPostingToGitHub={isPostingToGitHub}
               onDismissIssue={onDismissIssue}

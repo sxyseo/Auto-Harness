@@ -154,7 +154,7 @@ export function isProfileAuthenticated(profile: ClaudeProfile): boolean {
           return true;
         }
       } catch {
-        // Ignore read errors
+              // Ignore read errors
       }
     }
   }
@@ -168,7 +168,7 @@ export function isProfileAuthenticated(profile: ClaudeProfile): boolean {
         return true;
       }
     } catch {
-      // Ignore read errors
+            // Ignore read errors
     }
   }
 

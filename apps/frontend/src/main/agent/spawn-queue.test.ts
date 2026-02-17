@@ -29,7 +29,7 @@ describe('SpawnQueue', () => {
   }> = {}) => ({
     id: 'test-id',
     type: 'test',
-    onSpawn: vi.fn(async () => {}),
+    onSpawn: vi.fn(async () => { /* noop */ }),
     onError: vi.fn(),
     projectId: 'test-project',
     projectPath: '/test/path',
@@ -193,7 +193,7 @@ describe('SpawnQueue', () => {
       const failingRequest = createRequest({
         id: `task-${errorCount}`,
         onSpawn: vi.fn().mockRejectedValue(new Error('Failed')),
-        onError: vi.fn((error: Error) => {
+        onError: vi.fn((_error: Error) => {
           errorCount++;
         })
       });

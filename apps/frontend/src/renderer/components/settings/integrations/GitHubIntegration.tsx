@@ -76,7 +76,7 @@ export function GitHubIntegration({
       fetchUserRepos();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authMode]);
+  }, [authMode, fetchUserRepos]);
 
   // Fetch branches when GitHub is enabled and project path is available
   useEffect(() => {
@@ -84,7 +84,7 @@ export function GitHubIntegration({
       fetchBranches();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [envConfig?.githubEnabled, projectPath]);
+  }, [envConfig?.githubEnabled, projectPath, fetchBranches]);
 
   /**
    * Handler for branch selection changes.

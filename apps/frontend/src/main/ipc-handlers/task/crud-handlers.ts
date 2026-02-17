@@ -758,7 +758,7 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
           data: { hasChanges: changedFiles > 0, worktreePath, changedFileCount: changedFiles }
         };
       } catch {
-        // On error/timeout, return false as fail-safe (don't block deletion)
+              // On error/timeout, return false as fail-safe (don't block deletion)
         return { success: true, data: { hasChanges: false, worktreePath } };
       }
     }

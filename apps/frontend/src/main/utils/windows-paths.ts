@@ -216,7 +216,7 @@ export function findWindowsExecutableViaWhere(
 
     return null;
   } catch {
-    // 'where' returns exit code 1 if not found, which throws an error
+          // 'where' returns exit code 1 if not found, which throws an error
     return null;
   }
 }
@@ -256,7 +256,7 @@ export async function getWindowsExecutablePathsAsync(
       await access(fullPath, constants.F_OK);
       validPaths.push(fullPath);
     } catch {
-      // File doesn't exist, skip
+            // File doesn't exist, skip
     }
   }
 
@@ -319,13 +319,13 @@ export async function findWindowsExecutableViaWhereAsync(
           return foundPath;
         }
       } catch {
-        // Path doesn't exist
+              // Path doesn't exist
       }
     }
 
     return null;
   } catch {
-    // 'where' returns exit code 1 if not found, which throws an error
+          // 'where' returns exit code 1 if not found, which throws an error
     return null;
   }
 }

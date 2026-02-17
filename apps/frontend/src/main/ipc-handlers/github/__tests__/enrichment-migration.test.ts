@@ -6,7 +6,6 @@ import {
   migrateFromTriageFiles,
   bootstrapFromGitHub,
   getEnrichmentDir,
-  getEnrichmentFilePath,
 } from '../enrichment-persistence';
 import { readTransitionsFile } from '../enrichment-persistence';
 import type { GitHubIssue } from '../../../../shared/types/integrations';

@@ -31,7 +31,7 @@ export function getBranches(projectPath: string, debugEnabled = false): GitBranc
         encoding: 'utf-8'
       }).trim();
     } catch {
-      // Ignore - might be in detached HEAD
+            // Ignore - might be in detached HEAD
     }
 
     // Get all branches (local and remote)
@@ -132,7 +132,7 @@ export function getCurrentBranch(projectPath: string): string {
       encoding: 'utf-8'
     }).trim();
   } catch {
-    return 'main';
+          return 'main';
   }
 }
 
@@ -148,7 +148,7 @@ export function getDefaultBranch(projectPath: string): string {
     }).trim();
     return result.replace('origin/', '');
   } catch {
-    // Fallback: check if main or master exists
+          // Fallback: check if main or master exists
     try {
       execFileSync(getToolPath('git'), ['rev-parse', '--verify', 'main'], {
         cwd: projectPath,
@@ -156,14 +156,14 @@ export function getDefaultBranch(projectPath: string): string {
       });
       return 'main';
     } catch {
-      try {
+            try {
         execFileSync(getToolPath('git'), ['rev-parse', '--verify', 'master'], {
           cwd: projectPath,
           encoding: 'utf-8'
         });
         return 'master';
       } catch {
-        return 'main';
+              return 'main';
       }
     }
   }

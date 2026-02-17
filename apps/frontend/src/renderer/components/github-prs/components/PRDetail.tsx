@@ -154,7 +154,7 @@ export function PRDetail({
   const [isUpdatingBranch, setIsUpdatingBranch] = useState(false);
   const [branchUpdateError, setBranchUpdateError] = useState<string | null>(null);
   const [branchUpdateSuccess, setBranchUpdateSuccess] = useState(false);
-  const [mergeReadinessRefreshKey, setMergeReadinessRefreshKey] = useState(0);
+  const [_mergeReadinessRefreshKey, setMergeReadinessRefreshKey] = useState(0);
 
   // Workflows awaiting approval state (for fork PRs)
   const [workflowsAwaiting, setWorkflowsAwaiting] = useState<WorkflowsAwaitingApprovalResult | null>(null);
@@ -177,7 +177,7 @@ export function PRDetail({
     } else {
       setPostedFindingIds(new Set());
     }
-  }, [reviewResult?.postedFindingIds, pr.number]);
+  }, [reviewResult?.postedFindingIds]);
 
   // Auto-select ALL findings when review completes (excluding already posted)
   // All findings should reach the contributor - even LOW suggestions are valuable feedback
@@ -294,7 +294,7 @@ export function PRDetail({
         if (data.prNumber !== pr.number) return;
         onGetLogs()
           .then(logs => setPrLogs(logs))
-          .catch(() => {});
+          .catch(() => { /* noop */ });
       }
     );
 
@@ -444,7 +444,7 @@ export function PRDetail({
           }
         }
       } catch {
-        // Ignore errors — transient file read failures shouldn't stop polling
+              // Ignore errors — transient file read failures shouldn't stop polling
       }
     };
 
@@ -549,7 +549,7 @@ export function PRDetail({
     setBranchUpdateError(null);
     setBranchUpdateSuccess(false);
     setIsUpdatingBranch(false);
-  }, [pr.number]);
+  }, []);
 
   // Check for workflows awaiting approval (fork PRs) when PR changes or review completes
   useEffect(() => {
@@ -561,13 +561,13 @@ export function PRDetail({
         );
         setWorkflowsAwaiting(result);
       } catch {
-        setWorkflowsAwaiting(null);
+              setWorkflowsAwaiting(null);
       }
     };
 
     checkWorkflows();
     // Re-check when a review is completed (CI status might have changed)
-  }, [pr.number, reviewResult]);
+  }, [pr.number]);
 
   // Check merge readiness (real-time validation) when PR is selected
   // This runs on every PR selection to catch stale verdicts
@@ -591,7 +591,7 @@ export function PRDetail({
           setMergeReadiness(result);
         }
       } catch {
-        if (!mergeReadinessAbortRef.current?.signal.aborted) {
+              if (!mergeReadinessAbortRef.current?.signal.aborted) {
           setMergeReadiness(null);
         }
       }
@@ -604,7 +604,7 @@ export function PRDetail({
         mergeReadinessAbortRef.current.abort();
       }
     };
-  }, [pr.number, projectId, mergeReadinessRefreshKey]);
+  }, [pr.number, projectId]);
 
   // Handler to approve a workflow
   const handleApproveWorkflow = useCallback(async (runId: number) => {
@@ -630,7 +630,7 @@ export function PRDetail({
       try {
         await window.electronAPI.github.approveWorkflow('', workflow.id);
       } catch {
-        // Continue with other workflows even if one fails
+              // Continue with other workflows even if one fails
       }
     }
     setIsApprovingWorkflow(null);
@@ -1136,7 +1136,7 @@ ${t('prReview.blockedStatusMessageFooter')}`;
         />
 
         {/* Action Bar (Legacy Actions that fit under the tree context) */}
-        {reviewResult && reviewResult.success && !isReviewing && (
+        {reviewResult?.success && !isReviewing && (
           <div className="flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
              {selectedCount > 0 && (
                 <Button onClick={handlePostReview} variant="secondary" disabled={isPostingFindings} className="flex-1 sm:flex-none">
@@ -1345,7 +1345,7 @@ ${t('prReview.blockedStatusMessageFooter')}`;
         )}
 
         {/* Review Result / Findings */}
-        {reviewResult && reviewResult.success && (
+        {reviewResult?.success && (
           <CollapsibleCard
             title={reviewResult.isFollowupReview ? t('prReview.followupReviewDetails') : t('prReview.aiAnalysisResults')}
             icon={reviewResult.isFollowupReview ? (

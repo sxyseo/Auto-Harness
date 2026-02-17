@@ -370,7 +370,7 @@ export async function removeProject(projectId: string): Promise<boolean> {
     }
     return false;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -401,7 +401,7 @@ export async function updateProjectSettings(
     }
     return false;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -418,7 +418,7 @@ export async function checkProjectVersion(
     }
     return null;
   } catch {
-    return null;
+          return null;
   }
 }
 

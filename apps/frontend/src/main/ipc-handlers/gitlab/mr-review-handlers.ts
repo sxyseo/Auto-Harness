@@ -132,7 +132,7 @@ function getReviewResult(project: Project, mrIid: number): MRReviewResult | null
         postedFindingIds: data.posted_finding_ids ?? [],
       };
     } catch {
-      return null;
+            return null;
     }
   }
 
@@ -714,7 +714,7 @@ export function registerMRReviewHandlers(
           const data = fs.readFileSync(reviewPath, 'utf-8');
           review = JSON.parse(data);
         } catch {
-          return { hasNewCommits: false };
+                return { hasNewCommits: false };
         }
 
         const reviewedCommitSha = review.reviewedCommitSha || (review as any).reviewed_commit_sha;

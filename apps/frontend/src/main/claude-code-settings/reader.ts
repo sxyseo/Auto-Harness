@@ -215,7 +215,7 @@ function getUserConfigDir(): string {
       }
     }
   } catch {
-    debugLog(`${LOG_PREFIX} ClaudeProfileManager not available, using fallback`);
+          debugLog(`${LOG_PREFIX} ClaudeProfileManager not available, using fallback`);
   }
 
   // Fall back to CLAUDE_CONFIG_DIR env var

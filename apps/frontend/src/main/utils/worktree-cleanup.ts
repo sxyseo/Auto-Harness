@@ -76,7 +76,7 @@ function getWorktreeBranch(worktreePath: string, specId: string, timeout: number
         return branch;
       }
     } catch {
-      // Worktree might be corrupted, fall back to explicit name or naming convention
+            // Worktree might be corrupted, fall back to explicit name or naming convention
     }
   }
 
@@ -137,7 +137,7 @@ async function deleteDirectoryWithRetry(
       execFileSync('/bin/rm', ['-rf', dirPath], { timeout: 60000 });
       return;
     } catch {
-      // Fall through to throw original error
+            // Fall through to throw original error
     }
   }
 

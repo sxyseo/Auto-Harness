@@ -253,7 +253,7 @@ export function registerTaskExecutionHandlers(
         try {
           readFileSync(specFilePath, 'utf-8');
         } catch {
-          // Use default description
+                // Use default description
         }
 
         console.warn('[TASK_START] Starting task execution (no subtasks) for:', task.specId);
@@ -316,7 +316,7 @@ export function registerTaskExecutionHandlers(
         hasPlan = totalCount > 0;
       }
     } catch {
-      hasPlan = false;
+            hasPlan = false;
     }
 
     taskStateManager.handleUiEvent(
@@ -628,7 +628,7 @@ export function registerTaskExecutionHandlers(
             specContent = readFileSync(specFilePath, 'utf-8');
           }
         } catch {
-          // Ignore read errors - treat as empty spec
+                // Ignore read errors - treat as empty spec
         }
 
         if (!specContent || specContent.length < MIN_SPEC_CONTENT_LENGTH) {

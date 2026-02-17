@@ -206,7 +206,7 @@ export function runPythonSubprocess<T = unknown>(
               });
             }
           } catch {
-            child.kill('SIGTERM');
+                  child.kill('SIGTERM');
           }
         }
       };

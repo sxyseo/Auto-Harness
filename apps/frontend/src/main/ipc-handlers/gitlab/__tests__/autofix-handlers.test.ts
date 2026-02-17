@@ -20,7 +20,7 @@ function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {
     if (parsedUrl.host !== expectedHost) return '';
     return parsedUrl.toString();
   } catch {
-    return '';
+          return '';
   }
 }
 

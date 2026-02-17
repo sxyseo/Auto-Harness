@@ -659,7 +659,7 @@ describe('useXterm keyboard handlers', () => {
 
   describe('Clipboard error handling', () => {
     it('should handle clipboard write errors gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* noop */ });
       const mockHasSelection = vi.fn(() => true);
       const mockGetSelection = vi.fn(() => 'selected text');
 
@@ -691,7 +691,7 @@ describe('useXterm keyboard handlers', () => {
     });
 
     it('should handle clipboard read errors gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* noop */ });
       const mockPaste = vi.fn();
 
       // Mock Windows platform to enable custom paste handler

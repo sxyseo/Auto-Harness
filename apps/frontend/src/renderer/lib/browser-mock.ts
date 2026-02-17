@@ -96,10 +96,10 @@ const browserMockAPI: ElectronAPI = {
   clearRoadmapProgress: async () => ({ success: true }),
 
   // Roadmap Event Listeners
-  onRoadmapProgress: () => () => {},
-  onRoadmapComplete: () => () => {},
-  onRoadmapError: () => () => {},
-  onRoadmapStopped: () => () => {},
+  onRoadmapProgress: () => () => { /* noop */ },
+  onRoadmapComplete: () => () => { /* noop */ },
+  onRoadmapError: () => () => { /* noop */ },
+  onRoadmapStopped: () => () => { /* noop */ },
   // Context Operations
   ...contextMock,
 
@@ -173,7 +173,7 @@ const browserMockAPI: ElectronAPI = {
     getGitHubIssue: async () => ({ success: true, data: null as any }),
     getIssueComments: async () => ({ success: true, data: [] }),
     checkGitHubConnection: async () => ({ success: true, data: { connected: false, repoFullName: undefined, error: undefined } }),
-    investigateGitHubIssue: () => {},
+    investigateGitHubIssue: () => { /* noop */ },
     importGitHubIssues: async () => ({ success: true, data: { success: true, imported: 0, failed: 0, issues: [] } }),
     createGitHubRelease: async () => ({ success: true, data: { url: '' } }),
     suggestReleaseVersion: async () => ({ success: true, data: { suggestedVersion: '1.0.0', currentVersion: '0.0.0', bumpType: 'minor' as const, commitCount: 0, reason: 'Initial' } }),
@@ -188,12 +188,12 @@ const browserMockAPI: ElectronAPI = {
     createGitHubRepo: async () => ({ success: true, data: { fullName: '', url: '' } }),
     addGitRemote: async () => ({ success: true, data: { remoteUrl: '' } }),
     listGitHubOrgs: async () => ({ success: true, data: { orgs: [] } }),
-    onGitHubAuthDeviceCode: () => () => {},
-    onGitHubAuthChanged: () => () => {},
+    onGitHubAuthDeviceCode: () => () => { /* noop */ },
+    onGitHubAuthChanged: () => () => { /* noop */ },
     // Investigation operations (new system)
-    startInvestigation: () => {},
-    cancelInvestigation: () => {},
-    cancelAllInvestigations: () => {},
+    startInvestigation: () => { /* noop */ },
+    cancelInvestigation: () => { /* noop */ },
+    cancelAllInvestigations: () => { /* noop */ },
     createTaskFromInvestigation: async () => ({ success: true, data: { specId: '' } }),
     dismissIssue: async () => ({ success: true }),
     postInvestigationToGitHub: async () => ({ success: true, data: { commentId: 0 } }),
@@ -201,18 +201,18 @@ const browserMockAPI: ElectronAPI = {
     saveInvestigationSettings: async () => ({ success: true }),
     loadPersistedInvestigations: async () => ({ success: true, data: [] }),
     getInvestigationLogs: async () => null,
-    onInvestigationLogsUpdated: () => () => {},
-    onInvestigationProgress: () => () => {},
-    onInvestigationComplete: () => () => {},
-    onInvestigationError: () => () => {},
+    onInvestigationLogsUpdated: () => () => { /* noop */ },
+    onInvestigationProgress: () => () => { /* noop */ },
+    onInvestigationComplete: () => () => { /* noop */ },
+    onInvestigationError: () => () => { /* noop */ },
     // Legacy investigation listeners
-    onGitHubInvestigationProgress: () => () => {},
-    onGitHubInvestigationComplete: () => () => {},
-    onGitHubInvestigationError: () => () => {},
+    onGitHubInvestigationProgress: () => () => { /* noop */ },
+    onGitHubInvestigationComplete: () => () => { /* noop */ },
+    onGitHubInvestigationError: () => () => { /* noop */ },
     listPRs: async () => ({ prs: [], hasNextPage: false }),
     listMorePRs: async () => ({ prs: [], hasNextPage: false }),
     getPR: async () => null,
-    runPRReview: () => {},
+    runPRReview: () => { /* noop */ },
     cancelPRReview: async () => true,
     postPRReview: async () => true,
     postPRComment: async () => true,
@@ -225,25 +225,25 @@ const browserMockAPI: ElectronAPI = {
     checkNewCommits: async () => ({ hasNewCommits: false, newCommitCount: 0 }),
     checkMergeReadiness: async () => ({ isDraft: false, mergeable: 'UNKNOWN' as const, isBehind: false, ciStatus: 'none' as const, blockers: [] }),
     updatePRBranch: async () => ({ success: true }),
-    runFollowupReview: () => {},
+    runFollowupReview: () => { /* noop */ },
     getPRLogs: async () => null,
     getWorkflowsAwaitingApproval: async () => ({ awaiting_approval: 0, workflow_runs: [], can_approve: false }),
     approveWorkflow: async () => true,
-    onPRReviewProgress: () => () => {},
-    onPRReviewComplete: () => () => {},
-    onPRReviewError: () => () => {},
-    onPRLogsUpdated: () => () => {},
+    onPRReviewProgress: () => () => { /* noop */ },
+    onPRReviewComplete: () => () => { /* noop */ },
+    onPRReviewError: () => () => { /* noop */ },
+    onPRLogsUpdated: () => () => { /* noop */ },
     // Analyze & Group Issues (proactive workflow)
-    analyzeIssuesPreview: () => {},
+    analyzeIssuesPreview: () => { /* noop */ },
     approveBatches: async () => ({ success: true, batches: [] }),
-    onAnalyzePreviewProgress: () => () => {},
-    onAnalyzePreviewComplete: () => () => {},
-    onAnalyzePreviewError: () => () => {},
+    onAnalyzePreviewProgress: () => () => { /* noop */ },
+    onAnalyzePreviewComplete: () => () => { /* noop */ },
+    onAnalyzePreviewError: () => () => { /* noop */ },
     // PR status polling
     startStatusPolling: async () => true,
     stopStatusPolling: async () => true,
     getPollingMetadata: async () => null,
-    onPRStatusUpdate: () => () => {},
+    onPRStatusUpdate: () => () => { /* noop */ },
 
     // Enrichment operations
     getAllEnrichment: async () => ({ schemaVersion: 1, issues: {} }),
@@ -267,8 +267,8 @@ const browserMockAPI: ElectronAPI = {
 
     // Bulk Operations
     executeBulk: async () => ({ action: 'close' as const, totalItems: 0, succeeded: 0, failed: 0, skipped: 0, results: [] }),
-    onBulkProgress: () => () => {},
-    onBulkComplete: () => () => {},
+    onBulkProgress: () => () => { /* noop */ },
+    onBulkComplete: () => () => { /* noop */ },
 
     // Repository Data
     getRepoLabels: async () => ({ success: true, data: [] }),
@@ -279,22 +279,22 @@ const browserMockAPI: ElectronAPI = {
 
     // AI Triage (Phase 3)
     cancelTriage: async () => ({ cancelled: false }),
-    runEnrichment: () => {},
-    onEnrichmentProgress: () => () => {},
-    onEnrichmentError: () => () => {},
-    onEnrichmentComplete: () => () => {},
+    runEnrichment: () => { /* noop */ },
+    onEnrichmentProgress: () => () => { /* noop */ },
+    onEnrichmentError: () => () => { /* noop */ },
+    onEnrichmentComplete: () => () => { /* noop */ },
 
-    runSplitSuggestion: () => {},
-    onSplitProgress: () => () => {},
-    onSplitError: () => () => {},
-    onSplitComplete: () => () => {},
+    runSplitSuggestion: () => { /* noop */ },
+    onSplitProgress: () => () => { /* noop */ },
+    onSplitError: () => () => { /* noop */ },
+    onSplitComplete: () => () => { /* noop */ },
 
     createIssue: async () => ({ number: 0, url: '' }),
 
-    applyTriageResults: () => {},
-    onApplyResultsProgress: () => () => {},
-    onApplyResultsError: () => () => {},
-    onApplyResultsComplete: () => () => {},
+    applyTriageResults: () => { /* noop */ },
+    onApplyResultsProgress: () => () => { /* noop */ },
+    onApplyResultsError: () => () => { /* noop */ },
+    onApplyResultsComplete: () => () => { /* noop */ },
 
     savePendingReview: async () => true,
     loadPendingReview: async () => [],
@@ -322,9 +322,9 @@ const browserMockAPI: ElectronAPI = {
     assignProfileToTask: async () => ({ success: true }),
     updateTaskSession: async () => ({ success: true }),
     getTaskSession: async () => ({ success: true, data: null }),
-    onQueueProfileSwapped: () => () => {},
-    onQueueSessionCaptured: () => () => {},
-    onQueueBlockedNoProfiles: () => () => {}
+    onQueueProfileSwapped: () => () => { /* noop */ },
+    onQueueSessionCaptured: () => () => { /* noop */ },
+    onQueueBlockedNoProfiles: () => () => { /* noop */ }
   },
 
   // Claude Code Operations
@@ -447,9 +447,9 @@ const browserMockAPI: ElectronAPI = {
   listLogFiles: async () => [],
 
   // Top-level investigation operations (legacy ElectronAPI surface)
-  startInvestigation: () => {},
-  cancelInvestigation: () => {},
-  cancelAllInvestigations: () => {},
+  startInvestigation: () => { /* noop */ },
+  cancelInvestigation: () => { /* noop */ },
+  cancelAllInvestigations: () => { /* noop */ },
   createTaskFromInvestigation: async () => ({ success: true, data: { specId: '' } }),
   dismissIssue: async () => ({ success: true }),
   postInvestigationToGitHub: async () => ({ success: true, data: { commentId: 0 } }),

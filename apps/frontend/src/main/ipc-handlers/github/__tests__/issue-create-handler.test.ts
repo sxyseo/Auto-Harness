@@ -212,7 +212,7 @@ describe('createIssue handler', () => {
     try {
       await call('test-project', { title: 'Test', body: 'Body' });
     } catch {
-      // Expected
+            // Expected
     }
 
     expect(fs.unlinkSync).toHaveBeenCalled();

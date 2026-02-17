@@ -161,7 +161,7 @@ describe('GitHub runner env usage', () => {
       try {
         fs.rmSync(dir, { recursive: true, force: true });
       } catch {
-        // Ignore cleanup errors for already-removed temp dirs.
+              // Ignore cleanup errors for already-removed temp dirs.
       }
     }
     tempDirs.length = 0;

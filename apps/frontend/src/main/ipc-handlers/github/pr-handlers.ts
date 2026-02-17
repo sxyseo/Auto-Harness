@@ -1085,7 +1085,7 @@ function loadPRLogs(project: Project, prNumber: number): PRLogs | null {
     const sanitizedData = sanitizeNetworkData(rawData);
     return JSON.parse(sanitizedData) as PRLogs;
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -1371,7 +1371,7 @@ function getReviewResult(project: Project, prNumber: number): PRReviewResult | n
       inProgressSince: data.in_progress_since,
     };
   } catch {
-    // File doesn't exist or couldn't be read
+          // File doesn't exist or couldn't be read
     return null;
   }
 }
@@ -1550,7 +1550,7 @@ async function runPRReview(
               };
             }
           } catch {
-            debugLog("Failed to parse __RESULT_JSON__ line", { line });
+                  debugLog("Failed to parse __RESULT_JSON__ line", { line });
           }
         }
       }
@@ -1781,7 +1781,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             htmlUrl: pr.html_url,
           };
         } catch {
-          return null;
+                return null;
         }
       });
     }
@@ -1809,7 +1809,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           });
           return diff;
         } catch {
-          return null;
+                return null;
         }
       });
     }
@@ -2230,7 +2230,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
               postedCount: newPostedIds.length,
             });
           } catch {
-            // File doesn't exist or couldn't be read - this is expected for new reviews
+                  // File doesn't exist or couldn't be read - this is expected for new reviews
             debugLog("Review result file not found or unreadable, skipping update", { prNumber });
           }
 
@@ -2326,7 +2326,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             try {
               unlinkSync(tmpFile);
             } catch {
-              // Ignore cleanup errors
+                    // Ignore cleanup errors
             }
             throw error;
           }
@@ -2387,7 +2387,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             fs.writeFileSync(reviewPath, JSON.stringify(data, null, 2), "utf-8");
             debugLog("Cleared review ID from result file", { prNumber });
           } catch {
-            // File doesn't exist or couldn't be read - this is expected if review wasn't saved
+                  // File doesn't exist or couldn't be read - this is expected if review wasn't saved
             debugLog("Review result file not found or unreadable, skipping update", { prNumber });
           }
 
@@ -2553,7 +2553,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           const sanitizedData = sanitizeNetworkData(rawData);
           review = JSON.parse(sanitizedData);
         } catch {
-          // File doesn't exist or couldn't be read
+                // File doesn't exist or couldn't be read
           return { hasNewCommits: false, newCommitCount: 0 };
         }
 

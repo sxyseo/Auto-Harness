@@ -191,7 +191,7 @@ export function useProjectSettings(
             setClaudeAuthStatus('error');
           }
         } catch {
-          setClaudeAuthStatus('error');
+                setClaudeAuthStatus('error');
         } finally {
           setIsCheckingClaudeAuth(false);
         }
@@ -215,7 +215,7 @@ export function useProjectSettings(
           setLinearConnectionStatus(result.data);
         }
       } catch {
-        setLinearConnectionStatus({ connected: false, error: 'Failed to check connection' });
+              setLinearConnectionStatus({ connected: false, error: 'Failed to check connection' });
       } finally {
         setIsCheckingLinear(false);
       }
@@ -244,7 +244,7 @@ export function useProjectSettings(
           setGitHubConnectionStatus(status);
         }
       } catch {
-        setGitHubConnectionStatus({ connected: false, error: 'Failed to check connection' });
+              setGitHubConnectionStatus({ connected: false, error: 'Failed to check connection' });
       } finally {
         setIsCheckingGitHub(false);
       }
@@ -270,7 +270,7 @@ export function useProjectSettings(
           setGitLabConnectionStatus(status.data);
         }
       } catch {
-        setGitLabConnectionStatus({ connected: false, error: 'Failed to check connection' });
+              setGitLabConnectionStatus({ connected: false, error: 'Failed to check connection' });
       } finally {
         setIsCheckingGitLab(false);
       }
@@ -325,7 +325,7 @@ export function useProjectSettings(
         }
       }
     } catch {
-      setClaudeAuthStatus('error');
+            setClaudeAuthStatus('error');
     } finally {
       setIsCheckingClaudeAuth(false);
     }

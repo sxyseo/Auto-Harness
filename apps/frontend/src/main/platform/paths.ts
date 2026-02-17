@@ -86,7 +86,7 @@ function expandDirPattern(parentDir: string, pattern: string): string[] {
       .filter((entry) => entry.isDirectory() && regexPattern.test(entry.name))
       .map((entry) => joinPaths(parentDir, entry.name));
   } catch {
-    return [];
+          return [];
   }
 }
 

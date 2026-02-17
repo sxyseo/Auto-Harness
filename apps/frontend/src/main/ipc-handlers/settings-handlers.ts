@@ -427,7 +427,7 @@ export function registerSettingsHandlers(
             execFileSync(getToolPath('git'), ['init'], { cwd: projectPath, stdio: 'ignore' });
             gitInitialized = true;
           } catch {
-            // Git init failed, but folder was created - continue without git
+                  // Git init failed, but folder was created - continue without git
             console.warn('Failed to initialize git repository');
           }
         }
@@ -471,7 +471,7 @@ export function registerSettingsHandlers(
 
         return path.join(homeDir, 'Documents');
       } catch {
-        return null;
+              return null;
       }
     }
   );
@@ -585,6 +585,7 @@ export function registerSettingsHandlers(
               opened = true;
               break;
             } catch {
+              // Ignore errors and try next terminal
             }
           }
 

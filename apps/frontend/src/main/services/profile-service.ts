@@ -22,7 +22,7 @@ export function validateBaseUrl(baseUrl: string): boolean {
     // Only allow http and https protocols
     return url.protocol === 'http:' || url.protocol === 'https:';
   } catch {
-    return false;
+          return false;
   }
 }
 

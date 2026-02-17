@@ -108,11 +108,11 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
           typesToAdd={[]}
           availableTypesToAdd={[]}
           onToggleIdeationType={toggleIdeationType}
-          onToggleTypeToAdd={() => {}}
+          onToggleTypeToAdd={() => { /* noop */ }}
           onSetConfig={setConfig}
           onCloseConfigDialog={() => setShowConfigDialog(false)}
-          onCloseAddMoreDialog={() => {}}
-          onConfirmAddMore={() => {}}
+          onCloseAddMoreDialog={() => { /* noop */ }}
+          onConfirmAddMore={() => { /* noop */ }}
         />
 
         <EnvConfigModal

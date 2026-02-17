@@ -113,7 +113,7 @@ export class ReleaseService extends EventEmitter {
           version.releaseUrl = this.getGitHubReleaseUrl(projectPath, version.tagName);
         }
       } catch {
-        // If we can't check, assume not released
+              // If we can't check, assume not released
         version.isReleased = false;
       }
     }
@@ -144,10 +144,10 @@ export class ReleaseService extends EventEmitter {
 
         return !!remoteTags;
       } catch {
-        return false;
+              return false;
       }
     } catch {
-      return false;
+            return false;
     }
   }
 
@@ -164,7 +164,7 @@ export class ReleaseService extends EventEmitter {
 
       return result || undefined;
     } catch {
-      return undefined;
+            return undefined;
     }
   }
 
@@ -218,7 +218,7 @@ export class ReleaseService extends EventEmitter {
         status.blockers.push(`Uncommitted changes: ${uncommittedFiles.length} file(s)`);
       }
     } catch {
-      status.checks.gitClean = {
+            status.checks.gitClean = {
         passed: false,
         message: 'Failed to check git status'
       };
@@ -234,7 +234,7 @@ export class ReleaseService extends EventEmitter {
           encoding: 'utf-8'
         }).trim();
       } catch {
-        // No upstream branch or other error - treat as empty
+              // No upstream branch or other error - treat as empty
         unpushed = '';
       }
 
@@ -253,7 +253,7 @@ export class ReleaseService extends EventEmitter {
         status.blockers.push(`${unpushedCount} unpushed commit(s) - push before releasing`);
       }
     } catch {
-      // No upstream branch - check if we have any commits at all
+            // No upstream branch - check if we have any commits at all
       status.checks.commitsPushed = {
         passed: false,
         message: 'No upstream branch configured'
@@ -288,7 +288,7 @@ export class ReleaseService extends EventEmitter {
         message: 'GitHub CLI authenticated'
       };
     } catch {
-      status.checks.githubConnected = {
+            status.checks.githubConnected = {
         passed: false,
         message: 'GitHub CLI not authenticated'
       };
@@ -356,7 +356,7 @@ export class ReleaseService extends EventEmitter {
         .filter(dirent => dirent.isDirectory())
         .map(dirent => dirent.name);
     } catch {
-      return [];
+            return [];
     }
 
     // Check each spec ID that's in this release
@@ -390,7 +390,7 @@ export class ReleaseService extends EventEmitter {
             encoding: 'utf-8'
           }).trim();
         } catch {
-          // Use default
+                // Use default
         }
 
         unmerged.push({
@@ -428,7 +428,7 @@ export class ReleaseService extends EventEmitter {
           encoding: 'utf-8'
         }).trim().replace('origin/', '');
       } catch {
-        mainBranch = 'main';
+              mainBranch = 'main';
       }
 
       // Check if worktree branch is fully merged into main
@@ -440,7 +440,7 @@ export class ReleaseService extends EventEmitter {
           encoding: 'utf-8'
         }).trim();
       } catch {
-        unmergedCommits = 'error';
+              unmergedCommits = 'error';
       }
 
       // If empty or error checking, assume merged for safety
@@ -458,7 +458,7 @@ export class ReleaseService extends EventEmitter {
 
       return !unmergedCommits;
     } catch {
-      // If we can't determine, assume NOT merged (safer)
+            // If we can't determine, assume NOT merged (safer)
       return false;
     }
   }
@@ -484,7 +484,7 @@ export class ReleaseService extends EventEmitter {
         encoding: 'utf-8'
       }).trim();
     } catch {
-      return { success: false, error: 'Failed to get current git branch' };
+            return { success: false, error: 'Failed to get current git branch' };
     }
 
     // Check for uncommitted changes
@@ -539,7 +539,7 @@ export class ReleaseService extends EventEmitter {
           encoding: 'utf-8'
         });
       } catch {
-        // Pull might fail if no upstream, continue anyway
+              // Pull might fail if no upstream, continue anyway
       }
 
       // Update package.json
@@ -611,7 +611,7 @@ export class ReleaseService extends EventEmitter {
           });
         }
       } catch {
-        // Log but don't fail - user might need to manually switch back
+              // Log but don't fail - user might need to manually switch back
         console.warn('[ReleaseService] Failed to restore original branch');
       }
 
@@ -622,7 +622,7 @@ export class ReleaseService extends EventEmitter {
             encoding: 'utf-8'
           });
         } catch {
-          // Stash conflict - warn user
+                // Stash conflict - warn user
           console.warn('[ReleaseService] Failed to pop stash - user may need to run "git stash pop" manually');
         }
       }
@@ -748,7 +748,7 @@ export class ReleaseService extends EventEmitter {
             encoding: 'utf-8'
           }).trim();
         } catch {
-          releaseUrl = '';
+                releaseUrl = '';
         }
       }
 
@@ -775,7 +775,7 @@ export class ReleaseService extends EventEmitter {
           encoding: 'utf-8'
         });
       } catch {
-        // Ignore cleanup errors
+              // Ignore cleanup errors
       }
 
       this.emitProgress(request.projectId, {

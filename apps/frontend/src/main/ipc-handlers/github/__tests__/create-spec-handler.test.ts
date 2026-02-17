@@ -1,10 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, } from 'vitest';
 import {
   hasEnrichmentContent,
   buildEnrichedTaskDescription,
 } from '../create-spec-handler';
 import { createDefaultEnrichment } from '../../../../shared/types/enrichment';
-import type { IssueEnrichment } from '../../../../shared/types/enrichment';
 
 // ============================================
 // hasEnrichmentContent

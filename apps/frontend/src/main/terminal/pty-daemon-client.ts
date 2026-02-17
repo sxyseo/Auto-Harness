@@ -83,7 +83,7 @@ class PtyDaemonClient {
       await this.tryConnect();
       console.warn('[PtyDaemonClient] Connected to existing daemon');
     } catch {
-      // Spawn daemon and connect
+            // Spawn daemon and connect
       console.warn('[PtyDaemonClient] Spawning new daemon...');
       await this.spawnDaemon();
       await this.tryConnect();
@@ -319,7 +319,7 @@ class PtyDaemonClient {
     try {
       this.send({ type: 'write', id, data });
     } catch {
-      // Socket may be closed during teardown
+            // Socket may be closed during teardown
     }
   }
 
@@ -331,7 +331,7 @@ class PtyDaemonClient {
     try {
       this.send({ type: 'resize', id, data: { cols, rows } });
     } catch {
-      // Socket may be closed during teardown
+            // Socket may be closed during teardown
     }
   }
 
@@ -398,7 +398,7 @@ class PtyDaemonClient {
       await this.request<{ type: 'pong' }>({ type: 'ping' });
       return true;
     } catch {
-      return false;
+            return false;
     }
   }
 
@@ -445,12 +445,12 @@ class PtyDaemonClient {
                 daemonProc.kill('SIGKILL');
               }
             } catch {
-              // Process may already be dead
+                    // Process may already be dead
             }
           }, GRACEFUL_KILL_TIMEOUT_MS);
         }
       } catch {
-        // Process may already be dead
+              // Process may already be dead
       }
       this.daemonProcess = null;
     }

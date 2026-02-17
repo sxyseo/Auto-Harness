@@ -109,16 +109,17 @@ def _is_command_safe(command: str) -> bool:
     base_cmd = tokens[0]
 
     # Check if the base command (or full prefix) is in the allowlist
-    if not any(
-        base_cmd == allowed
-        or base_cmd == allowed.split()[0]
-        and command.startswith(allowed)
+    # Both conditions must be true: base command matches AND command starts with allowed prefix
+    base_cmd_allowed = any(
+        base_cmd == allowed or base_cmd == allowed.split()[0]
         for allowed in INVESTIGATION_BASH_ALLOWLIST
-    ):
-        if not any(
-            command.startswith(allowed) for allowed in INVESTIGATION_BASH_ALLOWLIST
-        ):
-            return False
+    )
+    full_prefix_allowed = any(
+        command.startswith(allowed) for allowed in INVESTIGATION_BASH_ALLOWLIST
+    )
+
+    if not (base_cmd_allowed and full_prefix_allowed):
+        return False
 
     # Extra guard for find: block flags that execute commands or delete files
     if base_cmd == "find":

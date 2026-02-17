@@ -78,8 +78,7 @@ export function TaskMetadata({ task }: TaskMetadataProps) {
   // Detect if content overflows the collapsed height
   // Re-check when description changes (content height depends on rendered description)
   // Reset expand state when switching tasks to avoid stale expanded state
-  // biome-ignore lint/correctness/useExhaustiveDependencies: task.description triggers re-render which changes content height
-  useLayoutEffect(() => {
+    useLayoutEffect(() => {
     setIsExpanded(false);
     const element = contentRef.current;
     if (element) {

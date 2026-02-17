@@ -93,7 +93,7 @@ export function findPythonCommand(): string | null {
         console.warn(`[Python] ${cmd} version too old: ${validation.message}`);
       }
     } catch {
-      // Command not found or errored, try next
+            // Command not found or errored, try next
       console.warn(`[Python] Command not found or errored: ${cmd}`);
     }
   }
@@ -123,7 +123,7 @@ function getPythonVersion(pythonCmd: string): string | null {
     const match = version.match(/Python (\d+\.\d+\.\d+)/);
     return match ? match[1] : null;
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -336,7 +336,7 @@ function isExecutable(filePath: string): boolean {
     accessSync(filePath, constants.X_OK);
     return true;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -357,7 +357,7 @@ function verifyIsPython(pythonCmd: string): boolean {
     // Must output "Python X.Y.Z"
     return /^Python \d+\.\d+/.test(output);
   } catch {
-    return false;
+          return false;
   }
 }
 

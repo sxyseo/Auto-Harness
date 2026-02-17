@@ -155,7 +155,7 @@ export function GraphitiStep({ onNext, onBack, onSkip }: GraphitiStepProps) {
         const result = await window.electronAPI.getMemoryInfrastructureStatus();
         setKuzuAvailable(!!(result?.success && result?.data?.memory?.kuzuInstalled ));
       } catch {
-        setKuzuAvailable(false);
+              setKuzuAvailable(false);
       } finally {
         setIsCheckingInfra(false);
       }

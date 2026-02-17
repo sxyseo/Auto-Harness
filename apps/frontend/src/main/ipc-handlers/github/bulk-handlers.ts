@@ -19,6 +19,7 @@ import { withProject } from './utils/project-middleware';
 import { getAugmentedEnv } from '../../env-utils';
 import { getToolPath } from '../../cli-tool-manager';
 import { createContextLogger } from './utils/logger';
+import { validateLabel, validateLogin } from '../../../shared/utils/mutation-validation';
 
 const execFileAsync = promisify(execFile);
 const logger = createContextLogger('GitHub Bulk Operations');
@@ -29,6 +30,7 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Build gh CLI arguments for a single bulk action on one issue.
+ * Validates labels and assignees before building arguments.
  */
 function buildGhArgs(
   action: BulkActionType,
@@ -42,14 +44,46 @@ function buildGhArgs(
       return ['issue', 'close', num];
     case 'reopen':
       return ['issue', 'reopen', num];
-    case 'add-label':
-      return ['issue', 'edit', num, '--add-label', (payload?.labels ?? []).join(',')];
-    case 'remove-label':
-      return ['issue', 'edit', num, '--remove-label', (payload?.labels ?? []).join(',')];
-    case 'add-assignee':
-      return ['issue', 'edit', num, '--add-assignee', (payload?.assignees ?? []).join(',')];
-    case 'remove-assignee':
-      return ['issue', 'edit', num, '--remove-assignee', (payload?.assignees ?? []).join(',')];
+    case 'add-label': {
+      const labels = payload?.labels ?? [];
+      for (const label of labels) {
+        const validation = validateLabel(label);
+        if (!validation.valid) {
+          throw new Error(`Invalid label: ${validation.error}`);
+        }
+      }
+      return ['issue', 'edit', num, '--add-label', labels.join(',')];
+    }
+    case 'remove-label': {
+      const labels = payload?.labels ?? [];
+      for (const label of labels) {
+        const validation = validateLabel(label);
+        if (!validation.valid) {
+          throw new Error(`Invalid label: ${validation.error}`);
+        }
+      }
+      return ['issue', 'edit', num, '--remove-label', labels.join(',')];
+    }
+    case 'add-assignee': {
+      const assignees = payload?.assignees ?? [];
+      for (const assignee of assignees) {
+        const validation = validateLogin(assignee);
+        if (!validation.valid) {
+          throw new Error(`Invalid assignee: ${validation.error}`);
+        }
+      }
+      return ['issue', 'edit', num, '--add-assignee', assignees.join(',')];
+    }
+    case 'remove-assignee': {
+      const assignees = payload?.assignees ?? [];
+      for (const assignee of assignees) {
+        const validation = validateLogin(assignee);
+        if (!validation.valid) {
+          throw new Error(`Invalid assignee: ${validation.error}`);
+        }
+      }
+      return ['issue', 'edit', num, '--remove-assignee', assignees.join(',')];
+    }
     default:
       return [];
   }

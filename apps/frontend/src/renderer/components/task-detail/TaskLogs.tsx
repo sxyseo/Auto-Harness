@@ -326,7 +326,7 @@ function LogEntry({ entry }: LogEntryProps) {
       // Use system locale for date and time formatting
       return date.toLocaleString();
     } catch {
-      return '';
+            return '';
     }
   };
 

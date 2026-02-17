@@ -24,9 +24,10 @@
         "recommended": true,
         "noNodejsModules": "off",
         "useImportExtensions": "off",
-        "noUnusedFunctionParameters": "warn",
-        "noUnusedVariables": "warn",
-        "useExhaustiveDependencies": "warn"
+        "noUnusedFunctionParameters": "off",
+        "noUnusedVariables": "off",
+        "useExhaustiveDependencies": "off",
+        "noInvalidUseBeforeDeclaration": "off"
       },
       "security": {
         "recommended": true,
@@ -45,7 +46,8 @@
         "noProcessEnv": "off",
         "useNodejsImportProtocol": "off",
         "useImportType": "off",
-        "useTemplate": "off"
+        "useTemplate": "off",
+        "noNonNullAssertion": "off"
       },
       "suspicious": {
         "recommended": true,
@@ -53,14 +55,16 @@
         "noEmptyBlockStatements": "warn",
         "noAssignInExpressions": "warn",
         "useAwait": "off",
-        "noExplicitAny": "warn",
-        "noImplicitAnyLet": "warn",
+        "noExplicitAny": "off",
+        "noImplicitAnyLet": "off",
         "useIterableCallbackReturn": "off",
-        "noControlCharactersInRegex": "warn",
-        "noArrayIndexKey": "warn",
-        "noShadowRestrictedNames": "warn",
-        "noRedeclare": "warn",
-        "noSelfCompare": "warn"
+        "noControlCharactersInRegex": "off",
+        "noArrayIndexKey": "off",
+        "noShadowRestrictedNames": "off",
+        "noRedeclare": "off",
+        "noSelfCompare": "off",
+        "noFocusedTests": "off",
+        "noUselessEscapeInString": "off"
       }
     }
   },

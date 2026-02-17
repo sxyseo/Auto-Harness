@@ -35,7 +35,7 @@ Object.defineProperty(window, 'electronAPI', {
       checkMergeReadiness: vi.fn().mockResolvedValue({
         blockers: []
       }),
-      onPRLogsUpdated: vi.fn().mockReturnValue(() => {})
+      onPRLogsUpdated: vi.fn().mockReturnValue(() => { /* noop */ })
     }
   }
 });

@@ -162,7 +162,7 @@ async function getTokenFromGhCliAsync(): Promise<string | null> {
     const token = stdout.trim();
     return token || null;
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -179,7 +179,7 @@ function getTokenFromGhCliSync(): string | null {
     }).trim();
     return token || null;
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -218,7 +218,7 @@ export function getGitHubConfig(project: Project): GitHubConfig | null {
     if (!token || !repo) return null;
     return { token, repo };
   } catch {
-    return null;
+          return null;
   }
 }
 

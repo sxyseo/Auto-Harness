@@ -618,7 +618,7 @@ export function cleanupInvestigationListeners(): void {
     try {
       cleanup();
     } catch {
-      // Ignore cleanup errors
+            // Ignore cleanup errors
     }
   }
   cleanupFunctions = [];

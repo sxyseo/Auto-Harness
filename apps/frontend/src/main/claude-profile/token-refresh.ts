@@ -220,7 +220,7 @@ export async function refreshOAuthToken(
         try {
           errorData = await response.json();
         } catch {
-          // Ignore JSON parse errors
+                // Ignore JSON parse errors
         }
 
         const errorCode = errorData.error || `http_${response.status}`;

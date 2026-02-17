@@ -256,7 +256,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       loadProfileUsageData(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, loadProfileUsageData]);
+  }, [isOpen, loadProfileUsageData, loadAutoSwitchSettings, loadClaudeProfiles, loadPriorityOrder]);
 
   // Subscribe to usage updates for real-time data
   useEffect(() => {
@@ -612,7 +612,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
     try {
       return new URL(url).host;
     } catch {
-      return url;
+            return url;
     }
   };
 

@@ -308,7 +308,7 @@ function createWindow(): void {
         return { action: 'deny' };
       }
     } catch {
-      console.warn('[main] Blocked invalid URL:', details.url);
+            console.warn('[main] Blocked invalid URL:', details.url);
       return { action: 'deny' };
     }
     shell.openExternal(details.url).catch((error) => {
@@ -410,7 +410,7 @@ app.whenReady().then(() => {
         accessSync(specRunnerPath);
         specRunnerExists = true;
       } catch {
-        // File doesn't exist or isn't accessible
+              // File doesn't exist or isn't accessible
       }
 
       if (!specRunnerExists) {
@@ -428,7 +428,7 @@ app.whenReady().then(() => {
             accessSync(correctedSpecRunnerPath);
             correctedPathExists = true;
           } catch {
-            // Corrected path doesn't exist
+                  // Corrected path doesn't exist
           }
 
           if (correctedPathExists) {

@@ -459,7 +459,7 @@ export function registerAITriageHandlers(
           try {
             fs.unlinkSync(reviewPath);
           } catch {
-            // File may not exist
+                  // File may not exist
           }
           return true;
         }
@@ -488,7 +488,7 @@ export function registerAITriageHandlers(
             return data.items as TriageReviewItem[];
           }
         } catch {
-          // File doesn't exist or is corrupted
+                // File doesn't exist or is corrupted
         }
 
         return [];

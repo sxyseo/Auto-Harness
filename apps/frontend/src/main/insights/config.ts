@@ -99,7 +99,7 @@ export class InsightsConfig {
 
       return envVars;
     } catch {
-      return {};
+            return {};
     }
   }
 

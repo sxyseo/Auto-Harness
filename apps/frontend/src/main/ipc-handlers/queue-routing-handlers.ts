@@ -14,7 +14,6 @@ import { IPC_CHANNELS } from '../../shared/constants';
 import type { AgentManager } from '../agent/agent-manager';
 import type { ProfileAssignmentReason, RunningTasksByProfile, ClaudeProfile } from '../../shared/types';
 import type { UnifiedSwapTarget } from '../claude-profile-manager';
-import type { UnifiedAccount } from '../../shared/types/unified-account';
 import type { ClaudeProfileManager } from '../claude-profile-manager';
 
 /**

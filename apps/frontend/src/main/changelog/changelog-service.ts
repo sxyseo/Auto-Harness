@@ -169,7 +169,7 @@ export class ChangelogService extends EventEmitter {
 
       return envVars;
     } catch {
-      return {};
+            return {};
     }
   }
 

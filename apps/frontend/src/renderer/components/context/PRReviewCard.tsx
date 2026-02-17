@@ -53,7 +53,7 @@ function parsePRReviewContent(content: string): ParsedPRReview | null {
   try {
     return JSON.parse(content);
   } catch {
-    return null;
+          return null;
   }
 }
 

@@ -42,7 +42,7 @@ function parseInstanceUrl(value: string): string | null {
     }
     return parsed.origin;
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -113,7 +113,7 @@ function getTokenFromGlabCli(instanceUrl?: string): string | null {
     }).trim();
     return token || null;
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -133,7 +133,7 @@ async function fileExists(filePath: string): Promise<boolean> {
     await access(filePath);
     return true;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -172,7 +172,7 @@ export async function getGitLabConfig(project: Project): Promise<GitLabConfig | 
     if (!token || !projectRef) return null;
     return { token, instanceUrl, project: projectRef };
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -202,7 +202,7 @@ export function normalizeProjectReference(project: string, instanceUrl: string =
   try {
     gitlabHostname = new URL(instanceUrl).hostname;
   } catch {
-    gitlabHostname = 'gitlab.com';
+          gitlabHostname = 'gitlab.com';
   }
 
   // Escape special regex characters in hostname to prevent ReDoS
@@ -406,6 +406,6 @@ export function detectGitLabProjectFromRemote(projectPath: string): { project: s
 
     return null;
   } catch {
-    return null;
+          return null;
   }
 }

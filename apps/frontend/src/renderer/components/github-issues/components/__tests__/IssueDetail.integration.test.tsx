@@ -171,18 +171,18 @@ describe('IssueDetail integration', () => {
         repoLabels={repoLabels}
       />,
     );
-    // LabelManager renders a section with aria-label "Label manager"
-    expect(screen.getByLabelText('Label manager')).toBeDefined();
-    // Should show the "Add Label" button
-    expect(screen.getByRole('button', { name: 'Add label' })).toBeDefined();
-    // Should show current label with remove button
-    expect(screen.getByLabelText('Remove label bug')).toBeDefined();
+    // LabelManager renders a section with aria-label from translation
+    expect(screen.getByLabelText('labels.manage')).toBeDefined();
+    // Should show the "Add label" button
+    expect(screen.getByRole('button', { name: 'labels.add' })).toBeDefined();
+    // Should show current label with remove button (note: simple mock doesn't interpolate)
+    expect(screen.getByLabelText('labels.removeNamed')).toBeDefined();
   });
 
   it('renders static label badges when onAddLabels is not provided', () => {
     render(<IssueDetail {...baseProps} />);
     // No LabelManager section
-    expect(screen.queryByLabelText('Label manager')).toBeNull();
+    expect(screen.queryByLabelText('labels.manage')).toBeNull();
     // Static badge with label name still renders
     expect(screen.getByText('bug')).toBeDefined();
   });
@@ -198,8 +198,8 @@ describe('IssueDetail integration', () => {
         repoLabels={repoLabels}
       />,
     );
-    // Click the remove button on the 'bug' label
-    fireEvent.click(screen.getByLabelText('Remove label bug'));
+    // Click the remove button on the 'bug' label (note: simple mock doesn't interpolate)
+    fireEvent.click(screen.getByLabelText('labels.removeNamed'));
     expect(onRemoveLabels).toHaveBeenCalledWith(['bug']);
   });
 
@@ -213,18 +213,18 @@ describe('IssueDetail integration', () => {
         collaborators={['dev1', 'dev2']}
       />,
     );
-    // AssigneeManager renders a section with aria-label "Assignee manager"
-    expect(screen.getByLabelText('Assignee manager')).toBeDefined();
+    // AssigneeManager renders a section with aria-label from translation
+    expect(screen.getByLabelText('assignees.manage')).toBeDefined();
     // Should show the "Assign" button
-    expect(screen.getByRole('button', { name: 'Assign' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'assignees.assign' })).toBeDefined();
     // Should show current assignee with remove button
-    expect(screen.getByLabelText('Remove assignee dev1')).toBeDefined();
+    expect(screen.getByLabelText('assignees.unassign')).toBeDefined();
   });
 
   it('renders static assignee badges when onAddAssignees is not provided', () => {
     render(<IssueDetail {...baseProps} />);
     // No AssigneeManager section
-    expect(screen.queryByLabelText('Assignee manager')).toBeNull();
+    expect(screen.queryByLabelText('assignees.manage')).toBeNull();
     // Static badge with assignee name still renders
     expect(screen.getByText('dev1')).toBeDefined();
   });
@@ -239,7 +239,7 @@ describe('IssueDetail integration', () => {
         collaborators={['dev1', 'dev2']}
       />,
     );
-    fireEvent.click(screen.getByLabelText('Remove assignee dev1'));
+    fireEvent.click(screen.getByLabelText('assignees.unassign'));
     expect(onRemoveAssignees).toHaveBeenCalledWith(['dev1']);
   });
 

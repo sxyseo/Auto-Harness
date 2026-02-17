@@ -44,7 +44,7 @@ function parseNDJSON(chunk: string, bufferRef: { current: string }): ProgressDat
         const progressData = JSON.parse(line);
         results.push(progressData);
       } catch {
-        // Skip invalid JSON - allows parser to be resilient to malformed data
+              // Skip invalid JSON - allows parser to be resilient to malformed data
       }
     }
   });

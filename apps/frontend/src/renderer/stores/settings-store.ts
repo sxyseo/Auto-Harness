@@ -104,7 +104,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
             }));
           }
         } catch {
-          // Fallback on fetch error: add profile locally
+                // Fallback on fetch error: add profile locally
           set((state) => ({
             profiles: [...state.profiles, result.data!],
             profilesLoading: false
@@ -391,7 +391,7 @@ export async function saveSettings(updates: Partial<AppSettings>): Promise<boole
     }
     return false;
   } catch {
-    return false;
+          return false;
   }
 }
 

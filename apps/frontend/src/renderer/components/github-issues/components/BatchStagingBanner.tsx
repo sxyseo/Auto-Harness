@@ -56,7 +56,7 @@ export function BatchStagingBanner({
               )}
               <Layers className="h-4 w-4 text-info" />
               <span className="text-sm font-medium text-foreground">
-                {t('investigation.batchStaging.title', 'Pending Task Creations')}
+                {t('investigation.batchStaging.title')}
               </span>
               <Badge variant="info" className="text-[10px] px-1.5 py-0">
                 {pendingItems.length}

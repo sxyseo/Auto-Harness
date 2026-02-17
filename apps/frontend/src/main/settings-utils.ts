@@ -38,7 +38,7 @@ export function readSettingsFile(): Record<string, unknown> | undefined {
     const content = readFileSync(settingsPath, 'utf-8');
     return JSON.parse(content);
   } catch {
-    // Return undefined on parse error - caller will use defaults
+          // Return undefined on parse error - caller will use defaults
     return undefined;
   }
 }
@@ -76,14 +76,14 @@ export async function readSettingsFileAsync(): Promise<Record<string, unknown> |
   try {
     await fsPromises.access(settingsPath);
   } catch {
-    return undefined;
+          return undefined;
   }
 
   try {
     const content = await fsPromises.readFile(settingsPath, 'utf-8');
     return JSON.parse(content);
   } catch {
-    // Return undefined on parse error - caller will use defaults
+          // Return undefined on parse error - caller will use defaults
     return undefined;
   }
 }

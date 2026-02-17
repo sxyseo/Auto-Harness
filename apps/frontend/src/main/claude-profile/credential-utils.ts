@@ -396,7 +396,7 @@ function parseCredentialJson<T extends PlatformCredentials>(
   try {
     data = JSON.parse(credentialsJson);
   } catch {
-    console.warn(`[CredentialUtils] Failed to parse credential JSON for ${identifier}`);
+          console.warn(`[CredentialUtils] Failed to parse credential JSON for ${identifier}`);
     return extractFn({}) as T;
   }
 
@@ -478,7 +478,7 @@ function getCredentialsFromFile(
     try {
       data = JSON.parse(content);
     } catch {
-      console.warn(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
+            console.warn(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
       const errorResult = { token: null, email: null };
       credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
       return errorResult;
@@ -561,7 +561,7 @@ function getFullCredentialsFromFile(
     try {
       data = JSON.parse(content);
     } catch {
-      console.warn(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
+            console.warn(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
       return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null };
     }
 
@@ -1637,7 +1637,7 @@ function updateMacOSKeychainCredentials(
         console.warn('[CredentialUtils:macOS:Update] Deleted existing Keychain entry for service:', serviceName);
       }
     } catch {
-      // Entry didn't exist - that's fine, we'll create it
+            // Entry didn't exist - that's fine, we'll create it
       if (isDebug) {
         console.warn('[CredentialUtils:macOS:Update] No existing entry to delete for service:', serviceName);
       }
@@ -2102,7 +2102,7 @@ function updateWindowsFileCredentials(
           unlinkSync(tempPath);
         }
       } catch {
-        // Ignore cleanup errors
+              // Ignore cleanup errors
       }
       throw writeError;
     }

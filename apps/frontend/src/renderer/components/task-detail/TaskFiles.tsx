@@ -238,7 +238,7 @@ export function TaskFiles({ task }: TaskFilesProps) {
           </pre>
         );
       } catch {
-        // If JSON parsing fails, show raw content
+              // If JSON parsing fails, show raw content
         return (
           <pre className="text-xs font-mono text-foreground whitespace-pre-wrap break-words p-4">
             {fileContent}

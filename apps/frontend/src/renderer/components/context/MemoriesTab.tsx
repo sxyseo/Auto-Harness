@@ -44,7 +44,7 @@ function isPRReview(memory: MemoryEpisode): boolean {
     const parsed = JSON.parse(memory.content);
     return parsed.prNumber !== undefined && parsed.verdict !== undefined;
   } catch {
-    return false;
+          return false;
   }
 }
 

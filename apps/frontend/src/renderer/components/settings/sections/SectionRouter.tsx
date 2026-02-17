@@ -190,7 +190,7 @@ export function SectionRouter({
               showOpenAIKey={showOpenAIKey}
               setShowOpenAIKey={setShowOpenAIKey}
               expanded={true}
-              onToggle={() => {}}
+              onToggle={() => { /* noop */ }}
             />
           </InitializationGuard>
         </SettingsSection>

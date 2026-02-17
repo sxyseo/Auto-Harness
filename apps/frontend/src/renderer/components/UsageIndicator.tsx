@@ -111,7 +111,7 @@ export function UsageIndicator() {
           maximumFractionDigits: 2
         }).format(value);
       } catch {
-        // Intl may fail in some environments, fall back to toString()
+              // Intl may fail in some environments, fall back to toString()
       }
     }
     return value.toString();

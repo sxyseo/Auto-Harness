@@ -328,7 +328,7 @@ export const useKanbanSettingsStore = create<KanbanSettingsState>((set, get) => 
         set({ columnPreferences: createDefaultPreferences() });
       }
     } catch {
-      set({ columnPreferences: createDefaultPreferences() });
+            set({ columnPreferences: createDefaultPreferences() });
     }
 
     // Then, async load from main process via IPC (source of truth)
@@ -350,7 +350,7 @@ export const useKanbanSettingsStore = create<KanbanSettingsState>((set, get) => 
               const key = getKanbanSettingsKey(projectId);
               localStorage.setItem(key, JSON.stringify(result.data));
             } catch {
-              // localStorage write failed, non-critical
+                    // localStorage write failed, non-critical
             }
             return;
           }
@@ -358,7 +358,7 @@ export const useKanbanSettingsStore = create<KanbanSettingsState>((set, get) => 
 
         // IPC returned no data or invalid data — keep whatever was loaded from localStorage/defaults
       } catch {
-        // IPC call failed — keep localStorage/default data already set above
+              // IPC call failed — keep localStorage/default data already set above
       }
     })();
   },
@@ -379,7 +379,7 @@ export const useKanbanSettingsStore = create<KanbanSettingsState>((set, get) => 
 
       return true;
     } catch {
-      return false;
+            return false;
     }
   },
 
@@ -392,7 +392,7 @@ export const useKanbanSettingsStore = create<KanbanSettingsState>((set, get) => 
       // Also save reset state to main process
       saveKanbanPreferencesToMain(projectId);
     } catch {
-      // Reset failed, non-critical
+            // Reset failed, non-critical
     }
   },
 

@@ -48,14 +48,14 @@ function parseMemoryContent(content: string): ParsedSessionInsight | null {
   try {
     return JSON.parse(content);
   } catch {
-    // Try to parse nested JSON (from our LadybugDB query)
+          // Try to parse nested JSON (from our LadybugDB query)
     try {
       const outer = JSON.parse(content);
       if (typeof outer === 'object') {
         return outer;
       }
     } catch {
-      return null;
+            return null;
     }
     return null;
   }
@@ -102,7 +102,7 @@ function isPRReviewMemory(memory: MemoryEpisode): boolean {
     const parsed = JSON.parse(memory.content);
     return parsed.prNumber !== undefined && parsed.verdict !== undefined;
   } catch {
-    return false;
+          return false;
   }
 }
 

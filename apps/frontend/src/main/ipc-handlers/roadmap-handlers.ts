@@ -151,7 +151,7 @@ export function registerRoadmapHandlers(
                 : new Date(),
             };
           } catch {
-            // Ignore competitor analysis parsing errors - it's optional
+                  // Ignore competitor analysis parsing errors - it's optional
           }
         }
 

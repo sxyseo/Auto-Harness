@@ -71,7 +71,7 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
           setIsDownloaded(true);
         }
       } catch {
-        // Silent failure
+              // Silent failure
       }
     };
     checkDownloaded();

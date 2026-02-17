@@ -459,7 +459,7 @@ class PtyDaemon {
     try {
       socket.write(JSON.stringify(response) + '\n');
     } catch {
-      // Socket may be closed, ignore
+            // Socket may be closed, ignore
       console.warn('[PTY Daemon] Failed to send response (socket closed?)');
     }
   }

@@ -71,7 +71,7 @@ export function getWritablePath(originalPath: string, filename: string): string 
       return originalPath;
     }
   } catch {
-    // Fall back to XDG data directory
+          // Fall back to XDG data directory
     if (isImmutableEnvironment()) {
       const fallbackDir = getAppPath('data');
       ensureDir(fallbackDir);

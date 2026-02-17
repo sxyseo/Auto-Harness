@@ -1,4 +1,4 @@
-import type { GitHubIssue, GitHubInvestigationResult, InvestigationState, InvestigationReport, InvestigationProgress, InvestigationDismissReason, SuggestedLabel } from '@shared/types';
+import type { GitHubIssue, InvestigationState, InvestigationReport, InvestigationProgress, InvestigationDismissReason, SuggestedLabel } from '@shared/types';
 import type { IssueDependencies } from '@shared/types/dependencies';
 
 export type FilterState = 'open' | 'closed' | 'all';

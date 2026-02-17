@@ -39,7 +39,7 @@ function cleanupTempFile(tmpPath: string): void {
   try {
     fs.unlinkSync(tmpPath);
   } catch {
-    // Already cleaned up or never created
+          // Already cleaned up or never created
   }
 }
 

@@ -85,6 +85,6 @@ export async function validateFilePermissions(filePath: string): Promise<boolean
     await fs.chmod(filePath, 0o600);
     return true;
   } catch {
-    return false;
+          return false;
   }
 }

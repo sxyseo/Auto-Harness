@@ -38,7 +38,7 @@ function readConfig(projectPath: string): LabelSyncConfig {
       return JSON.parse(fs.readFileSync(configPath, 'utf-8')) as LabelSyncConfig;
     }
   } catch {
-    // Fall through to default
+          // Fall through to default
   }
   return { enabled: false, lastSyncedAt: null };
 }
@@ -118,7 +118,7 @@ export function registerLabelSyncHandlers(
                 '--remove-label', label,
               ], { env, cwd: project.path, encoding: 'utf-8' });
             } catch {
-              // Continue on error — label may not exist on this issue
+                    // Continue on error — label may not exist on this issue
             }
           }
 
@@ -130,7 +130,7 @@ export function registerLabelSyncHandlers(
                 'label', 'delete', label.name, '--yes',
               ], { env, cwd: project.path, encoding: 'utf-8' });
             } catch {
-              // Continue — label may not exist
+                    // Continue — label may not exist
             }
           }
         }

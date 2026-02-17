@@ -242,7 +242,7 @@ describe('killProcessGracefully', () => {
     });
 
     it('logs debug messages when debug is enabled', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { /* noop */ });
 
       killProcessGracefully(mockProcess, {
         debug: true,
@@ -258,7 +258,7 @@ describe('killProcessGracefully', () => {
     });
 
     it('does not log when debug is disabled', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { /* noop */ });
 
       killProcessGracefully(mockProcess, { debug: false });
 
@@ -268,7 +268,7 @@ describe('killProcessGracefully', () => {
     });
 
     it('logs warning when process.once is unavailable (Issue #6 fix)', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { /* noop */ });
 
       // Create process without .once method
       const processWithoutOnce = {

@@ -112,7 +112,7 @@ export function useGitHubInvestigation(projectId: string | undefined, issueNumbe
   const lastInvestigationResult = null as GitHubInvestigationResult | null;
 
   /** @deprecated No-op. Will be removed in F6. */
-  const resetInvestigationStatus = useCallback(() => {}, []);
+  const resetInvestigationStatus = useCallback(() => { /* noop */ }, []);
 
   return {
     /** Per-issue investigation state (null if no investigation started) */

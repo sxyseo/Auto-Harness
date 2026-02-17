@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PRStatusPoller, getPRStatusPoller } from '../pr-status-poller';
+import { PRStatusPoller, } from '../pr-status-poller';
 import { POLLING_INTERVALS, RATE_LIMIT_THRESHOLDS } from '../../../shared/types/pr-status';
 import type { PRStatusUpdate, PollingMetadata, PRStatus } from '../../../shared/types/pr-status';
 
@@ -55,7 +55,7 @@ describe('PRStatusPoller Integration Tests', () => {
   /**
    * Helper to create a standard successful PR response
    */
-  function createSuccessfulPRResponse(prNumber: number, options?: {
+  function _createSuccessfulPRResponse(prNumber: number, options?: {
     updatedAt?: string;
     mergeableState?: string;
     checksState?: 'success' | 'pending' | 'failure';
@@ -451,8 +451,7 @@ describe('PRStatusPoller Integration Tests', () => {
     });
 
     it('should handle 401 errors indicating expired token', async () => {
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Mock console.error for test
-      vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => { /* Mock console.error for test */ });
 
       setupFullPollingMocks(1);
       await poller.startPolling('owner/repo', [1], 'test-token');
@@ -470,8 +469,7 @@ describe('PRStatusPoller Integration Tests', () => {
     });
 
     it('should clear errors when restarting with fresh token', async () => {
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Mock console.error for test
-      vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => { /* Mock console.error for test */ });
 
       // Start with error
       mockGithubFetchWithETag.mockRejectedValue(new Error('401 Unauthorized'));
@@ -549,8 +547,7 @@ describe('PRStatusPoller Integration Tests', () => {
 
   describe('Error Recovery', () => {
     it('should continue polling after transient network error', async () => {
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Mock console.error for test
-      vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => { /* Mock console.error for test */ });
 
       setupFullPollingMocks(1);
       await poller.startPolling('owner/repo', [1], 'test-token');

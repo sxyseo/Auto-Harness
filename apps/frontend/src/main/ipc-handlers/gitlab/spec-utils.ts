@@ -156,7 +156,7 @@ function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {
     if (parsedUrl.username || parsedUrl.password) return '';
     return parsedUrl.toString();
   } catch {
-    return '';
+          return '';
   }
 }
 
@@ -168,7 +168,7 @@ function sanitizeInstanceUrl(value: unknown): string {
     if (parsed.username || parsed.password) return '';
     return parsed.origin;
   } catch {
-    return '';
+          return '';
   }
 }
 
@@ -267,7 +267,7 @@ async function pathExists(filePath: string): Promise<boolean> {
     await stat(filePath);
     return true;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -417,7 +417,7 @@ export async function createSpecForIssue(
           const stats = await stat(metadataPath);
           updatedAt = new Date(stats.mtimeMs);
         } catch {
-          // Fallback to issue dates if metadata read fails
+                // Fallback to issue dates if metadata read fails
         }
       }
 

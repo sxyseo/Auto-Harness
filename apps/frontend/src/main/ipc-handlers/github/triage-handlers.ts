@@ -106,7 +106,7 @@ function getTriageConfig(project: Project): TriageConfig {
       enableComments: data.enable_triage_comments ?? false,
     };
   } catch {
-    // Return defaults if file doesn't exist or is invalid
+          // Return defaults if file doesn't exist or is invalid
   }
 
   return {
@@ -131,7 +131,7 @@ async function saveTriageConfig(project: Project, config: TriageConfig): Promise
   try {
     existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
   } catch {
-    // Use empty config if file doesn't exist or is invalid
+          // Use empty config if file doesn't exist or is invalid
   }
 
   const updatedConfig = {
@@ -177,12 +177,12 @@ function getTriageResults(project: Project): TriageResult[] {
             triagedAt: data.triaged_at ?? new Date().toISOString(),
           });
         } catch {
-          // Skip invalid files
+                // Skip invalid files
         }
       }
     }
   } catch {
-    // Return empty array if directory doesn't exist
+          // Return empty array if directory doesn't exist
     return [];
   }
 

@@ -67,7 +67,7 @@ export function findAllSpecPaths(
         }
       }
     } catch {
-      // Ignore errors reading worktrees
+            // Ignore errors reading worktrees
     }
   }
 

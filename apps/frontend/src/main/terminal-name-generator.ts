@@ -94,7 +94,7 @@ export class TerminalNameGenerator extends EventEmitter {
 
       return envVars;
     } catch {
-      return {};
+            return {};
     }
   }
 

@@ -37,11 +37,16 @@ import { createContextLogger } from './utils/logger';
 
 const logger = createContextLogger('GitHub Mutations');
 
+const MAX_TEMP_FILE_SIZE = 65_536; // Match GitHub's limit
+
 /**
  * Write content to a temp file, returning the path.
  * Caller is responsible for cleanup via cleanupTempFile.
  */
 function writeTempFile(prefix: string, content: string): string {
+  if (Buffer.byteLength(content, 'utf-8') > MAX_TEMP_FILE_SIZE) {
+    throw new Error(`Content exceeds maximum size of ${MAX_TEMP_FILE_SIZE} bytes`);
+  }
   const tmpPath = path.join(os.tmpdir(), `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   fs.writeFileSync(tmpPath, content, 'utf-8');
   return tmpPath;
@@ -54,7 +59,7 @@ function cleanupTempFile(tmpPath: string): void {
   try {
     fs.unlinkSync(tmpPath);
   } catch {
-    // Already cleaned up or never created
+          // Already cleaned up or never created
   }
 }
 

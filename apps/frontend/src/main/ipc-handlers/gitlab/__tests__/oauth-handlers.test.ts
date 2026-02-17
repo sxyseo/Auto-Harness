@@ -26,7 +26,7 @@ function getHostnameFromUrl(instanceUrl: string): string {
   try {
     return new URL(instanceUrl).hostname;
   } catch {
-    return 'gitlab.com';
+          return 'gitlab.com';
   }
 }
 

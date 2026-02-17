@@ -215,7 +215,7 @@ export class TerminalSessionStore {
           }
           renameSync(this.storePath, this.backupPath);
         } catch {
-          // Current file is corrupted, don't back it up - just delete
+                // Current file is corrupted, don't back it up - just delete
           console.warn('[TerminalSessionStore] Current file corrupted, not backing up');
           unlinkSync(this.storePath);
         }
@@ -231,7 +231,7 @@ export class TerminalSessionStore {
           unlinkSync(this.tempPath);
         }
       } catch {
-        // Ignore cleanup errors
+              // Ignore cleanup errors
       }
     }
   }
@@ -244,7 +244,7 @@ export class TerminalSessionStore {
       await fsPromises.access(filePath);
       return true;
     } catch {
-      return false;
+            return false;
     }
   }
 
@@ -280,7 +280,7 @@ export class TerminalSessionStore {
           }
           await fsPromises.rename(this.storePath, this.backupPath);
         } catch {
-          // Current file is corrupted, don't back it up - just delete
+                // Current file is corrupted, don't back it up - just delete
           console.warn('[TerminalSessionStore] Current file corrupted, not backing up');
           await fsPromises.unlink(this.storePath);
         }
@@ -301,7 +301,7 @@ export class TerminalSessionStore {
           await fsPromises.unlink(this.tempPath);
         }
       } catch {
-        // Ignore cleanup errors
+              // Ignore cleanup errors
       }
 
       // Warn about persistent failures that might indicate a real problem

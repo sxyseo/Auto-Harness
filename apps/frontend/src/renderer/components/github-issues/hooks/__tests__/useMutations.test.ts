@@ -268,7 +268,7 @@ describe('useMutations', () => {
 
     // Resolve
     await act(async () => {
-      resolveIpc!({ success: true, issueNumber: 42 });
+      resolveIpc?.({ success: true, issueNumber: 42 });
       await promise!;
     });
 

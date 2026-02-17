@@ -160,7 +160,7 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
       }
     }
   } catch {
-    // which/where failed, continue with other methods
+          // which/where failed, continue with other methods
   }
 
   // 3. Homebrew paths (macOS) - from getClaudeDetectionPaths
@@ -180,7 +180,7 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
         await addInstallation(nvmClaudePath, 'nvm');
       }
     } catch {
-      // Failed to read NVM directory
+            // Failed to read NVM directory
     }
   }
 
@@ -237,7 +237,7 @@ async function fetchLatestVersion(currentInstalled?: string | null): Promise<str
           return cachedVersion;
         }
       } catch {
-        // If semver comparison fails, return cached version
+              // If semver comparison fails, return cached version
         return cachedVersion;
       }
     } else {
@@ -825,6 +825,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
         console.warn('[Claude Code] Opened terminal:', cmd);
         break;
       } catch {
+        // Ignore errors and try next terminal
       }
     }
 
@@ -1006,7 +1007,7 @@ export function registerClaudeCodeHandlers(): void {
             const cleanLatest = latest.replace(/^v/, '');
             isOutdated = semver.lt(cleanInstalled, cleanLatest);
           } catch {
-            // If semver comparison fails, assume not outdated
+                  // If semver comparison fails, assume not outdated
             isOutdated = false;
           }
         }
@@ -1045,7 +1046,7 @@ export function registerClaudeCodeHandlers(): void {
           isUpdate = detectionResult.found && !!detectionResult.version;
           console.warn('[Claude Code] Is update:', isUpdate, 'detected version:', detectionResult.version);
         } catch {
-          // Detection failed, assume fresh install
+                // Detection failed, assume fresh install
           isUpdate = false;
         }
 

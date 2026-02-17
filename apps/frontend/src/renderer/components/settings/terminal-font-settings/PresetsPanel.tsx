@@ -143,7 +143,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
         }
       }
     } catch {
-      // If localStorage is unavailable or corrupted, start with empty list
+            // If localStorage is unavailable or corrupted, start with empty list
       setCustomPresets([]);
     } finally {
       // Mark as loaded after initial load completes
@@ -165,7 +165,7 @@ export function PresetsPanel({ currentSettings, onPresetApply, onReset }: Preset
         localStorage.removeItem(CUSTOM_PRESETS_STORAGE_KEY);
       }
     } catch {
-      // Silently fail if localStorage is unavailable
+            // Silently fail if localStorage is unavailable
     }
   }, [customPresets]);
 

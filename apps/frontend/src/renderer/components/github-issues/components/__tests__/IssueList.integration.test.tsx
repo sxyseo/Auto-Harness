@@ -24,7 +24,7 @@ vi.mock('@tanstack/react-virtual', () => ({
         end: (i + 1) * 80,
       })),
     getTotalSize: () => count * 80,
-    measureElement: () => {},
+    measureElement: () => { /* noop */ },
   }),
 }));
 

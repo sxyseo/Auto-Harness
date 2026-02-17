@@ -771,7 +771,7 @@ export async function submitReview(
     }
     return false;
   } catch {
-    return false;
+          return false;
   }
 }
 

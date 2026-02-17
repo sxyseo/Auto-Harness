@@ -74,7 +74,7 @@ function getHostnameFromUrl(instanceUrl: string): string {
   try {
     return new URL(instanceUrl).hostname;
   } catch {
-    return 'gitlab.com';
+          return 'gitlab.com';
   }
 }
 
@@ -204,7 +204,7 @@ export function registerCheckGlabAuth(): void {
             data: { authenticated: true, username }
           };
         } catch {
-          return {
+                return {
             success: true,
             data: { authenticated: true }
           };
@@ -682,7 +682,7 @@ export function registerAddGitLabRemote(): void {
             env: getIsolatedGitEnv()
           });
         } catch {
-          // No origin exists
+                // No origin exists
         }
 
         execFileSync('git', ['remote', 'add', 'origin', remoteUrl], {
@@ -742,7 +742,7 @@ export function registerListGitLabGroups(): void {
               fullPath: group.fullPath
             });
           } catch {
-            // Skip invalid JSON
+                  // Skip invalid JSON
           }
         }
 

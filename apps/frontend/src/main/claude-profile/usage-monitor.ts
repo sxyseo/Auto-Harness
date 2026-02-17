@@ -1401,7 +1401,7 @@ export class UsageMonitor extends EventEmitter {
         const endpointUrl = new URL(usageEndpoint);
         endpointHostname = endpointUrl.hostname;
       } catch {
-        console.error('[UsageMonitor] Invalid usage endpoint URL:', usageEndpoint);
+              console.error('[UsageMonitor] Invalid usage endpoint URL:', usageEndpoint);
         return null;
       }
 
@@ -1966,7 +1966,7 @@ export class UsageMonitor extends EventEmitter {
           fromProfileName = fromAPIProfile.name;
         }
       } catch {
-        // Ignore
+              // Ignore
       }
     }
 

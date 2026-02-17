@@ -38,7 +38,7 @@ export function loadGraphitiStateFromSpecs(
         const specPath = path.join(specsDir, f);
         return statSync(specPath).isDirectory();
       } catch {
-        // Directory was deleted or inaccessible - skip it
+              // Directory was deleted or inaccessible - skip it
         return false;
       }
     })
@@ -52,6 +52,7 @@ export function loadGraphitiStateFromSpecs(
         const stateContent = readFileSync(statePath, 'utf-8');
         return JSON.parse(stateContent);
       } catch {
+        // Ignore invalid state files
       }
     }
   }

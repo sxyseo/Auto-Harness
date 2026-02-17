@@ -70,7 +70,7 @@ async function getCurrentGitHubUsername(): Promise<string | null> {
     const username = stdout.trim();
     return username || null;
   } catch {
-    // Not authenticated or gh CLI error
+          // Not authenticated or gh CLI error
     return null;
   }
 }
@@ -809,7 +809,7 @@ export function registerAddGitRemote(): void {
             stdio: 'pipe'
           });
         } catch {
-          // No origin exists, which is fine
+                // No origin exists, which is fine
         }
 
         // Add the remote
@@ -866,7 +866,7 @@ export function registerListGitHubOrgs(): void {
               avatarUrl: org.avatarUrl
             });
           } catch {
-            // Skip invalid JSON lines
+                  // Skip invalid JSON lines
           }
         }
 

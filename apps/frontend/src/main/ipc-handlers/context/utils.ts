@@ -25,7 +25,7 @@ export function getAutoBuildSourcePath(): string | null {
         return settings.autoBuildPath;
       }
     } catch {
-      // Fall through to null
+            // Fall through to null
     }
   }
   return null;
@@ -77,7 +77,7 @@ export function loadProjectEnvVars(projectPath: string, autoBuildPath?: string):
     const envContent = readFileSync(projectEnvPath, 'utf-8');
     return parseEnvFile(envContent);
   } catch {
-    return {};
+          return {};
   }
 }
 
@@ -93,7 +93,7 @@ export function loadGlobalSettings(): GlobalSettings {
     const settingsContent = readFileSync(settingsPath, 'utf-8');
     return JSON.parse(settingsContent);
   } catch {
-    return {};
+          return {};
   }
 }
 

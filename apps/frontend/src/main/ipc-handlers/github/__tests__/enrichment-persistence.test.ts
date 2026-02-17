@@ -8,7 +8,6 @@ import {
   readTransitionsFile,
   appendTransition,
   getEnrichmentFilePath,
-  getTransitionsFilePath,
   getEnrichmentDir,
 } from '../enrichment-persistence';
 import type { EnrichmentFile, TransitionRecord } from '../../../../shared/types/enrichment';

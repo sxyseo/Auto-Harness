@@ -98,7 +98,7 @@ function migrateProfileToIsolatedDirectory(profile: ClaudeProfile): string {
           break;
         }
       } catch {
-        // Ignore read errors, treat as collision
+              // Ignore read errors, treat as collision
       }
     }
     // Directory exists but belongs to different profile, try next counter

@@ -152,8 +152,8 @@ describe('getBestAvailableUnifiedAccount', () => {
     const result = await manager.getBestAvailableUnifiedAccount('excluded-id');
 
     expect(result).not.toBeNull();
-    expect(result!.type).toBe('oauth');
-    expect(result!.id).toBe('oauth-1');
+    expect(result?.type).toBe('oauth');
+    expect(result?.id).toBe('oauth-1');
   });
 
   it('should return API profile when it has higher priority', async () => {
@@ -166,16 +166,16 @@ describe('getBestAvailableUnifiedAccount', () => {
     const result = await manager.getBestAvailableUnifiedAccount('excluded-id');
 
     expect(result).not.toBeNull();
-    expect(result!.type).toBe('api');
-    expect(result!.id).toBe('api-glm-1');
-    expect(result!.name).toBe('GLM API');
+    expect(result?.type).toBe('api');
+    expect(result?.id).toBe('api-glm-1');
+    expect(result?.name).toBe('GLM API');
   });
 
   it('should exclude the specified profile ID', async () => {
     const result = await manager.getBestAvailableUnifiedAccount('oauth-1');
 
     expect(result).not.toBeNull();
-    expect(result!.id).not.toBe('oauth-1');
+    expect(result?.id).not.toBe('oauth-1');
   });
 
   it('should exclude additional profile IDs', async () => {
@@ -183,7 +183,7 @@ describe('getBestAvailableUnifiedAccount', () => {
 
     // Both OAuth excluded, should fall through to API
     expect(result).not.toBeNull();
-    expect(result!.type).toBe('api');
+    expect(result?.type).toBe('api');
   });
 
   it('should return null when all profiles are excluded', async () => {
@@ -223,7 +223,7 @@ describe('getBestAvailableUnifiedAccount', () => {
 
     // OAuth filtered out, should get API
     expect(result).not.toBeNull();
-    expect(result!.type).toBe('api');
+    expect(result?.type).toBe('api');
   });
 
   it('should handle API profile loading error gracefully', async () => {
@@ -233,7 +233,7 @@ describe('getBestAvailableUnifiedAccount', () => {
 
     // Should still return OAuth profile
     expect(result).not.toBeNull();
-    expect(result!.type).toBe('oauth');
+    expect(result?.type).toBe('oauth');
   });
 
   it('should sort by priority order correctly with mixed types', async () => {
@@ -246,8 +246,8 @@ describe('getBestAvailableUnifiedAccount', () => {
     const result = await manager.getBestAvailableUnifiedAccount();
 
     expect(result).not.toBeNull();
-    expect(result!.id).toBe('oauth-2');
-    expect(result!.type).toBe('oauth');
+    expect(result?.id).toBe('oauth-2');
+    expect(result?.type).toBe('oauth');
   });
 
   it('should handle empty profiles list', async () => {
@@ -271,7 +271,7 @@ describe('getBestAvailableUnifiedAccount', () => {
     const result = await manager.getBestAvailableUnifiedAccount();
 
     expect(result).not.toBeNull();
-    expect(result!.priorityIndex).toBe(0); // First in priority order
+    expect(result?.priorityIndex).toBe(0); // First in priority order
   });
 
   it('should assign Infinity priorityIndex when not in priority order', async () => {
@@ -280,7 +280,7 @@ describe('getBestAvailableUnifiedAccount', () => {
     const result = await manager.getBestAvailableUnifiedAccount();
 
     expect(result).not.toBeNull();
-    expect(result!.priorityIndex).toBe(Infinity);
+    expect(result?.priorityIndex).toBe(Infinity);
   });
 
   it('should consider multiple API profiles with correct scoring', async () => {
@@ -295,9 +295,9 @@ describe('getBestAvailableUnifiedAccount', () => {
     const result = await manager.getBestAvailableUnifiedAccount();
 
     expect(result).not.toBeNull();
-    expect(result!.id).toBe('api-anthropic-1');
-    expect(result!.type).toBe('api');
-    expect(result!.priorityIndex).toBe(0);
+    expect(result?.id).toBe('api-anthropic-1');
+    expect(result?.type).toBe('api');
+    expect(result?.priorityIndex).toBe(0);
   });
 
   it('should handle both OAuth and API exhausted gracefully', async () => {
@@ -327,7 +327,7 @@ describe('getBestAvailableUnifiedAccount', () => {
 
     // OAuth should come first by default
     expect(result).not.toBeNull();
-    expect(result!.type).toBe('oauth');
+    expect(result?.type).toBe('oauth');
   });
 });
 

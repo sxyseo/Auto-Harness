@@ -35,7 +35,7 @@ export function registerLinearHandlers(
       const vars = parseEnvFile(content);
       return vars['LINEAR_API_KEY'] || null;
     } catch {
-      return null;
+            return null;
     }
   };
 
@@ -67,7 +67,7 @@ export function registerLinearHandlers(
           || errorResult?.message
           || response.statusText;
       } catch {
-        // JSON parsing failed - use status text as fallback
+              // JSON parsing failed - use status text as fallback
       }
       throw new Error(`Linear API error: ${response.status} - ${errorMessage}`);
     }

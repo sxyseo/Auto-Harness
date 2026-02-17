@@ -250,7 +250,7 @@ export class InsightsExecutor extends EventEmitter {
         suggestedTasks: [suggestedTask]
       } as InsightsStreamChunk);
     } catch {
-      // Not valid JSON, treat as normal text (should not emit here as it's already handled)
+            // Not valid JSON, treat as normal text (should not emit here as it's already handled)
     }
   }
 
@@ -279,7 +279,7 @@ export class InsightsExecutor extends EventEmitter {
         }
       } as InsightsStreamChunk);
     } catch {
-      // Ignore parse errors for tool markers
+            // Ignore parse errors for tool markers
     }
   }
 
@@ -297,7 +297,7 @@ export class InsightsExecutor extends EventEmitter {
         }
       } as InsightsStreamChunk);
     } catch {
-      // Ignore parse errors for tool markers
+            // Ignore parse errors for tool markers
     }
   }
 

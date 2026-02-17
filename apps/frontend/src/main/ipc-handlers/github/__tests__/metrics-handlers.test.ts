@@ -109,7 +109,7 @@ describe('computeMetrics handler', () => {
     mockEnrichmentData.issues = {
       '1': { triageState: 'new', completenessScore: 0 },
     };
-    const now = Date.now();
+    const _now = Date.now();
     mockTransitionsData.transitions = [];
 
     const result = await handlers['github:metrics:compute']({}, 'test-project', 'all') as TriageMetrics;

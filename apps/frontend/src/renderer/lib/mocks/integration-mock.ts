@@ -136,17 +136,17 @@ export const integrationMock = {
   }),
 
   // Investigation operations (new system)
-  startInvestigation: () => {},
-  cancelInvestigation: () => {},
+  startInvestigation: () => { /* noop */ },
+  cancelInvestigation: () => { /* noop */ },
   createTaskFromInvestigation: async () => ({ success: true, data: { specId: '' } }),
   dismissIssue: async () => ({ success: true }),
   postInvestigationToGitHub: async () => ({ success: true, data: { commentId: 0 } }),
   getInvestigationSettings: async () => ({ success: true, data: { autoCreateTasks: false, autoStartTasks: false, pipelineMode: 'full' as const, autoPostToGitHub: false, autoCloseIssues: false, maxParallelInvestigations: 3, labelIncludeFilter: [], labelExcludeFilter: [] } }),
   saveInvestigationSettings: async () => ({ success: true }),
 
-  onGitHubInvestigationProgress: () => () => {},
-  onGitHubInvestigationComplete: () => () => {},
-  onGitHubInvestigationError: () => () => {},
+  onGitHubInvestigationProgress: () => () => { /* noop */ },
+  onGitHubInvestigationComplete: () => () => { /* noop */ },
+  onGitHubInvestigationError: () => () => { /* noop */ },
 
   // GitHub OAuth Operations (gh CLI)
   checkGitHubCli: async () => ({
@@ -297,8 +297,8 @@ export const integrationMock = {
 
   // GitLab MR Review Operations (AI-powered)
   getGitLabMRReview: async () => null,
-  runGitLabMRReview: () => {},
-  runGitLabMRFollowupReview: () => {},
+  runGitLabMRReview: () => { /* noop */ },
+  runGitLabMRFollowupReview: () => { /* noop */ },
   postGitLabMRReview: async () => false,
   postGitLabMRNote: async () => false,
   mergeGitLabMR: async () => false,
@@ -308,9 +308,9 @@ export const integrationMock = {
   checkGitLabMRNewCommits: async () => ({ hasNewCommits: false }),
 
   // GitLab MR Review Event Listeners
-  onGitLabMRReviewProgress: () => () => {},
-  onGitLabMRReviewComplete: () => () => {},
-  onGitLabMRReviewError: () => () => {},
+  onGitLabMRReviewProgress: () => () => { /* noop */ },
+  onGitLabMRReviewComplete: () => () => { /* noop */ },
+  onGitLabMRReviewError: () => () => { /* noop */ },
 
   // GitLab OAuth Operations (glab CLI)
   checkGitLabCli: async () => ({
@@ -390,10 +390,10 @@ export const integrationMock = {
   }),
 
   // GitLab Event Listeners
-  onGitLabInvestigationProgress: () => () => {},
-  onGitLabInvestigationComplete: () => () => {},
-  onGitLabInvestigationError: () => () => {},
+  onGitLabInvestigationProgress: () => () => { /* noop */ },
+  onGitLabInvestigationComplete: () => () => { /* noop */ },
+  onGitLabInvestigationError: () => () => { /* noop */ },
 
   // OAuth device code event listener (for streaming device code during auth)
-  onGitHubAuthDeviceCode: () => () => {}
+  onGitHubAuthDeviceCode: () => () => { /* noop */ }
 };

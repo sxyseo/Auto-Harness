@@ -142,7 +142,7 @@ export function registerAgenteventsHandlers(
             taskStateManager.setLastSequence(taskId, lastSeq);
           }
         } catch {
-          // Ignore missing/invalid plan files
+                // Ignore missing/invalid plan files
         }
       }
     }

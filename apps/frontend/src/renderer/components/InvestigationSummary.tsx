@@ -1,7 +1,6 @@
-import React from 'react';
+
 import { useTranslation } from 'react-i18next';
 import { useInvestigationData } from '../hooks/useInvestigationData';
-import type { InvestigationData } from '@shared/types/investigation';
 
 interface InvestigationSummaryProps {
   taskId: string;
@@ -46,7 +45,7 @@ export function InvestigationSummary({ taskId }: InvestigationSummaryProps) {
       )}
 
       {/* Recommended Fix */}
-      {investigation.fixAdvice && investigation.fixAdvice.suggestedApproaches && investigation.fixAdvice.suggestedApproaches.length > 0 && (
+      {investigation.fixAdvice?.suggestedApproaches && investigation.fixAdvice.suggestedApproaches.length > 0 && (
         <div className="mb-3">
           <h5 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
             {t('tasks:investigation.recommendedFix')}

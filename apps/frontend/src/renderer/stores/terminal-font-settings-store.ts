@@ -371,7 +371,7 @@ export const useTerminalFontSettingsStore = create<TerminalFontSettingsStore>()(
           set(validatedSettings);
           return true;
         } catch {
-          return false;
+                return false;
         }
       },
     }),

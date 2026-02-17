@@ -363,7 +363,7 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
           const content = readFileSync(settingsPath, 'utf-8');
           globalSettings = { ...globalSettings, ...JSON.parse(content) };
         } catch {
-          // Use defaults
+                // Use defaults
         }
       }
 
@@ -386,7 +386,7 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
           const content = readFileSync(envPath, 'utf-8');
           vars = parseEnvFile(content);
         } catch {
-          // Continue with empty vars
+                // Continue with empty vars
         }
       }
 
@@ -538,7 +538,7 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         try {
           config.customMcpServers = JSON.parse(vars['CUSTOM_MCP_SERVERS']);
         } catch {
-          // Invalid JSON, ignore
+                // Invalid JSON, ignore
           config.customMcpServers = [];
         }
       }

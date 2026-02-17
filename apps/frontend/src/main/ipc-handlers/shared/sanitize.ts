@@ -71,6 +71,6 @@ export function sanitizeUrl(value: unknown, maxLength = 2000): string {
     if (parsed.username || parsed.password) return '';
     return parsed.toString();
   } catch {
-    return '';
+          return '';
   }
 }

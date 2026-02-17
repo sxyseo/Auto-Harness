@@ -213,6 +213,6 @@ export function refreshGitIndex(cwd: string): void {
       env: getIsolatedGitEnv(),
     });
   } catch {
-    // Ignore refresh errors - it's a best-effort optimization
+          // Ignore refresh errors - it's a best-effort optimization
   }
 }

@@ -71,7 +71,7 @@ export function useInvestigationPolling(options: PollingOptions): void {
         }
       }
     } catch {
-      // Silently ignore fetch errors
+            // Silently ignore fetch errors
     }
   }, [projectId, issueNumber]);
 

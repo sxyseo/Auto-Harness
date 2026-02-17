@@ -35,7 +35,7 @@ export function useIdeationAuth() {
         profilesResult.data.activeProfileId !== ''
       );
     } catch {
-      return false;
+            return false;
     }
   };
 
@@ -62,7 +62,7 @@ export function useIdeationAuth() {
     };
 
     performCheck();
-  }, [activeProfileId]);
+  }, [activeProfileId, resolveHasAPIProfile]);
 
   // Expose checkAuth for manual re-checks
   const checkAuth = async () => {

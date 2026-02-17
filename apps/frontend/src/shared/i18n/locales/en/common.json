@@ -1104,6 +1104,7 @@
       "viewResults": "View Results",
       "createTask": "Create Task",
       "retry": "Retry Investigation",
+      "resume": "Resume Investigation",
       "done": "Done",
       "building": "Building...",
       "taskCreated": "Task Created",

@@ -40,6 +40,6 @@ export function initAppLanguage(): void {
     // Extract base language (e.g., 'en-US' -> 'en')
     currentAppLanguage = osLocale.split('-')[0] || 'en';
   } catch {
-    currentAppLanguage = 'en';
+          currentAppLanguage = 'en';
   }
 }

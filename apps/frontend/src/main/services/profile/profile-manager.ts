@@ -103,7 +103,7 @@ export async function loadProfilesFile(): Promise<ProfilesFile> {
     // Validation failed - return default
     return getDefaultProfilesFile();
   } catch {
-    // File doesn't exist or read/parse error - return default
+          // File doesn't exist or read/parse error - return default
     return getDefaultProfilesFile();
   }
 }
@@ -160,7 +160,7 @@ export async function validateFilePermissions(filePath: string): Promise<boolean
     await fs.chmod(filePath, 0o600);
     return true;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -182,7 +182,7 @@ export async function withProfilesLock<T>(fn: () => Promise<T>): Promise<T> {
   try {
     await fs.access(filePath);
   } catch {
-    // File doesn't exist, create it atomically with exclusive flag
+          // File doesn't exist, create it atomically with exclusive flag
     const defaultData = getDefaultProfilesFile();
     try {
       await fs.writeFile(filePath, JSON.stringify(defaultData, null, 2), { encoding: 'utf-8', flag: 'wx' });
@@ -286,7 +286,7 @@ export async function atomicModifyProfiles(
       try {
         await fs.unlink(tempPath);
       } catch {
-        // Ignore cleanup errors
+              // Ignore cleanup errors
       }
       throw error;
     }

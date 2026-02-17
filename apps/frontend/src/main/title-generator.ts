@@ -112,7 +112,7 @@ export class TitleGenerator extends EventEmitter {
 
       return envVars;
     } catch {
-      return {};
+            return {};
     }
   }
 

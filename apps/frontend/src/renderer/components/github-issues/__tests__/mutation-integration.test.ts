@@ -1,7 +1,7 @@
 /**
  * Integration test verifying the mutation flow from store → hook → IPC.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useMutationStore } from '../../../stores/github/mutation-store';
 import {
   validateTitle,

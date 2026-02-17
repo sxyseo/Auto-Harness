@@ -21,9 +21,7 @@ import type {
   ClaudeUsageData,
   ClaudeRateLimitEvent,
   ClaudeAutoSwitchSettings,
-  APIProfile
 } from '../shared/types';
-import type { UnifiedAccount } from '../shared/types/unified-account';
 
 // Module imports
 import { encryptToken, decryptToken } from './claude-profile/token-encryption';
@@ -43,11 +41,9 @@ import {
   getBestAvailableProfile,
   shouldProactivelySwitch as shouldProactivelySwitchImpl,
   getProfilesSortedByAvailability as getProfilesSortedByAvailabilityImpl,
-  getBestAvailableUnifiedAccount,
   checkProfileAvailability
 } from './claude-profile/profile-scorer';
 import { getCredentialsFromKeychain, normalizeWindowsPath, updateProfileSubscriptionMetadata } from './claude-profile/credential-utils';
-import { loadProfilesFile } from './services/profile/profile-manager';
 import {
   CLAUDE_PROFILES_DIR,
   generateProfileId as generateProfileIdImpl,

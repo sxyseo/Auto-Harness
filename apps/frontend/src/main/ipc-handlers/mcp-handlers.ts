@@ -499,7 +499,7 @@ async function testCommandConnection(server: CustomMcpServer, startTime: number)
           }
         }
       } catch {
-        // Not valid JSON yet, keep waiting
+              // Not valid JSON yet, keep waiting
       }
     });
 

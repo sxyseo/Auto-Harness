@@ -43,7 +43,7 @@ export function ResizablePanels({
           }
         }
       } catch {
-        // localStorage may be unavailable (e.g., private browsing)
+              // localStorage may be unavailable (e.g., private browsing)
       }
     }
     return defaultLeftWidth;
@@ -58,7 +58,7 @@ export function ResizablePanels({
       try {
         localStorage.setItem(storageKey, leftWidth.toString());
       } catch {
-        // localStorage may be unavailable (e.g., private browsing, quota exceeded)
+              // localStorage may be unavailable (e.g., private browsing, quota exceeded)
       }
     }
   }, [leftWidth, storageKey, isDragging]);
@@ -202,7 +202,7 @@ export function ResizableThreePanels({
           }
         }
       } catch {
-        // localStorage may be unavailable
+              // localStorage may be unavailable
       }
     }
     return { left: defaultLeftWidth, middle: defaultMiddleWidth };
@@ -219,7 +219,7 @@ export function ResizableThreePanels({
       try {
         localStorage.setItem(storageKey, JSON.stringify(widths));
       } catch {
-        // localStorage may be unavailable
+              // localStorage may be unavailable
       }
     }
   }, [widths, storageKey, draggingDivider]);

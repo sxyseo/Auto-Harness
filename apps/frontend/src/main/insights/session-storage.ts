@@ -47,7 +47,7 @@ export class SessionStorage {
       }));
       return session;
     } catch {
-      return null;
+            return null;
     }
   }
 
@@ -75,7 +75,7 @@ export class SessionStorage {
       unlinkSync(sessionPath);
       return true;
     } catch {
-      return false;
+            return false;
     }
   }
 
@@ -113,7 +113,7 @@ export class SessionStorage {
             updatedAt: new Date(session.updatedAt)
           });
         } catch {
-          // Skip invalid session files
+                // Skip invalid session files
         }
       }
 
@@ -122,7 +122,7 @@ export class SessionStorage {
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
     } catch {
-      return [];
+            return [];
     }
   }
 
@@ -138,7 +138,7 @@ export class SessionStorage {
       const data = JSON.parse(content);
       return data.currentSessionId || null;
     } catch {
-      return null;
+            return null;
     }
   }
 
@@ -206,7 +206,7 @@ export class SessionStorage {
       // Remove old session file
       unlinkSync(oldSessionPath);
     } catch {
-      // Ignore migration errors
+            // Ignore migration errors
     }
   }
 }

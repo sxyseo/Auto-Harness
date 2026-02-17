@@ -619,7 +619,7 @@ export class AgentProcessManager {
 
       return envVars;
     } catch {
-      return {};
+            return {};
     }
   }
 

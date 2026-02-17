@@ -44,7 +44,7 @@ import {
 } from "./ui/alert-dialog";
 import { useMutationStore } from "../stores/github/mutation-store";
 import { useToast } from "../hooks/use-toast";
-import type { GitHubIssue, InvestigationState, InvestigationDismissReason, SuggestedLabel } from "../../shared/types";
+import type { GitHubIssue, InvestigationState, InvestigationDismissReason, } from "../../shared/types";
 import type { GitHubIssuesProps } from "./github-issues/types";
 
 // Debounce hook for high-frequency updates
@@ -225,7 +225,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   const activeInvestigations = useMemo(() => {
     if (!selectedProject?.id) return [];
     // Filter active investigations from the investigations object
-    const projectPrefix = `${selectedProject.id}:`;
+    const _projectPrefix = `${selectedProject.id}:`;
     return Object.values(investigations)
       .filter(inv => inv.projectId === selectedProject.id && inv.isInvestigating);
   }, [investigations, selectedProject?.id]);
@@ -382,7 +382,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
         investigationStore.setSettings(selectedProject.id, res.data);
       }
     }).catch(() => { /* non-critical */ });
-  }, [selectedProject?.id]);
+  }, [selectedProject?.id, investigationStore.setSettings]);
 
   // Mark stale investigations: cross-reference investigations with fetched issues
   useEffect(() => {
@@ -392,8 +392,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   }, [storeIssues, selectedProject?.id, investigationStore]);
 
   // Clear selection when filters change
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on filter/search change
-  useEffect(() => {
+    useEffect(() => {
     setSelectedIssueNumbers(new Set());
   }, [investigationStateFilter, issueFilters]);
 
@@ -495,7 +494,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   // Clear auto-closed tracking on project change
   useEffect(() => {
     autoClosedRef.current = new Set();
-  }, [selectedProject?.id]);
+  }, []);
 
   // Reset local state on project change
   useEffect(() => {
@@ -507,7 +506,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
       setShowDismissed(false);
       useMutationStore.getState().clearBulkResult();
     };
-  }, [selectedProject?.id, syncStatus?.connected]);
+  }, []);
 
   // Helper: check if label consent is needed before investigating
   const needsLabelConsent = useCallback(() => {
@@ -592,7 +591,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
         variant: 'destructive',
       });
     }
-  }, [selectedProject?.id, selectedIssue, investigationStore, loadTasks, toast]);
+  }, [selectedProject?.id, selectedIssue, investigationStore, toast]);
 
   const handleDismissIssue = useCallback(async (reason: InvestigationDismissReason) => {
     if (!selectedProject?.id || !selectedIssue) return;
@@ -641,7 +640,7 @@ export function GitHubIssues({ onOpenSettings, onNavigateToTask }: GitHubIssuesP
   const selectedIssueInvestigationState = useMemo(() => {
     if (!selectedProject?.id || !selectedIssue) return undefined;
     return investigationStore.getDerivedState(selectedProject.id, selectedIssue.number);
-  }, [selectedProject?.id, selectedIssue, selectedIssueEntry, investigationStore]);
+  }, [selectedProject?.id, selectedIssue, investigationStore]);
 
   // Not connected state
   if (!syncStatus?.connected) {

@@ -74,11 +74,11 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
    */
   const createRequest = (
     id: string,
-    exitDelay: number = 10
+    _exitDelay: number = 10
   ) => ({
     id,
     type: 'test',
-    onSpawn: vi.fn(async () => {}),
+    onSpawn: vi.fn(async () => { /* noop */ }),
     onError: vi.fn(),
     projectId: `project-${id}`,
     projectPath: `/test/path/${id}`,
@@ -91,13 +91,13 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
     concurrentProcesses = new Map();
 
     // Suppress console.log output in tests
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => { /* noop */ });
 
     // Mock spawn function that creates processes with different exit delays
     mockSpawnFn = vi.fn(async (id: string) => {
       // Use deterministic delays to avoid non-determinism
       const delays = [10, 15, 20, 25, 30];
-      const index = parseInt(id.split('-')[1]) || 0;
+      const index = parseInt(id.split('-')[1], 10) || 0;
       const delay = delays[index % delays.length];
       return createMockProcess(id, delay);
     }) as SpawnFunction;
@@ -195,8 +195,8 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
       );
 
       for (let i = 0; i < sortedEntries.length - 1; i++) {
-        const [currentId, currentTimes] = sortedEntries[i];
-        const [nextId, nextTimes] = sortedEntries[i + 1];
+        const [_currentId, currentTimes] = sortedEntries[i];
+        const [_nextId, nextTimes] = sortedEntries[i + 1];
 
         // Next agent should start after current agent finishes
         // Add tolerance for timing precision
@@ -237,7 +237,7 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
       expect(times).toBeDefined();
 
       // Exit should be after spawn
-      expect(times!.end).toBeGreaterThanOrEqual(spawnedTime!);
+      expect(times?.end).toBeGreaterThanOrEqual(spawnedTime!);
     });
   });
 
@@ -288,7 +288,7 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
         request.onSpawn = vi.fn(async () => {
           throw new Error(`Failure ${id}`);
         });
-        request.onError = vi.fn((error: Error) => {
+        request.onError = vi.fn((_error: Error) => {
           errors.push(id);
         });
         return request;
@@ -330,7 +330,7 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
           onSpawn: vi.fn(async () => {
             // Ideation spawned
           }),
-          onError: vi.fn((error: Error) => {
+          onError: vi.fn((_error: Error) => {
             // Ideation failed
           })
         });
@@ -341,7 +341,7 @@ describe('Sequential Agent Spawning - Integration Stress Test', () => {
       await Promise.all(
         Array.from({ length: 5 }, (_, i) => triggerIdeation(i))
       );
-      const triggerTime = Date.now() - startTime;
+      const _triggerTime = Date.now() - startTime;
 
       // Wait for all to complete
       await queue.drain();

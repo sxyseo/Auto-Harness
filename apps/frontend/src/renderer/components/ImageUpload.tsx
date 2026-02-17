@@ -189,7 +189,7 @@ export function ImageUpload({
             thumbnail
           });
         } catch {
-          errors.push(`Failed to process "${file.name}"`);
+                errors.push(`Failed to process "${file.name}"`);
         }
       }
 

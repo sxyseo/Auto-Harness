@@ -268,7 +268,7 @@ export function useImageUpload({
         };
       }
     } catch {
-      // Invalid JSON, not a file reference
+            // Invalid JSON, not a file reference
     }
     return null;
   }, []);

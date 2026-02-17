@@ -156,7 +156,7 @@ function fixMisconfiguredBareRepo(projectPath: string): boolean {
     debugLog('[TerminalWorktree] Fixed: core.bare has been unset. Git operations should now work correctly.');
     return true;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -205,7 +205,7 @@ function getDefaultBranch(projectPath: string): string {
       debugLog('[TerminalWorktree] Auto-detected branch:', branch);
       return branch;
     } catch {
-      // Branch doesn't exist, try next
+            // Branch doesn't exist, try next
     }
   }
 
@@ -409,7 +409,7 @@ function applySymlinkStrategy(projectPath: string, worktreePath: string, config:
     debugLog('[TerminalWorktree] Skipping symlink', config.sourceRelPath, '- target exists (possibly broken symlink)');
     return false;
   } catch {
-    // Target doesn't exist at all — good, we can create symlink
+          // Target doesn't exist at all — good, we can create symlink
   }
 
   const targetDir = path.dirname(targetPath);
@@ -604,7 +604,7 @@ function symlinkClaudeConfigToWorktree(projectPath: string, worktreePath: string
     debugLog('[TerminalWorktree] Skipping .claude symlink - target exists (possibly broken symlink):', targetPath);
     return symlinked;
   } catch {
-    // Target doesn't exist at all - good, we can create symlink
+          // Target doesn't exist at all - good, we can create symlink
   }
 
   // Ensure parent directory exists
@@ -661,7 +661,7 @@ function loadWorktreeConfig(projectPath: string, name: string): TerminalWorktree
         rmSync(legacyConfigPath);
         debugLog('[TerminalWorktree] Migrated config from legacy location:', name);
       } catch {
-        debugLog('[TerminalWorktree] Could not remove legacy config:', legacyConfigPath);
+              debugLog('[TerminalWorktree] Could not remove legacy config:', legacyConfigPath);
       }
       return config;
     } catch (error) {
@@ -740,7 +740,7 @@ async function createTerminalWorktree(
       });
       debugLog('[TerminalWorktree] Fetched latest from origin/' + remoteBranchName);
     } catch {
-      debugLog('[TerminalWorktree] Could not fetch from remote, continuing with local branch');
+            debugLog('[TerminalWorktree] Could not fetch from remote, continuing with local branch');
     }
 
     // Determine the base ref to use for worktree creation
@@ -766,7 +766,7 @@ async function createTerminalWorktree(
         baseRef = `origin/${baseBranch}`;
         debugLog('[TerminalWorktree] Using remote ref:', baseRef);
       } catch {
-        debugLog('[TerminalWorktree] Remote ref not found, using local branch:', baseBranch);
+              debugLog('[TerminalWorktree] Remote ref not found, using local branch:', baseBranch);
       }
     }
 
@@ -801,7 +801,7 @@ async function createTerminalWorktree(
         });
         hasOrigin = true;
       } catch {
-        // No origin remote — local-only repo, nothing to push to
+              // No origin remote — local-only repo, nothing to push to
         debugLog('[TerminalWorktree] No origin remote found, skipping push for local-only repo');
       }
 
@@ -881,7 +881,7 @@ async function createTerminalWorktree(
           });
           debugLog('[TerminalWorktree] Pruned stale worktree registrations');
         } catch {
-          // Ignore prune errors - not critical
+                // Ignore prune errors - not critical
         }
       } catch (cleanupError) {
         debugError('[TerminalWorktree] Failed to cleanup worktree directory:', cleanupError);
@@ -1134,7 +1134,7 @@ async function removeTerminalWorktree(
         rmSync(metadataPath);
         debugLog('[TerminalWorktree] Removed metadata file:', metadataPath);
       } catch {
-        debugLog('[TerminalWorktree] Could not remove metadata file:', metadataPath);
+              debugLog('[TerminalWorktree] Could not remove metadata file:', metadataPath);
       }
     }
 

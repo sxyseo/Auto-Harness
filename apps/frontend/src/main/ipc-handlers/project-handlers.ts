@@ -46,7 +46,7 @@ function getGitBranches(projectPath: string): string[] {
         timeout: 10000 // 10 second timeout for fetch
       });
     } catch {
-      // Fetch may fail if offline or no remote, continue with local refs
+            // Fetch may fail if offline or no remote, continue with local refs
     }
 
     // Get all branches (local + remote) using --all flag
@@ -84,7 +84,7 @@ function getGitBranches(projectPath: string): string[] {
       return a.localeCompare(b);
     });
   } catch {
-    return [];
+          return [];
   }
 }
 
@@ -104,7 +104,7 @@ function getGitBranchesWithInfo(projectPath: string): GitBranchDetail[] {
         timeout: 10000 // 10 second timeout for fetch
       });
     } catch {
-      // Fetch may fail if offline or no remote, continue with local refs
+            // Fetch may fail if offline or no remote, continue with local refs
     }
 
     // Get current branch for isCurrent indicator
@@ -117,7 +117,7 @@ function getGitBranchesWithInfo(projectPath: string): GitBranchDetail[] {
       });
       currentBranch = currentResult.trim() || null;
     } catch {
-      // Ignore - current branch detection may fail in some edge cases
+            // Ignore - current branch detection may fail in some edge cases
     }
 
     // Get local branches
@@ -160,7 +160,7 @@ function getGitBranchesWithInfo(projectPath: string): GitBranchDetail[] {
           isCurrent: false
         }));
     } catch {
-      // Remote branches may not exist, continue with local only
+            // Remote branches may not exist, continue with local only
     }
 
     // Combine and sort: local branches first, then remote branches, alphabetically within each group
@@ -174,7 +174,7 @@ function getGitBranchesWithInfo(projectPath: string): GitBranchDetail[] {
       return a.name.localeCompare(b.name);
     });
   } catch {
-    return [];
+          return [];
   }
 }
 
@@ -190,7 +190,7 @@ function getCurrentGitBranch(projectPath: string): string | null {
     });
     return result.trim() || null;
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -224,7 +224,7 @@ function detectMainBranch(projectPath: string): string | null {
       return match[1];
     }
   } catch {
-    // origin/HEAD not set, continue with fallback
+          // origin/HEAD not set, continue with fallback
   }
 
   // Fallback: return the first branch (usually the current one)

@@ -14,7 +14,7 @@ export function supportsWebGL2(): boolean {
     const gl = canvas.getContext('webgl2');
     return gl !== null;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -27,7 +27,7 @@ export function supportsWebGL(): boolean {
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     return gl !== null;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -46,7 +46,7 @@ export function isSafari(): boolean {
       !userAgent.includes('chromium')
     );
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -78,7 +78,7 @@ export function getMaxWebGLContexts(): number {
       maxContexts = Math.min(maxContexts, 12); // Use 12 for safety
     }
   } catch {
-    // Fallback to conservative default
+          // Fallback to conservative default
   }
 
   return maxContexts;
@@ -135,7 +135,7 @@ export function getWebGLInfo(): {
       }
     }
   } catch {
-    // Info not available
+          // Info not available
   }
 
   return info;

@@ -115,7 +115,7 @@ function getTriageConfig(project: Project): GitLabTriageConfig {
         enableComments: data.triage_enable_comments ?? true,
       };
     } catch {
-      // Return defaults
+            // Return defaults
     }
   }
 
@@ -141,7 +141,7 @@ function saveTriageConfig(project: Project, config: GitLabTriageConfig): void {
   try {
     existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
   } catch {
-    // Use empty config
+          // Use empty config
   }
 
   const updatedConfig = {
@@ -187,7 +187,7 @@ function getTriageResults(project: Project): GitLabTriageResult[] {
           triagedAt: data.triaged_at,
         });
       } catch {
-        // Skip invalid files
+              // Skip invalid files
       }
     }
   }

@@ -73,7 +73,7 @@ export function getEffectiveSourcePath(): string {
       }
     }
   } catch {
-    // Ignore settings read errors
+          // Ignore settings read errors
   }
 
   if (app.isPackaged) {

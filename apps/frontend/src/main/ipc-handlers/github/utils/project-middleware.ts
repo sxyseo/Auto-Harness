@@ -90,7 +90,7 @@ export async function withProjectOrNull<T>(
   try {
     validateProjectPath(project.path);
   } catch {
-    return null;
+          return null;
   }
 
   return handler(project);

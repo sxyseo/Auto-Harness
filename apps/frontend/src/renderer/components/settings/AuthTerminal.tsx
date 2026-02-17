@@ -94,7 +94,7 @@ export function AuthTerminal({
       try {
         fitAddon.fit();
       } catch {
-        // Ignore fit errors
+              // Ignore fit errors
       }
     }, 100);
 
@@ -344,7 +344,7 @@ export function AuthTerminal({
           const rows = xtermRef.current.rows;
           window.electronAPI.resizeTerminal(terminalId, cols, rows);
         } catch {
-          // Ignore resize errors
+                // Ignore resize errors
         }
       }
     };

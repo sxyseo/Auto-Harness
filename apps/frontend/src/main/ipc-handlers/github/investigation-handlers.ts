@@ -92,7 +92,7 @@ function appendActivityLogEntry(projectPath: string, issueNumber: number, event:
         const data = JSON.parse(fs.readFileSync(logPath, 'utf-8'));
         if (Array.isArray(data)) entries = data;
       } catch {
-        // Corrupt file, start fresh
+              // Corrupt file, start fresh
       }
     }
 
@@ -123,7 +123,7 @@ function loadActivityLog(projectPath: string, issueNumber: number): ActivityLogE
     const data = JSON.parse(fs.readFileSync(logPath, 'utf-8'));
     return Array.isArray(data) ? data : [];
   } catch {
-    return [];
+          return [];
   }
 }
 
@@ -233,7 +233,7 @@ function parseInvestigationLogLine(line: string): {
         };
       }
     } catch {
-      // Not valid JSON, fall through to bracket parsing
+            // Not valid JSON, fall through to bracket parsing
     }
   }
 
@@ -553,7 +553,7 @@ export function killAllInvestigations(): void {
       try {
         killProcessGracefully(proc);
       } catch {
-        // Best-effort cleanup during shutdown
+              // Best-effort cleanup during shutdown
       }
     }
     activeInvestigations.delete(key);
@@ -599,7 +599,7 @@ function getMaxParallel(projectId: string): number {
     const settings = data.investigation_settings as InvestigationSettings | undefined;
     return settings?.maxParallelInvestigations ?? DEFAULT_MAX;
   } catch {
-    return DEFAULT_MAX;
+          return DEFAULT_MAX;
   }
 }
 
@@ -689,11 +689,11 @@ function findExistingSpecForIssue(projectPath: string, issueNumber: number, auto
           return entry.name;
         }
       } catch {
-        // Skip corrupt metadata files
+              // Skip corrupt metadata files
       }
     }
   } catch {
-    // Ignore read errors
+          // Ignore read errors
   }
 
   return null;
@@ -728,7 +728,7 @@ function getInvestigationSettings(projectId: string): InvestigationSettings {
       return { ...createDefaultSettings(), ...data.investigation_settings } as InvestigationSettings;
     }
   } catch {
-    // File doesn't exist or is corrupted, return defaults
+          // File doesn't exist or is corrupted, return defaults
   }
   return createDefaultSettings();
 }
@@ -876,7 +876,7 @@ async function fetchIssueLabels(projectId: string, issueNumber: number): Promise
 
     return issue?.labels?.map(l => l.name) ?? [];
   } catch {
-    return [];
+          return [];
   }
 }
 
@@ -1334,7 +1334,7 @@ async function runInvestigation(
           }
         }
       } catch {
-        // Non-fatal: will start fresh
+              // Non-fatal: will start fresh
       }
 
       // Read investigation settings to get fastInvestigations flag
@@ -1429,7 +1429,7 @@ async function runInvestigation(
             hasResumeSessions = stateData.sessions && typeof stateData.sessions === 'object' && Object.keys(stateData.sessions).length > 0;
           }
         } catch {
-          // Non-fatal: if we can't read the state file, assume no sessions
+                // Non-fatal: if we can't read the state file, assume no sessions
         }
         sendError({ error: result.error ?? 'Investigation failed', issueNumber, hasResumeSessions });
         return;
@@ -1751,7 +1751,7 @@ export function registerInvestigationHandlers(
               hasResumeSessions = stateData.sessions && typeof stateData.sessions === 'object' && Object.keys(stateData.sessions).length > 0;
             }
           } catch {
-            // Non-fatal: if we can't read the state file, assume no sessions
+                  // Non-fatal: if we can't read the state file, assume no sessions
           }
 
           const { sendError } = createIPCCommunicators<InvestigationProgress, InvestigationResult>(
@@ -1886,14 +1886,14 @@ export function registerInvestigationHandlers(
               const stateData = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
               if (stateData.spec_id) {
                 const parsed = parseInt(stateData.spec_id, 10);
-                if (!isNaN(parsed) && parsed > 0) {
+                if (!Number.isNaN(parsed) && parsed > 0) {
                   preAllocatedSpecNumber = parsed;
                   debugLog('Using pre-allocated spec number', { issueNumber, specNumber: parsed });
                 }
               }
             }
           } catch {
-            // Non-fatal: will allocate on demand
+                  // Non-fatal: will allocate on demand
           }
 
           const specData = await createSpecForIssue(
@@ -2114,7 +2114,7 @@ export function registerInvestigationHandlers(
               };
             }
           } catch {
-            // File doesn't exist or is corrupted, return defaults
+                  // File doesn't exist or is corrupted, return defaults
           }
 
           return { success: true, data: createDefaultSettings() };
@@ -2149,7 +2149,7 @@ export function registerInvestigationHandlers(
           try {
             existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
           } catch {
-            // Use empty config if file doesn't exist
+                  // Use empty config if file doesn't exist
           }
 
           // Merge with existing settings (partial update)
@@ -2211,7 +2211,7 @@ export function registerInvestigationHandlers(
             if (!entry.isDirectory()) continue;
 
             const issueNumber = parseInt(entry.name, 10);
-            if (isNaN(issueNumber)) continue;
+            if (Number.isNaN(issueNumber)) continue;
 
             const issueDir = path.join(issuesDir, entry.name);
             const stateFile = path.join(issueDir, 'investigation_state.json');
@@ -2249,7 +2249,7 @@ export function registerInvestigationHandlers(
                       ? transformPythonReport(rawReport)
                       : rawReport;
                   } catch {
-                    // Ignore corrupt report files
+                          // Ignore corrupt report files
                   }
                 }
 
@@ -2276,7 +2276,7 @@ export function registerInvestigationHandlers(
                     ? transformPythonReport(rawReport)
                     : rawReport;
                 } catch {
-                  // Ignore corrupt report files
+                        // Ignore corrupt report files
                 }
               }
 
@@ -2292,7 +2292,7 @@ export function registerInvestigationHandlers(
                 activityLog: loadActivityLog(project.path, issueNumber),
               });
             } catch {
-              // Skip issues with corrupt state files
+                    // Skip issues with corrupt state files
               debugLog('Skipping corrupt investigation state', { issueNumber });
             }
           }
@@ -2387,7 +2387,7 @@ export function registerInvestigationHandlers(
       const raw = fs.readFileSync(logsPath, 'utf-8');
       return JSON.parse(raw) as InvestigationLogs;
     } catch {
-      return null;
+            return null;
     }
   });
 

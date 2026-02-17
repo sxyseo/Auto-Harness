@@ -154,7 +154,7 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
 
     // If on project section with a project selected, save project settings too
     if (activeTopLevel === 'project' && selectedProject && projectSettingsHook) {
-      await projectSettingsHook.handleSave(() => {});
+      await projectSettingsHook.handleSave(() => { /* noop */ });
       // Check for project errors
       if (projectSettingsHook.error || projectSettingsHook.envError) {
         setProjectError(projectSettingsHook.error || projectSettingsHook.envError);

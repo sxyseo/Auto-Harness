@@ -415,7 +415,7 @@ describe('runPythonSubprocess', () => {
       });
 
       mockChildProcess.pid = 12345;
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* noop */ });
       vi.spyOn(process, 'kill').mockImplementation(() => true);
 
       // Act

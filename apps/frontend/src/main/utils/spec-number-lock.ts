@@ -78,16 +78,16 @@ export class SpecNumberLock {
               unlinkSync(this.lockFile);
               continue;
             } catch {
-              // Another process may have removed it
+                    // Another process may have removed it
             }
           }
         } catch {
-          // Invalid lock file - try to remove
+                // Invalid lock file - try to remove
           try {
             unlinkSync(this.lockFile);
             continue;
           } catch {
-            // Ignore removal errors
+                  // Ignore removal errors
           }
         }
       }
@@ -112,7 +112,7 @@ export class SpecNumberLock {
       try {
         unlinkSync(this.lockFile);
       } catch {
-        // Best effort cleanup
+              // Best effort cleanup
       }
       this.acquired = false;
     }
@@ -126,7 +126,7 @@ export class SpecNumberLock {
       process.kill(pid, 0);
       return true;
     } catch {
-      return false;
+            return false;
     }
   }
 
@@ -170,7 +170,7 @@ export class SpecNumberLock {
           }
         }
       } catch {
-        // Ignore errors scanning worktrees
+              // Ignore errors scanning worktrees
       }
     }
 
@@ -201,7 +201,7 @@ export class SpecNumberLock {
         }
       }
     } catch {
-      // Ignore read errors
+            // Ignore read errors
     }
 
     return maxNum;

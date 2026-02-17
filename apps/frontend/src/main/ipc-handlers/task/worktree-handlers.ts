@@ -243,7 +243,7 @@ function fixMisconfiguredBareRepo(projectPath: string): boolean {
     console.warn('[GIT] Fixed: core.bare has been unset. Git operations should now work correctly.');
     return true;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -269,7 +269,7 @@ function isGitWorkTree(projectPath: string): boolean {
     );
     return result.trim() === 'true';
   } catch {
-    // Not a working tree (could be bare repo or not a git repo at all)
+          // Not a working tree (could be bare repo or not a git repo at all)
     return false;
   }
 }
@@ -943,7 +943,7 @@ async function detectMacApps(): Promise<Set<string>> {
       }
     }
   } catch {
-    // Fallback: scan /Applications directory
+          // Fallback: scan /Applications directory
     try {
       const appDir = '/Applications';
       if (existsSync(appDir)) {
@@ -955,7 +955,7 @@ async function detectMacApps(): Promise<Set<string>> {
         }
       }
     } catch {
-      // Ignore errors
+            // Ignore errors
     }
   }
   return apps;
@@ -981,7 +981,7 @@ async function detectWindowsApps(): Promise<Set<string>> {
       }
     }
   } catch {
-    // Fallback: check common paths
+          // Fallback: check common paths
     const commonPaths = [
       'C:\\Program Files',
       'C:\\Program Files (x86)',
@@ -995,7 +995,7 @@ async function detectWindowsApps(): Promise<Set<string>> {
             apps.add(entry.toLowerCase());
           }
         } catch {
-          // Ignore errors
+                // Ignore errors
         }
       }
     }
@@ -1034,13 +1034,13 @@ async function detectLinuxApps(): Promise<Set<string>> {
                 apps.add(nameMatch[1].toLowerCase());
               }
             } catch {
-              // Ignore read errors
+                    // Ignore read errors
             }
           }
         }
       }
     } catch {
-      // Ignore directory errors
+            // Ignore directory errors
     }
   }
 
@@ -1055,7 +1055,7 @@ async function detectLinuxApps(): Promise<Set<string>> {
         }
       }
     } catch {
-      // Ignore errors
+            // Ignore errors
     }
   }
 
@@ -1149,7 +1149,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
         }
         finalInstalled = true;
       } catch {
-        // Command not found
+              // Command not found
       }
     }
 
@@ -1328,10 +1328,10 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
         try {
           await execFileAsync('x-terminal-emulator', ['--working-directory', dirPath, '-e', 'bash']);
         } catch {
-          try {
+                try {
             await execFileAsync('gnome-terminal', ['--working-directory', dirPath]);
           } catch {
-            // xterm doesn't have --working-directory, use -e with a script
+                  // xterm doesn't have --working-directory, use -e with a script
             // Escape the path for shell use within the xterm command
             const escapedPath = escapeSingleQuotedPath(dirPath);
             await execFileAsync('xterm', ['-e', `cd '${escapedPath}' && bash`]);
@@ -1423,7 +1423,7 @@ function getEffectiveBaseBranch(projectPath: string, specId: string, projectMain
       });
       return branch;
     } catch {
-      // Branch doesn't exist, try next
+            // Branch doesn't exist, try next
     }
   }
 
@@ -1459,7 +1459,7 @@ function isValidGitHubUrl(url: string): boolean {
     // The URL comes from gh CLI output which we trust to be valid
     return parsed.protocol === 'https:' && parsed.hostname.length > 0;
   } catch {
-    return false;
+          return false;
   }
 }
 
@@ -1502,7 +1502,7 @@ function parsePRJsonOutput(stdout: string): ParsedPRResult | null {
       error: typeof parsed.error === 'string' ? parsed.error : undefined
     };
   } catch {
-    return null;
+          return null;
   }
 }
 
@@ -1742,7 +1742,7 @@ export function registerWorktreeHandlers(
               encoding: 'utf-8'
             }).trim();
           } catch {
-            // Ignore - might be in detached HEAD or git error
+                  // Ignore - might be in detached HEAD or git error
           }
 
           // Get commit count (cross-platform - no shell syntax)
@@ -1755,7 +1755,7 @@ export function registerWorktreeHandlers(
             }).trim();
             commitCount = parseInt(countOutput, 10) || 0;
           } catch {
-            commitCount = 0;
+                  commitCount = 0;
           }
 
           // Get diff stats
@@ -1779,7 +1779,7 @@ export function registerWorktreeHandlers(
               deletions = parseInt(summaryMatch[3], 10) || 0;
             }
           } catch {
-            // Ignore diff errors
+                  // Ignore diff errors
           }
 
           return {
@@ -2163,7 +2163,7 @@ export function registerWorktreeHandlers(
                   continue;
                 }
               } catch {
-                // Not valid JSON - treat as regular output
+                      // Not valid JSON - treat as regular output
               }
 
               // Accumulate non-progress lines for final result parsing
@@ -2196,7 +2196,7 @@ export function registerWorktreeHandlers(
                   stdout += lineBuffer;
                 }
               } catch {
-                stdout += lineBuffer;
+                      stdout += lineBuffer;
               }
               lineBuffer = '';
             }
@@ -2250,7 +2250,7 @@ export function registerWorktreeHandlers(
                         mergeAlreadyCommitted = true;
                         debug('Merge already committed check:', mergeAlreadyCommitted);
                       } catch {
-                        // Exit code 1 means not merged, or branch may not exist
+                              // Exit code 1 means not merged, or branch may not exist
                         mergeAlreadyCommitted = false;
                         debug('Could not check merge status, assuming not merged');
                       }
@@ -2931,7 +2931,7 @@ export function registerWorktreeHandlers(
               });
               commitCount = parseInt((countResult.stdout as string).trim(), 10) || 0;
             } catch {
-              commitCount = 0;
+                    commitCount = 0;
             }
 
             // Get diff stats (async, cross-platform - no shell syntax)
@@ -2954,7 +2954,7 @@ export function registerWorktreeHandlers(
               if (addMatch) additions = parseInt(addMatch[1], 10) || 0;
               if (delMatch) deletions = parseInt(delMatch[1], 10) || 0;
             } catch {
-              // Ignore diff errors
+                    // Ignore diff errors
             }
 
             // Check if there's a task associated with this worktree
@@ -3009,7 +3009,7 @@ export function registerWorktreeHandlers(
               return processWorktreeEntry(entry, entryPath);
             }
           } catch {
-            // Skip entries that can't be stat'd
+                  // Skip entries that can't be stat'd
           }
           return null;
         });

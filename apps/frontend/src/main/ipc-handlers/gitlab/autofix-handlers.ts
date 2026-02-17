@@ -47,7 +47,7 @@ function sanitizeIssueUrl(rawUrl: unknown, instanceUrl: string): string {
     if (parsedUrl.host !== expectedHost) return '';
     return parsedUrl.toString();
   } catch {
-    return '';
+          return '';
   }
 }
 
@@ -90,7 +90,7 @@ function getAutoFixConfig(project: Project): GitLabAutoFixConfig {
         thinkingLevel: data.thinking_level ?? 'medium',
       };
     } catch {
-      // Return defaults
+            // Return defaults
     }
   }
 
@@ -116,7 +116,7 @@ function saveAutoFixConfig(project: Project, config: GitLabAutoFixConfig): void 
   try {
     existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
   } catch {
-    // Use empty config
+          // Use empty config
   }
 
   const updatedConfig = {
@@ -159,7 +159,7 @@ function getAutoFixQueue(project: Project): GitLabAutoFixQueueItem[] {
           updatedAt: data.updated_at,
         });
       } catch {
-        // Skip invalid files
+              // Skip invalid files
       }
     }
   }
@@ -196,7 +196,7 @@ function getBatches(project: Project): GitLabIssueBatch[] {
           reasoning: data.reasoning ?? '',
         });
       } catch {
-        // Skip invalid files
+              // Skip invalid files
       }
     }
   }

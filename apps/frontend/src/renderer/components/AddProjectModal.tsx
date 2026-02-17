@@ -53,7 +53,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
           setProjectLocation(defaultDir);
         }
       } catch {
-        // Ignore - will just be empty
+              // Ignore - will just be empty
       }
     };
     loadDefaultLocation();
@@ -74,7 +74,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
               });
             }
           } catch {
-            // Non-fatal - main branch can be set later in settings
+                  // Non-fatal - main branch can be set later in settings
           }
           onProjectAdded?.(project, !project.autoBuildPath);
           onOpenChange(false);
@@ -92,7 +92,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
         setProjectLocation(path);
       }
     } catch {
-      // User cancelled - ignore
+            // User cancelled - ignore
     }
   };
 
@@ -136,7 +136,7 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
               });
             }
           } catch {
-            // Non-fatal - main branch can be set later in settings
+                  // Non-fatal - main branch can be set later in settings
           }
         }
         onProjectAdded?.(project, true); // New projects always need init

@@ -252,7 +252,7 @@ async function executeQuery(
           resolve(result);
           return;
         } catch {
-          // JSON parsing failed
+                // JSON parsing failed
           if (code !== 0) {
             const errorMsg = stderr || stdout || `Process exited with code ${code}`;
             console.error('[MemoryService] Python error:', errorMsg);
@@ -406,7 +406,7 @@ async function executeSemanticQuery(
           resolve(result);
           return;
         } catch {
-          if (code !== 0) {
+                if (code !== 0) {
             const errorMsg = stderr || stdout || `Process exited with code ${code}`;
             console.error('[MemoryService] Semantic search error:', errorMsg);
             resolve({ success: false, error: errorMsg });

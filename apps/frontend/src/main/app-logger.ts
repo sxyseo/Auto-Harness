@@ -24,7 +24,7 @@ import os from 'os';
 try {
   log.initialize();
 } catch {
-  // Already initialized, ignore
+        // Already initialized, ignore
 }
 
 // File transport configuration

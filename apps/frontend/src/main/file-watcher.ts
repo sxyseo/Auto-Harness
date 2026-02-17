@@ -55,7 +55,7 @@ export class FileWatcher extends EventEmitter {
         const plan: ImplementationPlan = JSON.parse(content);
         this.emit('progress', taskId, plan);
       } catch {
-        // File might be in the middle of being written
+              // File might be in the middle of being written
         // Ignore parse errors, next change event will have complete file
       }
     });
@@ -72,7 +72,7 @@ export class FileWatcher extends EventEmitter {
       const plan: ImplementationPlan = JSON.parse(content);
       this.emit('progress', taskId, plan);
     } catch {
-      // Initial read failed - not critical
+            // Initial read failed - not critical
     }
   }
 
@@ -118,7 +118,7 @@ export class FileWatcher extends EventEmitter {
       const content = readFileSync(watcherInfo.planPath, 'utf-8');
       return JSON.parse(content);
     } catch {
-      return null;
+            return null;
     }
   }
 }

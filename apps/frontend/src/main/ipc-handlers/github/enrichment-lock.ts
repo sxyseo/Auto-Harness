@@ -26,7 +26,7 @@ export async function withEnrichmentLock<T>(
     await currentLock;
     return await operation();
   } finally {
-    resolve!();
+    resolve?.();
     if (enrichmentLocks.get(filePath) === newLock) {
       enrichmentLocks.delete(filePath);
     }

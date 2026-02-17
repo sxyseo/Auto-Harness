@@ -118,7 +118,7 @@ async function simulateSelectPR(params: SelectPRTestParams): Promise<SelectPRTes
       mockSetNewCommitsCheck(projectId, prNumber, newCommitsResult);
       result.setNewCommitsCheckCalled = true;
     } catch {
-      // Ignore errors in tests
+            // Ignore errors in tests
     }
   };
 

@@ -61,7 +61,7 @@ describe('AgentQueueManager', () => {
   });
 
   it('should route ideation and roadmap spawns correctly', async () => {
-    const mockState = {} as unknown as AgentState;
+    const _mockState = {} as unknown as AgentState;
     const mockEvents = {} as unknown as AgentEvents;
     const mockProcessManager = {
       ensurePythonEnvReady: async () => ({ ready: true }),
@@ -69,17 +69,17 @@ describe('AgentQueueManager', () => {
       getPythonPath: () => 'python3',
       killProcess: () => false,
       getCombinedEnv: () => ({}),
-      state: { addProcess: () => {}, deleteProcess: () => {} }
+      state: { addProcess: () => { /* noop */ }, deleteProcess: () => { /* noop */ } }
     } as unknown as AgentProcessManager;
 
     // Mock state methods
     const mockStateWithMethods = {
       generateSpawnId: () => 1,
-      addProcess: () => {},
+      addProcess: () => { /* noop */ },
       wasSpawnKilled: () => false,
-      clearKilledSpawn: () => {},
+      clearKilledSpawn: () => { /* noop */ },
       getProcess: () => null,
-      deleteProcess: () => {}
+      deleteProcess: () => { /* noop */ }
     } as unknown as AgentState;
 
     const mockEmitter = new EventEmitter();
@@ -97,7 +97,7 @@ describe('AgentQueueManager', () => {
     let processType: string | undefined;
 
     // Mock the spawn function to capture the type
-    const originalEnqueue = spawnQueue.enqueue.bind(spawnQueue);
+    const _originalEnqueue = spawnQueue.enqueue.bind(spawnQueue);
     spawnQueue.enqueue = function(request) {
       processType = request.type;
       return Promise.resolve(undefined);

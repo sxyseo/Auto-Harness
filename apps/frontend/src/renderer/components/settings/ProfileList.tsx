@@ -128,7 +128,7 @@ export function ProfileList({ onProfileSaved }: ProfileListProps) {
       const urlObj = new URL(url);
       return urlObj.host;
     } catch {
-      return url;
+            return url;
     }
   };
 

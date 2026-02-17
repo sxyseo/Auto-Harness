@@ -58,7 +58,7 @@ export class ScrollController {
         }
       });
     } catch {
-      // onWriteParsed may not be available in older versions
+            // onWriteParsed may not be available in older versions
       // Fall back to a simpler approach using scroll event only
       console.warn('[ScrollController] onWriteParsed not available, scroll locking limited');
     }

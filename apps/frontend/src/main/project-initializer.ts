@@ -42,7 +42,7 @@ export function checkGitStatus(projectPath: string): GitStatus {
       stdio: ['pipe', 'pipe', 'pipe']
     });
   } catch {
-    return {
+          return {
       isGitRepo: false,
       hasCommits: false,
       currentBranch: null,
@@ -60,7 +60,7 @@ export function checkGitStatus(projectPath: string): GitStatus {
     });
     hasCommits = true;
   } catch {
-    // No commits yet
+          // No commits yet
     hasCommits = false;
   }
 
@@ -73,7 +73,7 @@ export function checkGitStatus(projectPath: string): GitStatus {
       stdio: ['pipe', 'pipe', 'pipe']
     }).trim();
   } catch {
-    // Branch detection failed
+          // Branch detection failed
   }
 
   if (!hasCommits) {

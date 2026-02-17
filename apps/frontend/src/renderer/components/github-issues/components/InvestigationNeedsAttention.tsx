@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  CheckCircle, Circle, CircleDot, Loader2, XCircle, ChevronDown,
+  CheckCircle, Circle, CircleDot, XCircle, ChevronDown,
   Send, FileText, X, RotateCcw, RefreshCw, EyeOff,
 } from 'lucide-react';
 import { Button } from '../../ui/button';
@@ -80,10 +80,10 @@ export function InvestigationNeedsAttention({
   const formatDuration = (startedAt?: string, completedAt?: string): string | null => {
     if (!startedAt || !completedAt) return null;
     const seconds = Math.round((new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 1000);
-    if (seconds < 60) return t('investigation.duration.seconds', '{{count}}s', { count: seconds });
+    if (seconds < 60) return t('investigation.duration.seconds', { count: seconds });
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return t('investigation.duration.minutesSeconds', '{{min}}m {{sec}}s', { min: minutes, sec: remainingSeconds });
+    return t('investigation.duration.minutesSeconds', { min: minutes, sec: remainingSeconds });
   };
 
   // Use shared polling hook - prevents duplicate IPC calls when both components are mounted
@@ -134,7 +134,7 @@ export function InvestigationNeedsAttention({
   // Step 1: Investigation Started
   steps.push({
     id: 'started',
-    label: t('investigation.timeline.started', 'Investigation Started'),
+    label: t('investigation.timeline.started'),
     status: startedAt ? 'completed' : 'pending',
     date: startedAt,
   });
@@ -177,8 +177,8 @@ export function InvestigationNeedsAttention({
     ].reduce((a, b) => a + b, 0);
     steps.push({
       id: 'analysis',
-      label: t('investigation.timeline.analysisComplete', 'Analysis Complete') +
-        ` — ${t('investigation.timeline.findingCount', '{{count}} findings', { count: findingCount })}`,
+      label: t('investigation.timeline.analysisComplete') +
+        ` — ${t('investigation.timeline.findingCount', { count: findingCount })}`,
       status: 'completed',
       date: completedAt,
     });
@@ -189,8 +189,8 @@ export function InvestigationNeedsAttention({
     steps.push({
       id: 'post',
       label: githubCommentId
-        ? t('investigation.timeline.posted', 'Posted to GitHub')
-        : t('investigation.timeline.pendingPost', 'Post to GitHub'),
+        ? t('investigation.timeline.posted')
+        : t('investigation.timeline.pendingPost'),
       status: githubCommentId ? 'completed' : 'actionable',
       date: postedAt ?? undefined,
     });
@@ -200,13 +200,13 @@ export function InvestigationNeedsAttention({
   if (isComplete && report && !specId) {
     steps.push({
       id: 'task',
-      label: t('investigation.timeline.pendingTask', 'Create Task'),
+      label: t('investigation.timeline.pendingTask'),
       status: 'actionable',
     });
   } else if (specId) {
     steps.push({
       id: 'task',
-      label: t('investigation.timeline.taskCreated', 'Task Created'),
+      label: t('investigation.timeline.taskCreated'),
       status: 'completed',
     });
   }
@@ -222,12 +222,12 @@ export function InvestigationNeedsAttention({
 
   // Card title
   const title = isInvestigating
-    ? t('investigation.needsAttention.investigating', 'AI Investigation in Progress')
+    ? t('investigation.needsAttention.investigating')
     : isFailed
-      ? t('investigation.needsAttention.failed', 'Investigation Failed')
+      ? t('investigation.needsAttention.failed')
       : isComplete && !githubCommentId
-        ? t('investigation.needsAttention.title', 'Needs Attention')
-        : t('investigation.needsAttention.complete', 'Investigation Complete');
+        ? t('investigation.needsAttention.title')
+        : t('investigation.needsAttention.complete');
 
   const progressPercent = progress?.progress ?? (isComplete ? 100 : 0);
 
@@ -237,10 +237,10 @@ export function InvestigationNeedsAttention({
     const runningAgents = AGENT_ORDER.filter(a => getAgentStatus(a) === 'current');
     if (runningAgents.length > 0) {
       const names = runningAgents.map(a => t(AGENT_I18N_KEYS[a]));
-      return t('investigation.progress.agentsRunning', 'Running: {{agents}}', { agents: names.join(', ') });
+      return t('investigation.progress.agentsRunning', { agents: names.join(', ') });
     }
-    if (state === 'queued') return t('investigation.queue.waiting', 'Waiting in queue...');
-    if (isInvestigating) return t('investigation.progress.starting', 'Starting investigation...');
+    if (state === 'queued') return t('investigation.queue.waiting');
+    if (isInvestigating) return t('investigation.progress.starting');
     return '';
   };
 
@@ -258,7 +258,7 @@ export function InvestigationNeedsAttention({
           onClick={(e) => { e.stopPropagation(); onCancel(); }}
           className="h-7 text-destructive hover:text-destructive hover:bg-destructive/10"
         >
-          {t('investigation.button.cancel', 'Cancel')}
+          {t('investigation.button.cancel')}
         </Button>
       ) : undefined}
     >
@@ -333,22 +333,22 @@ export function InvestigationNeedsAttention({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm">
                 <EyeOff className="h-3.5 w-3.5 mr-1.5" />
-                {t('investigation.button.dismiss', 'Dismiss')}
+                {t('investigation.button.dismiss')}
                 <ChevronDown className="h-3 w-3 ml-1 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
               <DropdownMenuItem onClick={() => onDismissIssue('wont_fix')}>
-                {t('investigation.dismiss.wontFix', "Won't Fix")}
+                {t('investigation.dismiss.wontFix')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDismissIssue('duplicate')}>
-                {t('investigation.dismiss.duplicate', 'Duplicate')}
+                {t('investigation.dismiss.duplicate')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDismissIssue('cannot_reproduce')}>
-                {t('investigation.dismiss.cannotReproduce', 'Cannot Reproduce')}
+                {t('investigation.dismiss.cannotReproduce')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDismissIssue('out_of_scope')}>
-                {t('investigation.dismiss.outOfScope', 'Out of Scope')}
+                {t('investigation.dismiss.outOfScope')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -377,14 +377,14 @@ export function InvestigationNeedsAttention({
               className="border-success/40 text-success hover:bg-success/10"
             >
               <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-              {t('investigation.timeline.posted', 'Posted to GitHub')}
+              {t('investigation.timeline.posted')}
             </Button>
           ) : (
             <Button size="sm" variant="outline" onClick={onPostToGitHub} disabled={isPostingToGitHub}
               className="border-warning/40 text-warning hover:bg-warning/10"
             >
               <Send className="h-3.5 w-3.5 mr-1.5" />
-              {t('investigation.actions.postToGitHub', 'Post Findings')}
+              {t('investigation.actions.postToGitHub')}
             </Button>
           )
         )}
@@ -395,14 +395,14 @@ export function InvestigationNeedsAttention({
               className="border-success/40 text-success hover:bg-success/10"
             >
               <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-              {t('investigation.timeline.taskCreated', 'Task Created')}
+              {t('investigation.timeline.taskCreated')}
             </Button>
           ) : (
             <Button size="sm" variant="outline" onClick={onCreateTask}
               className="border-warning/40 text-warning hover:bg-warning/10"
             >
               <FileText className="h-3.5 w-3.5 mr-1.5" />
-              {t('investigation.actions.createTask', 'Create Task')}
+              {t('investigation.actions.createTask')}
             </Button>
           )
         )}
@@ -416,8 +416,8 @@ export function InvestigationNeedsAttention({
           >
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
             {hasResumeSessions
-              ? t('investigation.button.resume', 'Resume Investigation')
-              : t('investigation.actions.retry', 'Re-investigate')
+              ? t('investigation.button.resume')
+              : t('investigation.actions.retry')
             }
           </Button>
         )}

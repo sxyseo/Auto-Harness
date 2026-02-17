@@ -35,7 +35,7 @@ function loadProjectIndex(projectPath: string): ProjectIndex | null {
     const content = readFileSync(indexPath, 'utf-8');
     return JSON.parse(content);
   } catch {
-    return null;
+          return null;
   }
 }
 

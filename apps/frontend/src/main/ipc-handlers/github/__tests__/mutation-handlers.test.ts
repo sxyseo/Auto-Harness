@@ -53,7 +53,7 @@ vi.mock('../../../cli-tool-manager', () => ({
 
 import { ipcMain } from 'electron';
 import { registerMutationHandlers } from '../mutation-handlers';
-import { readEnrichmentFile, writeEnrichmentFile, appendTransition } from '../enrichment-persistence';
+import { writeEnrichmentFile, appendTransition } from '../enrichment-persistence';
 
 // Collect registered handlers
 type HandlerFn = (event: unknown, ...args: unknown[]) => Promise<unknown>;
@@ -149,7 +149,7 @@ describe('editBody handler', () => {
   it('cleans up temp file on success', async () => {
     await call('test-project', 42, 'Body content');
     // After the call completes, there should be no leftover temp files
-    const tmpFiles = fs.readdirSync(os.tmpdir()).filter(f => f.startsWith('gh-body-'));
+    const _tmpFiles = fs.readdirSync(os.tmpdir()).filter(f => f.startsWith('gh-body-'));
     // Allow for concurrency — just check our call's file was cleaned up by verifying the gh call
     expect(mockExecFileSync).toHaveBeenCalled();
   });

@@ -349,7 +349,7 @@ describe('Task Order State Management', () => {
 
     it('should handle localStorage write errors gracefully', () => {
       // Spy on console.error
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* noop */ });
 
       const order = createTestTaskOrder({ backlog: ['task-1'] });
       useTaskStore.setState({ taskOrder: order });
@@ -408,7 +408,7 @@ describe('Task Order State Management', () => {
     });
 
     it('should handle localStorage removal errors gracefully', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* noop */ });
 
       // Mock localStorage.removeItem to throw
       const originalRemoveItem = localStorage.removeItem;
@@ -579,7 +579,7 @@ describe('Task Order State Management', () => {
 
   describe('localStorage persistence edge cases', () => {
     it('should handle empty string in localStorage', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* noop */ });
 
       localStorage.setItem('task-order-state-project-1', '');
 

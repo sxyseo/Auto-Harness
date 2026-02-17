@@ -522,7 +522,7 @@ export async function restoreTerminalSessions(projectPath: string): Promise<void
             const result = await window.electronAPI.checkTerminalPtyAlive(terminal.id);
             return { terminal, alive: result.success && result.data?.alive === true };
           } catch {
-            return { terminal, alive: false };
+                  return { terminal, alive: false };
           }
         })
       );

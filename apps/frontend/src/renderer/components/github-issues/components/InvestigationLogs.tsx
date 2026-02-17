@@ -20,7 +20,6 @@ import type {
   InvestigationLogs as InvestigationLogsType,
   InvestigationAgentType,
   InvestigationAgentLog,
-  InvestigationLogEntry,
 } from '@shared/types';
 
 interface InvestigationLogsProps {
@@ -95,7 +94,7 @@ export function InvestigationLogs({
       setExpandedAgents(activeAgents);
     }
     // Intentionally omit expandedAgents - we only want to update when logs or investigation status changes
-  }, [logs, isInvestigating]);
+  }, [logs, isInvestigating, expandedAgents]);
 
   const toggleAgent = (agent: AgentKey) => {
     setExpandedAgents(prev => {
@@ -113,14 +112,14 @@ export function InvestigationLogs({
 
   return (
     <CollapsibleCard
-      title={t('investigation.logs.title', 'Investigation Logs')}
+      title={t('investigation.logs.title')}
       icon={<FolderOpen className="h-4 w-4 text-muted-foreground" />}
       defaultOpen={false}
     >
       <div className="p-4 space-y-2">
         {!hasAnyLogs ? (
           <p className="text-sm text-muted-foreground italic">
-            {t('investigation.logs.noLogs', 'No logs yet')}
+            {t('investigation.logs.noLogs')}
           </p>
         ) : (
           AGENT_ORDER.map((agentKey) => {
@@ -162,7 +161,7 @@ function AgentLogSection({ agentKey, agentLog, isExpanded, onToggle, isInvestiga
       return (
         <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30 flex items-center gap-1">
           <Loader2 className="h-3 w-3 animate-spin" />
-          {t('investigation.logs.running', 'Running')}
+          {t('investigation.logs.running')}
         </Badge>
       );
     }
@@ -171,20 +170,20 @@ function AgentLogSection({ agentKey, agentLog, isExpanded, onToggle, isInvestiga
         return (
           <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30 flex items-center gap-1">
             <CheckCircle2 className="h-3 w-3" />
-            {t('investigation.logs.complete', 'Complete')}
+            {t('investigation.logs.complete')}
           </Badge>
         );
       case 'failed':
         return (
           <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/30 flex items-center gap-1">
             <XCircle className="h-3 w-3" />
-            {t('investigation.logs.failed', 'Failed')}
+            {t('investigation.logs.failed')}
           </Badge>
         );
       default:
         return (
           <Badge variant="secondary" className="text-xs text-muted-foreground">
-            {t('investigation.logs.pending', 'Pending')}
+            {t('investigation.logs.pending')}
           </Badge>
         );
     }
@@ -260,7 +259,7 @@ function AgentLogEntries({ agentLog, isActive, maxVisible = 20 }: AgentLogEntrie
     if (isActive && isUserNearBottom.current && entriesEndRef.current) {
       entriesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-  }, [entries.length, isActive]);
+  }, [isActive]);
 
   return (
     <div ref={scrollContainerRef} onScroll={handleScroll} className="border-t border-border/30 max-h-[300px] overflow-y-auto overflow-x-hidden w-full">

@@ -131,7 +131,7 @@ function checkOllamaInstalled(): OllamaInstallStatus {
           version = match[1];
         }
       } catch {
-        // Couldn't get version, but binary exists
+              // Couldn't get version, but binary exists
       }
 
       return {
@@ -166,7 +166,7 @@ function checkOllamaInstalled(): OllamaInstallStatus {
           version = match[1];
         }
       } catch {
-        // Couldn't get version
+              // Couldn't get version
       }
 
       return {
@@ -176,7 +176,7 @@ function checkOllamaInstalled(): OllamaInstallStatus {
       };
     }
   } catch {
-    // Not in PATH
+          // Not in PATH
   }
 
   return { installed: false };
@@ -334,7 +334,7 @@ async function executeOllamaDetectorImpl(
         try {
           resolve(JSON.parse(stdout));
         } catch {
-          resolve({ success: false, error: `Invalid JSON: ${stdout}` });
+                resolve({ success: false, error: `Invalid JSON: ${stdout}` });
         }
       } else {
         resolve({ success: false, error: stderr || `Exit code ${code}` });
@@ -822,7 +822,7 @@ export function registerMemoryHandlers(): void {
                     });
                   }
                 } catch {
-                  // Skip lines that aren't valid JSON
+                        // Skip lines that aren't valid JSON
                 }
               }
             });
@@ -844,7 +844,7 @@ export function registerMemoryHandlers(): void {
                   });
                 }
               } catch {
-                resolve({ success: false, error: `Invalid JSON: ${stdout}` });
+                      resolve({ success: false, error: `Invalid JSON: ${stdout}` });
               }
             } else {
               resolve({ success: false, error: stderr || `Exit code ${code}` });

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, } from 'vitest';
+import { act } from '@testing-library/react';
 import { useInvestigationStore } from '../investigation-store';
 
 describe('Investigation Store', () => {

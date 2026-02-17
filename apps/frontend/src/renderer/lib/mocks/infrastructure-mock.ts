@@ -166,13 +166,13 @@ export const infrastructureMock = {
 
   deleteMultipleIdeas: async () => ({ success: true }),
 
-  onIdeationProgress: () => () => {},
-  onIdeationLog: () => () => {},
-  onIdeationComplete: () => () => {},
-  onIdeationError: () => () => {},
-  onIdeationStopped: () => () => {},
-  onIdeationTypeComplete: () => () => {},
-  onIdeationTypeFailed: () => () => {},
+  onIdeationProgress: () => () => { /* noop */ },
+  onIdeationLog: () => () => { /* noop */ },
+  onIdeationComplete: () => () => { /* noop */ },
+  onIdeationError: () => () => { /* noop */ },
+  onIdeationStopped: () => () => { /* noop */ },
+  onIdeationTypeComplete: () => () => { /* noop */ },
+  onIdeationTypeFailed: () => () => { /* noop */ },
 
   // Shell Operations
   openExternal: async (url: string) => {
