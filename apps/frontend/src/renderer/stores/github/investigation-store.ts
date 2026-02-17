@@ -107,6 +107,9 @@ interface InvestigationStoreState {
 // Store Implementation
 // ============================================
 
+// TODO: Optimize with immer middleware to avoid spreading entire state object
+// This requires updating all state setters to use draft pattern
+// See: https://github.com/pmndrs/zustand#immer-middleware
 export const useInvestigationStore = create<InvestigationStoreState>((set, get) => ({
   // Initial state
   investigations: {},
