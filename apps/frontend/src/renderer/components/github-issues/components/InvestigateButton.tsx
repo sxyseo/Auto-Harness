@@ -72,7 +72,7 @@ export const InvestigateButton = memo(function InvestigateButton({
   // Investigating — animated + cancel
   if (state === 'investigating') {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap min-w-0">
         <Button
           variant="secondary"
           size="sm"
@@ -99,7 +99,7 @@ export const InvestigateButton = memo(function InvestigateButton({
   // Findings ready or resolved — view results
   if (state === 'findings_ready' || state === 'resolved') {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap min-w-0">
         <Button
           variant="outline"
           size="sm"
@@ -125,7 +125,7 @@ export const InvestigateButton = memo(function InvestigateButton({
   // Task created / building / done — show status + re-investigate option
   if (state === 'task_created' || state === 'building' || state === 'done') {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap min-w-0">
         <Button
           variant="outline"
           size="sm"
@@ -158,7 +158,7 @@ export const InvestigateButton = memo(function InvestigateButton({
   // Queued — disabled + cancel
   if (state === 'queued') {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap min-w-0">
         <Button
           variant="secondary"
           size="sm"

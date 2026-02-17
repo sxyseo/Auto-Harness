@@ -83,18 +83,18 @@ function AgentSection({ agent, defaultOpen }: { agent: InvestigationAgentResult;
   const colorClass = AGENT_COLORS[agent.agentType];
 
   return (
-    <div className={cn('rounded-lg overflow-hidden', colorClass)}>
+    <div className={cn('rounded-lg overflow-hidden min-w-0', colorClass)}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-left hover:bg-muted/30 transition-colors"
+        className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-left hover:bg-muted/30 transition-colors min-w-0"
       >
-        {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <span>{t(labelKey, defaultLabel)}</span>
+        {isOpen ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="truncate">{t(labelKey, defaultLabel)}</span>
       </button>
       {isOpen && (
-        <div className="px-3 pb-3 space-y-2 border-t border-border/30">
+        <div className="px-3 pb-3 space-y-2 border-t border-border/30 min-w-0 overflow-hidden">
           <p className="text-sm text-foreground mt-2">{agent.summary}</p>
           {agent.findings.length > 0 && (
             <div>
@@ -216,7 +216,7 @@ export function InvestigationPanel({
       </div>
 
       {/* Agent sections with colored bars */}
-      <div className="space-y-2">
+      <div className="space-y-2 min-w-0">
         <AgentSection agent={report.rootCause} defaultOpen />
         <AgentSection agent={report.impact} />
         <AgentSection agent={report.fixAdvice} />

@@ -196,7 +196,7 @@ function AgentLogSection({ agentKey, agentLog, isExpanded, onToggle, isInvestiga
         type="button"
         onClick={onToggle}
         className={cn(
-          'w-full flex items-center justify-between p-3 transition-colors',
+          'w-full flex items-center justify-between p-3 transition-colors min-w-0 overflow-hidden',
           'hover:bg-secondary/50',
           agentLog.status === 'active' && AGENT_COLORS[agentKey],
           agentLog.status === 'completed' && 'border-success/30 bg-success/5',
@@ -204,19 +204,19 @@ function AgentLogSection({ agentKey, agentLog, isExpanded, onToggle, isInvestiga
           agentLog.status === 'pending' && 'border-border bg-secondary/30',
         )}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           {isExpanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
           )}
-          <Icon className={cn('h-4 w-4', agentLog.status === 'active' ? AGENT_COLORS[agentKey].split(' ')[0] : 'text-muted-foreground')} />
-          <span className="font-medium text-sm">{t(AGENT_I18N_KEYS[agentKey])}</span>
-          <span className="text-xs text-muted-foreground">
+          <Icon className={cn('h-4 w-4 shrink-0', agentLog.status === 'active' ? AGENT_COLORS[agentKey].split(' ')[0] : 'text-muted-foreground')} />
+          <span className="font-medium text-sm truncate">{t(AGENT_I18N_KEYS[agentKey])}</span>
+          <span className="text-xs text-muted-foreground shrink-0">
             ({entryCount})
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           {getStatusBadge()}
         </div>
       </button>

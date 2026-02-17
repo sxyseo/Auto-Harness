@@ -38,11 +38,11 @@ export function CollapsibleCard({
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className={cn("border rounded-lg bg-card shadow-sm overflow-hidden", className)}
+      className={cn("border rounded-lg bg-card shadow-sm overflow-hidden min-w-0 flex flex-col", className)}
     >
       <CollapsibleTrigger asChild>
-        <div className="p-4 flex items-center justify-between gap-3 bg-muted/30 cursor-pointer hover:bg-muted/40 transition-colors">
-          <div className="flex items-center gap-3 min-w-0">
+        <button className="p-4 flex items-center justify-between gap-3 bg-muted/30 cursor-pointer hover:bg-muted/40 transition-colors min-w-0 w-full text-left overflow-hidden border-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
             <div className="shrink-0">
               {isOpen ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -57,9 +57,9 @@ export function CollapsibleCard({
             {headerAction}
             {badge}
           </div>
-        </div>
+        </button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="min-w-0">
+      <CollapsibleContent className="min-w-0 overflow-hidden">
         {children}
       </CollapsibleContent>
     </Collapsible>

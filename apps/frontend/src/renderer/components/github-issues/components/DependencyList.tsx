@@ -56,7 +56,7 @@ export function DependencyList({
 
   return (
     <section className="space-y-2" aria-label={t('dependencies.title')}>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between min-w-0">
         <span className="text-xs font-medium text-foreground">
           {t('dependencies.title')}
         </span>
@@ -74,7 +74,7 @@ export function DependencyList({
             {dependencies.tracks.map((dep) => (
               <li
                 key={`track-${dep.issueNumber}-${dep.repo ?? 'local'}`}
-                className="flex items-center gap-1.5 text-xs"
+                className="flex items-center gap-1.5 text-xs min-w-0"
               >
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
@@ -94,7 +94,7 @@ export function DependencyList({
                     {dep.repo ? `${dep.repo}#${dep.issueNumber}` : `#${dep.issueNumber}`}
                   </span>
                 )}
-                <span className="text-muted-foreground truncate">{dep.title}</span>
+                <span className="text-muted-foreground truncate flex-1 min-w-0">{dep.title}</span>
               </li>
             ))}
           </ul>
@@ -110,7 +110,7 @@ export function DependencyList({
             {dependencies.trackedBy.map((dep) => (
               <li
                 key={`trackedBy-${dep.issueNumber}-${dep.repo ?? 'local'}`}
-                className="flex items-center gap-1.5 text-xs"
+                className="flex items-center gap-1.5 text-xs min-w-0"
               >
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
@@ -130,7 +130,7 @@ export function DependencyList({
                     {dep.repo ? `${dep.repo}#${dep.issueNumber}` : `#${dep.issueNumber}`}
                   </span>
                 )}
-                <span className="text-muted-foreground truncate">{dep.title}</span>
+                <span className="text-muted-foreground truncate flex-1 min-w-0">{dep.title}</span>
               </li>
             ))}
           </ul>

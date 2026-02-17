@@ -2341,6 +2341,13 @@ export function registerInvestigationHandlers(
                   continue;
                 }
 
+                // Skip if the investigation folder was manually deleted by the user
+                const issueDir = path.join(project.path, '.auto-claude', 'issues', String(issueNum));
+                if (!fs.existsSync(issueDir)) {
+                  debugLog('Auto-resume: investigation folder deleted by user, skipping', { projectId, issueNumber: issueNum });
+                  continue;
+                }
+
                 // Increment attempt counter
                 autoResumeAttempts.set(processKey, attempts + 1);
                 debugLog('Auto-resuming interrupted investigation', { projectId, issueNumber: issueNum, attempt: attempts + 1 });

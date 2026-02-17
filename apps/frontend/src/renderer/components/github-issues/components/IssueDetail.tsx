@@ -111,7 +111,7 @@ export function IssueDetail({
       <div className="p-4 space-y-4 w-full min-w-0">
         {/* Header */}
         <div className="space-y-2">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4 min-w-0 overflow-hidden">
             <div className="flex items-center gap-2">
               <Badge
                 variant="outline"
@@ -154,7 +154,7 @@ export function IssueDetail({
         )}
 
         {/* Meta */}
-        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground min-w-0">
           <div className="flex items-center gap-1">
             <User className="h-4 w-4" />
             {issue.author.login}
@@ -199,7 +199,7 @@ export function IssueDetail({
             onRemoveLabel={(label) => onRemoveLabels([label])}
           />
         ) : issue.labels.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 min-w-0">
             {issue.labels.map((label) => {
               const color = `#${label.color}`;
               return (
@@ -216,7 +216,7 @@ export function IssueDetail({
         ) : null}
 
         {/* Investigation Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
           {hasLinkedTask ? (
             <Button onClick={handleViewTask} className="flex-1" variant="secondary">
               <Eye className="h-4 w-4 mr-2" />
