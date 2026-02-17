@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSettingsStore } from '../../../stores/settings-store';
 
 /**
@@ -21,7 +21,7 @@ export function useIdeationAuth() {
   // Get active API profile info from settings store
   const activeProfileId = useSettingsStore((state) => state.activeProfileId);
 
-  const resolveHasAPIProfile = async (profileId?: string | null): Promise<boolean> => {
+  const resolveHasAPIProfile = useCallback(async (profileId?: string | null): Promise<boolean> => {
     // Trust the store when it's already populated to avoid extra IPC calls; fallback to IPC only when empty.
     if (profileId && profileId !== '') {
       return true;
@@ -37,7 +37,7 @@ export function useIdeationAuth() {
     } catch {
             return false;
     }
-  };
+  }, []);
 
   useEffect(() => {
     const performCheck = async () => {
@@ -65,7 +65,7 @@ export function useIdeationAuth() {
   }, [activeProfileId, resolveHasAPIProfile]);
 
   // Expose checkAuth for manual re-checks
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -82,7 +82,7 @@ export function useIdeationAuth() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeProfileId, resolveHasAPIProfile]);
 
   return { hasToken, isLoading, error, checkAuth };
 }

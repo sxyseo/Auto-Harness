@@ -549,7 +549,7 @@ export function PRDetail({
     setBranchUpdateError(null);
     setBranchUpdateSuccess(false);
     setIsUpdatingBranch(false);
-  }, []);
+  }, [pr.number]);
 
   // Check for workflows awaiting approval (fork PRs) when PR changes or review completes
   useEffect(() => {

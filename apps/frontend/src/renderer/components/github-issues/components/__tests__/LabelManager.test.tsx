@@ -3,7 +3,35 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
 import { LabelManager } from '../LabelManager';
+
+// Create test i18n instance
+const testI18n = i18n.createInstance();
+testI18n.use(initReactI18next).init({
+  lng: 'en',
+  fallbackLng: 'en',
+  defaultNS: 'common',
+  ns: ['common'],
+  resources: {
+    en: {
+      common: {
+        'labels.manage': 'Label manager',
+        'labels.removeNamed': 'Remove label {{name}}',
+        'labels.add': 'Add label',
+        'labels.filter': 'Filter labels...',
+        'labels.available': 'Available labels',
+        'labels.noMatch': 'No matching labels'
+      }
+    }
+  }
+});
+
+function renderWithI18n(ui: React.ReactElement) {
+  return render(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>);
+}
 
 const repoLabels = [
   { name: 'bug', color: 'fc2929' },
@@ -13,7 +41,7 @@ const repoLabels = [
 
 describe('LabelManager', () => {
   it('renders current labels', () => {
-    render(
+    renderWithI18n(
       <LabelManager
         currentLabels={['bug', 'feature']}
         repoLabels={repoLabels}
@@ -27,7 +55,7 @@ describe('LabelManager', () => {
 
   it('remove button fires onRemoveLabel', () => {
     const onRemoveLabel = vi.fn();
-    render(
+    renderWithI18n(
       <LabelManager
         currentLabels={['bug']}
         repoLabels={repoLabels}
@@ -40,7 +68,7 @@ describe('LabelManager', () => {
   });
 
   it('add button toggles dropdown', () => {
-    render(
+    renderWithI18n(
       <LabelManager
         currentLabels={[]}
         repoLabels={repoLabels}
@@ -54,7 +82,7 @@ describe('LabelManager', () => {
   });
 
   it('type-ahead filter works', () => {
-    render(
+    renderWithI18n(
       <LabelManager
         currentLabels={[]}
         repoLabels={repoLabels}
@@ -63,7 +91,7 @@ describe('LabelManager', () => {
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Add label' }));
-    const filterInput = screen.getByRole('textbox', { name: 'Filter labels' });
+    const filterInput = screen.getByRole('textbox', { name: 'Filter labels...' });
     fireEvent.change(filterInput, { target: { value: 'doc' } });
 
     expect(screen.getByText('docs')).toBeDefined();
@@ -73,7 +101,7 @@ describe('LabelManager', () => {
 
   it('selecting fires onAddLabel', () => {
     const onAddLabel = vi.fn();
-    render(
+    renderWithI18n(
       <LabelManager
         currentLabels={[]}
         repoLabels={repoLabels}
@@ -88,7 +116,7 @@ describe('LabelManager', () => {
 
   it('Enter key on option fires onAddLabel', () => {
     const onAddLabel = vi.fn();
-    render(
+    renderWithI18n(
       <LabelManager
         currentLabels={[]}
         repoLabels={repoLabels}
@@ -104,7 +132,7 @@ describe('LabelManager', () => {
 
   it('Space key on option fires onAddLabel', () => {
     const onAddLabel = vi.fn();
-    render(
+    renderWithI18n(
       <LabelManager
         currentLabels={[]}
         repoLabels={repoLabels}
@@ -119,7 +147,7 @@ describe('LabelManager', () => {
   });
 
   it('Escape key closes dropdown', () => {
-    render(
+    renderWithI18n(
       <LabelManager
         currentLabels={[]}
         repoLabels={repoLabels}
@@ -136,7 +164,7 @@ describe('LabelManager', () => {
 
   it('Enter key does not fire onAddLabel for already-applied label', () => {
     const onAddLabel = vi.fn();
-    render(
+    renderWithI18n(
       <LabelManager
         currentLabels={['bug']}
         repoLabels={repoLabels}
@@ -151,7 +179,7 @@ describe('LabelManager', () => {
   });
 
   it('aria-label present on container', () => {
-    const { container } = render(
+    const { container } = renderWithI18n(
       <LabelManager
         currentLabels={[]}
         repoLabels={repoLabels}
