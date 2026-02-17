@@ -133,6 +133,7 @@ The completed report includes:
 - **Fix approaches** - Multiple options with pros/cons
 - **Reproducibility** - Can the issue be reproduced? Do tests exist?
 - **Confidence levels** - How certain is each finding?
+- **Image analysis** - Screenshots and images from the issue are analyzed for visual bugs, UI issues, and error messages
 
 ### Task Creation
 
@@ -399,6 +400,13 @@ When complete, the report shows:
 - **Reproducibility** - Can it be reproduced? Test coverage
 - **Confidence** - How certain is each finding?
 
+**Image Analysis**
+If the issue contains screenshots or images:
+- Images are automatically extracted from markdown (`![alt](url)`) and HTML (`<img>` tags)
+- Root Cause Analyzer treats screenshots as **primary evidence**
+- Visual bugs, UI issues, and error messages in images are analyzed
+- Image URLs are included in the investigation context for all specialists
+
 > **Tip:** Results vary by issue type. Bugs get detailed root causes; feature requests get architectural analysis.
 
 ### Creating Tasks from Results
@@ -503,7 +511,11 @@ A: Investigation quality depends on:
 - Issue description quality (be specific!)
 - Codebase accessibility
 - Reproduction steps (if known)
+- Screenshots/images (include these for visual bugs!)
 Try providing more context and re-investigate.
+
+**Q: Does the AI analyze screenshots in issues?**
+A: Yes! Images embedded in issues (both markdown `![alt](url)` and HTML `<img>` tags) are automatically extracted and provided to the investigation specialists. The Root Cause Analyzer treats screenshots as primary evidence and will describe what it observes in images when diagnosing visual bugs, UI issues, or error messages.
 
 ---
 

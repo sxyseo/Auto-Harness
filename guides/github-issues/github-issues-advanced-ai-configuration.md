@@ -126,16 +126,18 @@ Traces bugs and issues to their source code.
 
 **How It Works**
 1. Parses the issue description
-2. Searches codebase for relevant files
-3. Analyzes code paths and dependencies
-4. Identifies the exact source of the issue
-5. Provides file paths and line numbers when possible
+2. Extracts and analyzes images from the issue (screenshots, error messages)
+3. Searches codebase for relevant files
+4. Analyzes code paths and dependencies
+5. Identifies the exact source of the issue
+6. Provides file paths and line numbers when possible
 
 **Output**
 - Root cause location (file:line)
 - Explanation of why the issue occurs
 - Code snippets showing the problem
 - Related code that may need changes
+- Image analysis (descriptions of screenshots, visual bugs, error messages in images)
 
 **Token Budget:** 127,999 (maximum)
 
@@ -460,10 +462,17 @@ graph TD
 
 Each specialist receives:
 - Issue details (title, description, comments)
+- **Images** (URLs extracted from markdown and HTML img tags)
 - Repository context (structure, main files)
 - Code search results (relevant files)
 - Related issues/PRs
 - Specialist-specific configuration
+
+**Image Support**
+- Images are extracted from both markdown syntax (`![alt](url)`) and HTML `<img>` tags
+- Root Cause Analyzer treats screenshots as **primary evidence**
+- Up to 20 images are included in the investigation context
+- Images from both issue body and comments are aggregated and deduplicated
 
 > See [Customization Guide](github-issues-customization-guide.md#context-injection-system) for details on customizing context.
 

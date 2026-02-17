@@ -108,6 +108,7 @@ Centralized TypeScript definitions for:
 
 ### AI Investigation
 - Investigate issues with AI analysis
+- **Image analysis** - Screenshots and images from issues are analyzed for visual bugs, UI issues, and error messages
 - Create tasks from GitHub issues
 - Track investigation progress
 - View investigation results
