@@ -4,8 +4,10 @@
  */
 export const SUBTASK_TITLE_MAX_LENGTH = 80;
 
-// Common abbreviations that end with a period but don't end a sentence
-const ABBREVIATIONS = /(?:Dr|Mr|Ms|Mrs|Jr|Sr|Prof|St|vs|etc|e\.g|i\.e|a\.m|p\.m|no|vol|dept|est|approx|incl|govt|corp|assn|bros|co|ltd|inc)$/i;
+// Common abbreviations that end with a period but don't end a sentence.
+// Uses \b word boundary before the $ anchor to prevent partial-word matches
+// (e.g. "items" must not match the "Ms" abbreviation).
+const ABBREVIATIONS = /\b(?:Dr|Mr|Ms|Mrs|Jr|Sr|Prof|St|vs|etc|e\.g|i\.e|a\.m|p\.m|no|vol|dept|est|approx|incl|govt|corp|assn|bros|co|ltd|inc)$/i;
 
 /**
  * Extract a concise title from a subtask description.
@@ -44,6 +46,10 @@ export function extractSubtaskTitle(description: string | undefined | null, maxL
   let match: RegExpExecArray | null;
   while ((match = boundaryPattern.exec(trimmed)) !== null) {
     const prefix = trimmed.substring(0, match.index);
+    // Skip colon-space for short strings (title-style prefixes like "Fix: do the thing")
+    if (match[0].startsWith(':') && trimmed.length <= maxLength) {
+      continue;
+    }
     // Skip if the period follows a common abbreviation
     if (match[0].startsWith('.') && ABBREVIATIONS.test(prefix)) {
       continue;

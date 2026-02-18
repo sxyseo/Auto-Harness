@@ -18,6 +18,13 @@ describe('extractSubtaskTitle', () => {
     });
   });
 
+  describe('colon-space short string handling', () => {
+    it('should split at period-space not colon-space for short descriptions', () => {
+      const desc = 'Fix: align items. See related PR';
+      expect(extractSubtaskTitle(desc)).toBe('Fix: align items');
+    });
+  });
+
   describe('long descriptions with sentence boundary', () => {
     it('should truncate at first sentence ending with period-space', () => {
       const desc = 'Fix the login button styling. Then update the tests and make sure everything works correctly across all browsers.';

@@ -1,5 +1,5 @@
 import { CheckCircle2, Clock, XCircle, AlertCircle, ListChecks, FileCode } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -24,21 +24,20 @@ function getSubtaskStatusIcon(status: string) {
 }
 
 function OverflowDescription({ text }: { text: string }) {
-  const ref = useRef<HTMLParagraphElement>(null);
+  const [el, setEl] = useState<HTMLParagraphElement | null>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
 
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const check = () => setIsOverflowing(el.scrollHeight > el.clientHeight);
     check();
     const observer = new ResizeObserver(check);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [text]);
+  }, [el]);
 
   const content = (
-    <p ref={ref} className="mt-1 text-xs text-muted-foreground line-clamp-2 break-words">
+    <p ref={setEl} className="mt-1 text-xs text-muted-foreground line-clamp-2 break-words">
       {text}
     </p>
   );
