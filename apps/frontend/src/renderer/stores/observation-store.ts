@@ -1,8 +1,19 @@
 import { create } from 'zustand';
-import type { Observation, ObservationStats, ObservationCategory } from '../../shared/types';
-import type { ElectronAPI } from '../../preload/api';
+import type { Observation, ObservationStats, ObservationCategory, IPCResult } from '../../shared/types';
 
-const api = () => window.electronAPI as ElectronAPI;
+/** Typed subset of electronAPI for observation operations */
+interface ObservationAPI {
+  observationList: (projectHash: string, specId?: string) => Promise<IPCResult<Observation[]>>;
+  observationSearch: (projectHash: string, query: string, category?: string, scope?: string) => Promise<IPCResult<Observation[]>>;
+  observationGet: (projectHash: string, id: string) => Promise<IPCResult<Observation>>;
+  observationPin: (projectHash: string, id: string, pinned: boolean) => Promise<IPCResult<void>>;
+  observationEdit: (projectHash: string, id: string, fields: Partial<Observation>) => Promise<IPCResult<void>>;
+  observationDelete: (projectHash: string, id: string) => Promise<IPCResult<void>>;
+  observationPromote: (projectHash: string, id: string) => Promise<IPCResult<void>>;
+  observationGetStats: (projectHash: string) => Promise<IPCResult<ObservationStats>>;
+}
+
+const api = () => window.electronAPI as unknown as ObservationAPI;
 
 interface ObservationState {
   // Data
