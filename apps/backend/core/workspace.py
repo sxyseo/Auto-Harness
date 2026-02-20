@@ -747,10 +747,9 @@ def _try_smart_merge_inner(
         spec_branch = f"auto-claude/{spec_name}"
         print(muted(f"  All changes compatible, merging {spec_branch}..."))
 
-        # Build merge command with conditional --no-commit flag
-        merge_cmd = ["merge", "--no-ff", spec_branch]
-        if no_commit:
-            merge_cmd.insert(1, "--no-commit")
+        # Always use --no-commit so we can inspect staged files with git diff --cached.
+        # If the caller did NOT request no_commit, we commit explicitly after inspection.
+        merge_cmd = ["merge", "--no-commit", "--no-ff", spec_branch]
 
         # Execute git merge
         merge_result = run_git(
@@ -758,30 +757,46 @@ def _try_smart_merge_inner(
             cwd=project_dir,
         )
 
-        if merge_result.returncode != 0:
-            if "already up to date" in merge_result.stdout.lower():
-                # Already up to date - treat as success
-                if progress_callback is not None:
-                    progress_callback(
-                        MergeProgressStage.COMPLETE,
-                        100,
-                        "Merge complete (already up to date)",
-                    )
-                return {
-                    "success": True,
-                    "resolved_files": [],
-                    "stats": {
-                        "git_merge": True,
-                        "files_merged": 0,
-                        "auto_resolved": 0,
-                    },
-                }
-            else:
-                # Merge failed - abort to restore clean state and raise error
-                run_git(["merge", "--abort"], cwd=project_dir)
-                raise Exception(f"Git merge failed: {merge_result.stderr}")
+        # 'Already up to date' is returned with exit code 0, but check both
+        # stdout locations defensively in case git behaviour varies.
+        stdout_lower = merge_result.stdout.lower() if merge_result.stdout else ""
+        if "already up to date" in stdout_lower:
+            # Already up to date - treat as success
+            if progress_callback is not None:
+                progress_callback(
+                    MergeProgressStage.COMPLETE,
+                    100,
+                    "Merge complete (already up to date)",
+                )
+            return {
+                "success": True,
+                "resolved_files": [],
+                "stats": {
+                    "files_merged": 0,
+                    "conflicts_resolved": 0,
+                    "ai_assisted": 0,
+                    "auto_merged": 0,
+                    "git_merge": True,
+                },
+            }
 
-        # Get list of files that were actually merged
+        if merge_result.returncode != 0:
+            # Merge failed - abort to restore clean state and return failure
+            abort_result = run_git(["merge", "--abort"], cwd=project_dir)
+            if abort_result.returncode != 0:
+                debug_error(
+                    MODULE,
+                    "Failed to abort merge - repo may be in inconsistent state",
+                    stderr=abort_result.stderr,
+                )
+                return None  # Trigger fallback to avoid operating on inconsistent state
+            return {
+                "success": False,
+                "error": f"Git merge failed: {merge_result.stderr}",
+                "conflicts": [],
+            }
+
+        # Get list of files that were actually merged (staged but not yet committed)
         diff_result = run_git(
             ["diff", "--cached", "--name-only"],
             cwd=project_dir,
@@ -791,6 +806,19 @@ def _try_smart_merge_inner(
             for f in diff_result.stdout.splitlines()
             if f.strip() and not _is_auto_claude_file(f.strip())
         ]
+
+        # If caller wants a commit, create it now
+        if not no_commit:
+            commit_result = run_git(
+                ["commit", "--no-edit"],
+                cwd=project_dir,
+            )
+            if commit_result.returncode != 0:
+                debug_warning(
+                    MODULE,
+                    "Failed to commit merge",
+                    stderr=commit_result.stderr,
+                )
 
         if progress_callback is not None:
             progress_callback(
@@ -803,9 +831,11 @@ def _try_smart_merge_inner(
             "success": True,
             "resolved_files": merged_files,
             "stats": {
-                "git_merge": True,
                 "files_merged": len(merged_files),
-                "auto_resolved": auto_mergeable,
+                "conflicts_resolved": 0,
+                "ai_assisted": 0,
+                "auto_merged": len(merged_files),
+                "git_merge": True,
             },
         }
 
