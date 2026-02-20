@@ -2,7 +2,11 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { resolve } from 'path';
+import { readFileSync } from 'fs';
 import { config as dotenvConfig } from 'dotenv';
+
+// Read package.json version for Sentry release tagging
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
 
 // Load .env file for build-time constants (Sentry DSN, etc.)
 dotenvConfig({ path: resolve(__dirname, '.env') });
@@ -44,6 +48,9 @@ function createSentryPlugin() {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
+      release: {
+        name: `auto-claude@${pkg.version}`,
+      },
       sourcemaps: {
         filesToDeleteAfterUpload: ['**/*.js.map'],
       },

@@ -247,7 +247,8 @@ export function withSentryIpc<T>(
     try {
       return await handler(event, ...args);
     } catch (error) {
-      safeCaptureException(error as Error, { tags: { ipc_channel: channel } });
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      safeCaptureException(normalizedError, { tags: { ipc_channel: channel } });
       throw error;
     }
   };
