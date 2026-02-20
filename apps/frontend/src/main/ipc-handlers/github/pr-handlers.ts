@@ -26,7 +26,7 @@ import { getMemoryService, getDefaultDbPath } from "../../memory-service";
 import type { Project, AppSettings } from "../../../shared/types";
 import { createContextLogger } from "./utils/logger";
 import { withProjectOrNull } from "./utils/project-middleware";
-import { createIPCCommunicators } from "./utils/ipc-communicator";
+import { PRReviewStateManager } from "../../pr-review-state-manager";
 import { getRunnerEnv } from "./utils/runner-env";
 import {
   runPythonSubprocess,
@@ -112,6 +112,7 @@ async function githubGraphQL<T>(
   query: string,
   variables: Record<string, unknown> = {}
 ): Promise<T> {
+  // lgtm[js/file-access-to-http] - Official GitHub GraphQL API endpoint
   const response = await fetch("https://api.github.com/graphql", {
     method: "POST",
     headers: {
@@ -267,6 +268,10 @@ export interface PRReviewFinding {
   endLine?: number;
   suggestedFix?: string;
   fixable: boolean;
+  validationStatus?: "confirmed_valid" | "dismissed_false_positive" | "needs_human_review" | null;
+  validationExplanation?: string;
+  sourceAgents?: string[];
+  crossValidated?: boolean;
 }
 
 /**
@@ -278,7 +283,7 @@ export interface PRReviewResult {
   success: boolean;
   findings: PRReviewFinding[];
   summary: string;
-  overallStatus: "approve" | "request_changes" | "comment";
+  overallStatus: "approve" | "request_changes" | "comment" | "in_progress";
   reviewId?: number;
   reviewedAt: string;
   error?: string;
@@ -294,6 +299,8 @@ export interface PRReviewResult {
   hasPostedFindings?: boolean;
   postedFindingIds?: string[];
   postedAt?: string;
+  // In-progress review tracking
+  inProgressSince?: string;
 }
 
 /**
@@ -1338,6 +1345,10 @@ function getReviewResult(project: Project, prNumber: number): PRReviewResult | n
           endLine: f.end_line,
           suggestedFix: f.suggested_fix,
           fixable: f.fixable ?? false,
+          validationStatus: f.validation_status ?? null,
+          validationExplanation: f.validation_explanation ?? undefined,
+          sourceAgents: f.source_agents ?? [],
+          crossValidated: f.cross_validated ?? false,
         })) ?? [],
       summary: data.summary ?? "",
       overallStatus: data.overall_status ?? "comment",
@@ -1356,6 +1367,8 @@ function getReviewResult(project: Project, prNumber: number): PRReviewResult | n
       hasPostedFindings: data.has_posted_findings ?? false,
       postedFindingIds: data.posted_finding_ids ?? [],
       postedAt: data.posted_at,
+      // In-progress review tracking
+      inProgressSince: data.in_progress_since,
     };
   } catch {
     // File doesn't exist or couldn't be read
@@ -1371,7 +1384,7 @@ function sendReviewStateUpdate(
   project: Project,
   prNumber: number,
   projectId: string,
-  getMainWindow: () => BrowserWindow | null,
+  prReviewStateManager: PRReviewStateManager,
   context: string
 ): void {
   try {
@@ -1380,18 +1393,8 @@ function sendReviewStateUpdate(
       debugLog("Could not retrieve updated review result for UI notification", { prNumber, context });
       return;
     }
-    const mainWindow = getMainWindow();
-    if (!mainWindow) return;
-    const { sendComplete } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
-      mainWindow,
-      {
-        progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
-        error: IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
-        complete: IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
-      },
-      projectId
-    );
-    sendComplete(updatedResult);
+    // Route through state manager so the XState actor emits the state change
+    prReviewStateManager.handleComplete(projectId, prNumber, updatedResult);
     debugLog(`Sent PR review state update ${context}`, { prNumber });
   } catch (uiError) {
     debugLog("Failed to send UI update (non-critical)", {
@@ -1432,7 +1435,8 @@ function getGitHubPRSettings(): { model: string; thinkingLevel: string } {
 async function runPRReview(
   project: Project,
   prNumber: number,
-  mainWindow: BrowserWindow
+  mainWindow: BrowserWindow,
+  prReviewStateManager: PRReviewStateManager
 ): Promise<PRReviewResult> {
   // Comprehensive validation of GitHub module
   const validation = await validateGitHubModule(project);
@@ -1443,15 +1447,9 @@ async function runPRReview(
 
   const backendPath = validation.backendPath!;
 
-  const { sendProgress } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
-    mainWindow,
-    {
-      progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
-      error: IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
-      complete: IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
-    },
-    project.id
-  );
+  const sendProgress = (progress: PRReviewProgress): void => {
+    prReviewStateManager.handleProgress(project.id, prNumber, progress);
+  };
 
   const { model, thinkingLevel } = getGitHubPRSettings();
   const args = buildRunnerArgs(
@@ -1486,6 +1484,19 @@ async function runPRReview(
   // Build environment with project settings
   const subprocessEnv = await getRunnerEnv(getClaudeMdEnv(project));
 
+  safeBreadcrumb({
+    category: 'github.pr-review',
+    message: `Subprocess env for PR #${prNumber} review`,
+    level: 'info',
+    data: {
+      prNumber,
+      hasGITHUB_CLI_PATH: !!subprocessEnv.GITHUB_CLI_PATH,
+      GITHUB_CLI_PATH: subprocessEnv.GITHUB_CLI_PATH ?? 'NOT SET',
+      hasGITHUB_TOKEN: !!subprocessEnv.GITHUB_TOKEN,
+      hasPYTHONPATH: !!subprocessEnv.PYTHONPATH,
+    },
+  });
+
   // Create operation ID for this review
   const reviewKey = getReviewKey(project.id, prNumber);
 
@@ -1514,7 +1525,32 @@ async function runPRReview(
       debugLog("Auth failure detected in PR review", authFailureInfo);
       mainWindow.webContents.send(IPC_CHANNELS.CLAUDE_AUTH_FAILURE, authFailureInfo);
     },
-    onComplete: () => {
+    onComplete: (stdout: string) => {
+      // Check stdout for in_progress JSON marker (not saved to disk by backend)
+      const inProgressMarker = "__RESULT_JSON__:";
+      for (const line of stdout.split("\n")) {
+        if (line.startsWith(inProgressMarker)) {
+          try {
+            const data = JSON.parse(line.slice(inProgressMarker.length));
+            if (data.overall_status === "in_progress") {
+              debugLog("In-progress result parsed from stdout", { prNumber });
+              return {
+                prNumber: data.pr_number,
+                repo: data.repo,
+                success: data.success,
+                findings: [],
+                summary: data.summary ?? "",
+                overallStatus: "in_progress" as const,
+                reviewedAt: data.reviewed_at ?? new Date().toISOString(),
+                inProgressSince: data.in_progress_since,
+              };
+            }
+          } catch {
+            debugLog("Failed to parse __RESULT_JSON__ line", { line });
+          }
+        }
+      }
+
       // Load the result from disk
       const reviewResult = getReviewResult(project, prNumber);
       if (!reviewResult) {
@@ -1643,6 +1679,32 @@ async function fetchPRsFromGraphQL(
  */
 export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): void {
   debugLog("Registering PR handlers");
+
+  // Create the XState-based PR review state manager
+  const prReviewStateManager = new PRReviewStateManager(getMainWindow);
+
+  // Clear all PR review actors when GitHub auth changes (account swap)
+  ipcMain.on(IPC_CHANNELS.GITHUB_AUTH_CHANGED, () => {
+    // Cancel all running review subprocesses and CI wait controllers
+    for (const [reviewKey, entry] of runningReviews) {
+      if (entry === CI_WAIT_PLACEHOLDER) {
+        const abortController = ciWaitAbortControllers.get(reviewKey);
+        if (abortController) {
+          abortController.abort();
+          ciWaitAbortControllers.delete(reviewKey);
+        }
+      } else {
+        try {
+          entry.kill("SIGTERM");
+        } catch {
+          // Process may have already exited
+        }
+      }
+    }
+    runningReviews.clear();
+    ciWaitAbortControllers.clear();
+    prReviewStateManager.handleAuthChange();
+  });
 
   // List open PRs - fetches up to 100 open PRs at once, returns hasNextPage and endCursor from API
   ipcMain.handle(
@@ -1851,24 +1913,26 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
     try {
       await withProjectOrNull(projectId, async (project) => {
-        const { sendProgress, sendComplete } = createIPCCommunicators<
-          PRReviewProgress,
-          PRReviewResult
-        >(
-          mainWindow,
-          {
-            progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
-            error: IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
-            complete: IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
-          },
-          projectId
-        );
+        const sendProgress = (progress: PRReviewProgress): void => {
+          prReviewStateManager.handleProgress(projectId, prNumber, progress);
+        };
 
-        // Check if already running
+        // Check if already running — notify renderer so it can display ongoing logs
         if (runningReviews.has(reviewKey)) {
-          debugLog("Review already running", { reviewKey });
+          debugLog("Review already running, notifying renderer", { reviewKey });
+          const currentSnapshot = prReviewStateManager.getState(projectId, prNumber);
+          const currentProgress = currentSnapshot?.context?.progress?.progress ?? 50;
+          sendProgress({
+            phase: "analyzing",
+            prNumber,
+            progress: currentProgress,
+            message: "Review is already in progress. Reconnecting to ongoing review...",
+          });
           return;
         }
+
+        // Notify state manager that review is starting (after duplicate check)
+        prReviewStateManager.handleStartReview(projectId, prNumber);
 
         // Register as running BEFORE CI wait to prevent race conditions
         // Use CI_WAIT_PLACEHOLDER sentinel until real process is spawned
@@ -1934,17 +1998,18 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
             message: "Fetching PR data...",
           });
 
-          const result = await runPRReview(project, prNumber, mainWindow);
+          const result = await runPRReview(project, prNumber, mainWindow, prReviewStateManager);
 
           debugLog("PR review completed", { prNumber, findingsCount: result.findings.length });
           sendProgress({
             phase: "complete",
             prNumber,
             progress: 100,
-            message: "Review complete!",
+            message: result.overallStatus === "in_progress" ? "Review already in progress" : "Review complete!",
           });
 
-          sendComplete(result);
+          // Route through manager — handles external review detection internally
+          prReviewStateManager.handleComplete(projectId, prNumber, result);
         } finally {
           // Clean up in case we exit before runPRReview was called (e.g., cancelled during CI wait)
           // runPRReview also has its own cleanup, but delete is idempotent
@@ -1961,16 +2026,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
         prNumber,
         error: error instanceof Error ? error.message : error,
       });
-      const { sendError } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
-        mainWindow,
-        {
-          progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
-          error: IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
-          complete: IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
-        },
-        projectId
-      );
-      sendError(error instanceof Error ? error.message : "Failed to run PR review");
+      prReviewStateManager.handleError(projectId, prNumber, error instanceof Error ? error.message : "Failed to run PR review");
     }
   });
 
@@ -2175,7 +2231,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           }
 
           // Send state update event to refresh UI immediately (non-blocking)
-          sendReviewStateUpdate(project, prNumber, projectId, getMainWindow, "after posting");
+          sendReviewStateUpdate(project, prNumber, projectId, prReviewStateManager, "after posting");
 
           return true;
         } catch (error) {
@@ -2214,7 +2270,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           debugLog("Marked review as posted", { prNumber });
 
           // Send state update event to refresh UI immediately (non-blocking)
-          sendReviewStateUpdate(project, prNumber, projectId, getMainWindow, "after marking posted");
+          sendReviewStateUpdate(project, prNumber, projectId, prReviewStateManager, "after marking posted");
 
           return true;
         } catch (error) {
@@ -2332,7 +2388,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           }
 
           // Send state update event to refresh UI immediately (non-blocking)
-          sendReviewStateUpdate(project, prNumber, projectId, getMainWindow, "after deletion");
+          sendReviewStateUpdate(project, prNumber, projectId, prReviewStateManager, "after deletion");
 
           return true;
         } catch (error) {
@@ -2444,6 +2500,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           ciWaitAbortControllers.delete(reviewKey);
         }
         runningReviews.delete(reviewKey);
+        // Notify state manager of cancellation
+        prReviewStateManager.handleCancel(projectId, prNumber);
         debugLog("CI wait cancelled", { reviewKey });
         return true;
       }
@@ -2464,6 +2522,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
         // Clean up the registry
         runningReviews.delete(reviewKey);
+        // Notify state manager of cancellation
+        prReviewStateManager.handleCancel(projectId, prNumber);
         debugLog("Review process cancelled", { reviewKey });
         return true;
       } catch (error) {
@@ -2472,6 +2532,21 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           error: error instanceof Error ? error.message : error,
         });
         return false;
+      }
+    }
+  );
+
+  // Notify main process about external review completion or timeout
+  // Called by renderer when its polling detects an external review has finished on disk
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_PR_NOTIFY_EXTERNAL_REVIEW_COMPLETE,
+    async (_, projectId: string, prNumber: number, result: PRReviewResult | null): Promise<void> => {
+      debugLog("notifyExternalReviewComplete handler called", { projectId, prNumber, hasResult: !!result });
+      if (result) {
+        prReviewStateManager.handleComplete(projectId, prNumber, result);
+      } else {
+        // Timeout — no result found within polling window
+        prReviewStateManager.handleError(projectId, prNumber, "External review timed out after 30 minutes");
       }
     }
   );
@@ -2861,34 +2936,40 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
       try {
         await withProjectOrNull(projectId, async (project) => {
-          const { sendProgress, sendError, sendComplete } = createIPCCommunicators<
-            PRReviewProgress,
-            PRReviewResult
-          >(
-            mainWindow,
-            {
-              progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
-              error: IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
-              complete: IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
-            },
-            projectId
-          );
+          const sendProgress = (progress: PRReviewProgress): void => {
+            prReviewStateManager.handleProgress(projectId, prNumber, progress);
+          };
+
+          const reviewKey = getReviewKey(projectId, prNumber);
+
+          // Check if already running — notify renderer so it can display ongoing logs
+          if (runningReviews.has(reviewKey)) {
+            debugLog("Follow-up review already running, notifying renderer", { reviewKey });
+            const currentSnapshot = prReviewStateManager.getState(projectId, prNumber);
+            const currentProgress = currentSnapshot?.context?.progress?.progress ?? 50;
+            sendProgress({
+              phase: "analyzing",
+              prNumber,
+              progress: currentProgress,
+              message: "Follow-up review is already in progress. Reconnecting to ongoing review...",
+            });
+            return;
+          }
+
+          // Get previous result for followup context
+          const previousResult = getReviewResult(project, prNumber) ?? undefined;
+
+          // Notify state manager that followup review is starting (after duplicate check)
+          prReviewStateManager.handleStartFollowupReview(projectId, prNumber, previousResult);
 
           // Comprehensive validation of GitHub module
           const validation = await validateGitHubModule(project);
           if (!validation.valid) {
-            sendError({ prNumber, error: validation.error || "GitHub module validation failed" });
+            prReviewStateManager.handleError(projectId, prNumber, validation.error || "GitHub module validation failed");
             return;
           }
 
           const backendPath = validation.backendPath!;
-          const reviewKey = getReviewKey(projectId, prNumber);
-
-          // Check if already running
-          if (runningReviews.has(reviewKey)) {
-            debugLog("Follow-up review already running", { reviewKey });
-            return;
-          }
 
           // Register as running BEFORE CI wait to prevent race conditions
           // Use CI_WAIT_PLACEHOLDER sentinel until real process is spawned
@@ -2956,6 +3037,19 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
           // Build environment with project settings
           const followupEnv = await getRunnerEnv(getClaudeMdEnv(project));
+
+          safeBreadcrumb({
+            category: 'github.pr-review',
+            message: `Subprocess env for PR #${prNumber} follow-up review`,
+            level: 'info',
+            data: {
+              prNumber,
+              hasGITHUB_CLI_PATH: !!followupEnv.GITHUB_CLI_PATH,
+              GITHUB_CLI_PATH: followupEnv.GITHUB_CLI_PATH ?? 'NOT SET',
+              hasGITHUB_TOKEN: !!followupEnv.GITHUB_TOKEN,
+              hasPYTHONPATH: !!followupEnv.PYTHONPATH,
+            },
+          });
 
           const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
             pythonPath: getPythonPath(backendPath),
@@ -3045,7 +3139,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
               message: "Follow-up review complete!",
             });
 
-            sendComplete(result.data!);
+            // Route through state manager
+            prReviewStateManager.handleComplete(projectId, prNumber, result.data!);
           } finally {
             // Always clean up registry, whether we exit normally or via error
             runningReviews.delete(reviewKey);
@@ -3058,19 +3153,7 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           prNumber,
           error: error instanceof Error ? error.message : error,
         });
-        const { sendError } = createIPCCommunicators<PRReviewProgress, PRReviewResult>(
-          mainWindow,
-          {
-            progress: IPC_CHANNELS.GITHUB_PR_REVIEW_PROGRESS,
-            error: IPC_CHANNELS.GITHUB_PR_REVIEW_ERROR,
-            complete: IPC_CHANNELS.GITHUB_PR_REVIEW_COMPLETE,
-          },
-          projectId
-        );
-        sendError({
-          prNumber,
-          error: error instanceof Error ? error.message : "Failed to run follow-up review",
-        });
+        prReviewStateManager.handleError(projectId, prNumber, error instanceof Error ? error.message : "Failed to run follow-up review");
       }
     }
   );
