@@ -161,7 +161,9 @@ function queueSyncUpdate(state: GlobalState): void {
     return;
   }
 
-  // Add to batch queue
+  // NOTE: All current state types (auth, settings, projects) are handled
+  // immediately above. If new state types are added in the future that don't
+  // require immediate sync, they will fall through to this batch queue.
   batchQueue.push(state);
 
   // Cap batch queue to prevent OOM when sync events arrive faster than flush interval

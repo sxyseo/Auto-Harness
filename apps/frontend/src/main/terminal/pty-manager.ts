@@ -224,7 +224,12 @@ export function setupPtyHandlers(
     onDataCallback(terminal, data);
 
     // Broadcast terminal output to ALL windows (not just main window)
-    // This ensures pop-out terminal windows receive terminal output
+    // This ensures pop-out terminal windows receive terminal output.
+    // NOTE: Broadcasting to all windows is intentional. The main window needs
+    // output for all terminals (useGlobalTerminalListeners buffers output across
+    // project switches), and renderer-side filtering (by projectPath in TerminalGrid)
+    // ensures each window only displays relevant terminals. Project-level filtering
+    // here would break the main window's global output buffering.
     try {
       const allWindows = BrowserWindow.getAllWindows();
       for (const window of allWindows) {

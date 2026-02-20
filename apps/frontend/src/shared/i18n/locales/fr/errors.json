@@ -11,6 +11,8 @@
     "popOutViewFailed": "Échec de l'extraction de la vue",
     "windowCreationFailed": "Impossible de créer la fenêtre : {{message}}",
     "sourceWindowNotFound": "Fenêtre source introuvable",
-    "genericError": "Une erreur inattendue s'est produite"
+    "genericError": "Une erreur inattendue s'est produite",
+    "unknownView": "Vue inconnue : {{view}}",
+    "projectNotFound": "Projet introuvable"
   }
 }

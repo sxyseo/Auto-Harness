@@ -214,14 +214,54 @@ export function App() {
       },
     });
 
+    // Subscribe to window config changes to clean up stale pop-out state
+    // When a popped-out window closes, the main process broadcasts the updated
+    // window list so we can remove stale entries from poppedOutProjects/Views
+    const cleanupConfigChanged = window.electronAPI.window.onConfigChanged((windows: unknown) => {
+      const windowConfigs = windows as Array<{ type: string; projectId?: string; view?: string }>;
+      const store = useWindowStore.getState();
+
+      // Build sets of currently active pop-out projects and views from the window list
+      const activeProjectPopOuts = new Set<string>();
+      const activeViewPopOuts = new Set<string>();
+
+      if (Array.isArray(windowConfigs)) {
+        for (const config of windowConfigs) {
+          if (config.type === 'project' && config.projectId) {
+            activeProjectPopOuts.add(config.projectId);
+          }
+          if (config.type === 'view' && config.projectId && config.view) {
+            activeViewPopOuts.add(`${config.projectId}:${config.view}`);
+          }
+        }
+      }
+
+      // Remove stale project pop-outs
+      for (const projectId of store.poppedOutProjects) {
+        if (!activeProjectPopOuts.has(projectId)) {
+          store.removePoppedOutProject(projectId);
+        }
+      }
+
+      // Remove stale view pop-outs
+      for (const [viewKey] of store.poppedOutViews) {
+        if (!activeViewPopOuts.has(viewKey)) {
+          const [projectId, view] = viewKey.split(':');
+          store.removePoppedOutView(projectId, view);
+        }
+      }
+    });
+
     return () => {
       cleanupDownloadListener();
       cleanupGitHubListeners();
       cleanupWindowSync();
+      cleanupConfigChanged();
     };
   }, []);
 
-  // Parse URL parameters to detect window type and configuration
+  // Parse URL parameters to detect window type and configuration,
+  // then fetch the real config from the main process to get the actual windowId
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -237,19 +277,28 @@ export function App() {
           return;
         }
 
-        // Get window ID (will be set by main process via IPC in a real implementation)
-        // For now, use a placeholder value
-        const windowId = 0;
-
-        const config = {
-          windowId,
+        // Set initial config from URL params for immediate rendering
+        const initialConfig = {
+          windowId: 0,
           type: type as 'main' | 'project' | 'view',
           ...(projectId && { projectId }),
           ...(view && { view })
         };
 
-        debugLog('window-routing', 'Parsed window config from URL:', config);
-        setWindowConfig(config);
+        debugLog('window-routing', 'Parsed window config from URL:', initialConfig);
+        setWindowConfig(initialConfig);
+
+        // Fetch the real config from main process to get the actual windowId
+        window.electronAPI.window.getConfig()
+          .then((realConfig) => {
+            if (realConfig) {
+              debugLog('window-routing', 'Got real window config from main process:', realConfig);
+              setWindowConfig(realConfig);
+            }
+          })
+          .catch((error) => {
+            debugLog('window-routing', 'Failed to fetch real window config:', error);
+          });
       }
     } catch (error) {
       debugLog('window-routing', 'Failed to parse URL parameters:', error);
@@ -884,8 +933,8 @@ export function App() {
   };
 
   /**
-   * Render a specific view component based on view name
-   * Used for single-view window mode
+   * Render a specific view component based on view name.
+   * Used for single-view window mode (pop-out).
    */
   const renderViewComponent = (viewName: string, projectId: string) => {
     const project = projects.find((p) => p.id === projectId);
@@ -968,9 +1017,93 @@ export function App() {
       case 'agent-tools':
         return <AgentTools />;
       default:
-        return <div className="flex items-center justify-center h-full text-muted-foreground">Unknown view: {viewName}</div>;
+        return <div className="flex items-center justify-center h-full text-muted-foreground">{t('errors:window.unknownView', { view: viewName })}</div>;
     }
   };
+
+  /**
+   * Render the active view for a project with always-mounted components.
+   * TerminalGrid and GitHubPRs are kept mounted (hidden) to preserve state.
+   * All other views are conditionally rendered based on activeView.
+   * Shared between project-mode windows and main-mode windows.
+   */
+  const renderActiveViewForProject = (projectId: string, projectPath?: string) => (
+    <>
+      {activeView === 'kanban' && (
+        <KanbanBoard
+          tasks={tasks}
+          onTaskClick={handleTaskClick}
+          onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
+          onRefresh={handleRefreshTasks}
+          isRefreshing={isRefreshingTasks}
+        />
+      )}
+      {/* TerminalGrid is always mounted but hidden when not active to preserve terminal state */}
+      <div className={activeView === 'terminals' ? 'h-full' : 'hidden'}>
+        <TerminalGrid
+          projectPath={projectPath}
+          onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
+          isActive={activeView === 'terminals'}
+        />
+      </div>
+      {activeView === 'roadmap' && (
+        <Roadmap projectId={projectId} onGoToTask={handleGoToTask} />
+      )}
+      {activeView === 'context' && (
+        <ErrorBoundary>
+          <Context projectId={projectId} />
+        </ErrorBoundary>
+      )}
+      {activeView === 'ideation' && (
+        <Ideation projectId={projectId} onGoToTask={handleGoToTask} />
+      )}
+      {activeView === 'insights' && (
+        <Insights projectId={projectId} />
+      )}
+      {activeView === 'github-issues' && (
+        <GitHubIssues
+          onOpenSettings={() => {
+            setSettingsInitialProjectSection('github');
+            setIsSettingsDialogOpen(true);
+          }}
+          onNavigateToTask={handleGoToTask}
+        />
+      )}
+      {activeView === 'gitlab-issues' && (
+        <GitLabIssues
+          onOpenSettings={() => {
+            setSettingsInitialProjectSection('gitlab');
+            setIsSettingsDialogOpen(true);
+          }}
+          onNavigateToTask={handleGoToTask}
+        />
+      )}
+      {/* GitHubPRs is always mounted but hidden when not active to preserve review state */}
+      <div className={activeView === 'github-prs' ? 'h-full' : 'hidden'}>
+        <GitHubPRs
+          onOpenSettings={() => {
+            setSettingsInitialProjectSection('github');
+            setIsSettingsDialogOpen(true);
+          }}
+          isActive={activeView === 'github-prs'}
+        />
+      </div>
+      {activeView === 'gitlab-merge-requests' && (
+        <GitLabMergeRequests
+          projectId={projectId}
+          onOpenSettings={() => {
+            setSettingsInitialProjectSection('gitlab');
+            setIsSettingsDialogOpen(true);
+          }}
+        />
+      )}
+      {activeView === 'changelog' && <Changelog />}
+      {activeView === 'worktrees' && (
+        <Worktrees projectId={projectId} />
+      )}
+      {activeView === 'agent-tools' && <AgentTools />}
+    </>
+  );
 
   return (
     <ViewStateProvider>
@@ -997,84 +1130,10 @@ export function App() {
                 {(() => {
                   const project = projects.find((p) => p.id === windowConfig.projectId);
                   return project ? (
-                    <>
-                      {activeView === 'kanban' && (
-                        <KanbanBoard
-                          tasks={tasks}
-                          onTaskClick={handleTaskClick}
-                          onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
-                          onRefresh={handleRefreshTasks}
-                          isRefreshing={isRefreshingTasks}
-                        />
-                      )}
-                      {/* TerminalGrid is always mounted but hidden when not active to preserve terminal state */}
-                      <div className={activeView === 'terminals' ? 'h-full' : 'hidden'}>
-                        <TerminalGrid
-                          projectPath={project?.path}
-                          onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
-                          isActive={activeView === 'terminals'}
-                        />
-                      </div>
-                      {activeView === 'roadmap' && (
-                        <Roadmap projectId={windowConfig.projectId} onGoToTask={handleGoToTask} />
-                      )}
-                      {activeView === 'context' && (
-                        <ErrorBoundary>
-                          <Context projectId={windowConfig.projectId} />
-                        </ErrorBoundary>
-                      )}
-                      {activeView === 'ideation' && (
-                        <Ideation projectId={windowConfig.projectId} onGoToTask={handleGoToTask} />
-                      )}
-                      {activeView === 'insights' && (
-                        <Insights projectId={windowConfig.projectId} />
-                      )}
-                      {activeView === 'github-issues' && (
-                        <GitHubIssues
-                          onOpenSettings={() => {
-                            setSettingsInitialProjectSection('github');
-                            setIsSettingsDialogOpen(true);
-                          }}
-                          onNavigateToTask={handleGoToTask}
-                        />
-                      )}
-                      {activeView === 'gitlab-issues' && (
-                        <GitLabIssues
-                          onOpenSettings={() => {
-                            setSettingsInitialProjectSection('gitlab');
-                            setIsSettingsDialogOpen(true);
-                          }}
-                          onNavigateToTask={handleGoToTask}
-                        />
-                      )}
-                      {/* GitHubPRs is always mounted but hidden when not active to preserve review state */}
-                      <div className={activeView === 'github-prs' ? 'h-full' : 'hidden'}>
-                        <GitHubPRs
-                          onOpenSettings={() => {
-                            setSettingsInitialProjectSection('github');
-                            setIsSettingsDialogOpen(true);
-                          }}
-                          isActive={activeView === 'github-prs'}
-                        />
-                      </div>
-                      {activeView === 'gitlab-merge-requests' && (
-                        <GitLabMergeRequests
-                          projectId={windowConfig.projectId}
-                          onOpenSettings={() => {
-                            setSettingsInitialProjectSection('gitlab');
-                            setIsSettingsDialogOpen(true);
-                          }}
-                        />
-                      )}
-                      {activeView === 'changelog' && <Changelog />}
-                      {activeView === 'worktrees' && (
-                        <Worktrees projectId={windowConfig.projectId} />
-                      )}
-                      {activeView === 'agent-tools' && <AgentTools />}
-                    </>
+                    renderActiveViewForProject(windowConfig.projectId, project.path)
                   ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
-                      Project not found
+                      {t('errors:window.projectNotFound')}
                     </div>
                   );
                 })()}
@@ -1129,85 +1188,10 @@ export function App() {
               {/* Main content area */}
               <main className="flex-1 overflow-hidden">
             {selectedProject ? (
-              <>
-                {activeView === 'kanban' && (
-                  <KanbanBoard
-                    tasks={tasks}
-                    onTaskClick={handleTaskClick}
-                    onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
-                    onRefresh={handleRefreshTasks}
-                    isRefreshing={isRefreshingTasks}
-                  />
-                )}
-                {/* TerminalGrid is always mounted but hidden when not active to preserve terminal state */}
-                <div className={activeView === 'terminals' ? 'h-full' : 'hidden'}>
-                  <TerminalGrid
-                    projectPath={selectedProject?.path}
-                    onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
-                    isActive={activeView === 'terminals'}
-                  />
-                </div>
-                {activeView === 'roadmap' && (activeProjectId || selectedProjectId) && (
-                  <Roadmap projectId={activeProjectId || selectedProjectId!} onGoToTask={handleGoToTask} />
-                )}
-                {activeView === 'context' && (activeProjectId || selectedProjectId) && (
-                  <ErrorBoundary>
-                    <Context projectId={activeProjectId || selectedProjectId!} />
-                  </ErrorBoundary>
-                )}
-                {activeView === 'ideation' && (activeProjectId || selectedProjectId) && (
-                  <Ideation projectId={activeProjectId || selectedProjectId!} onGoToTask={handleGoToTask} />
-                )}
-                {activeView === 'insights' && (activeProjectId || selectedProjectId) && (
-                  <Insights projectId={activeProjectId || selectedProjectId!} />
-                )}
-                {activeView === 'github-issues' && (activeProjectId || selectedProjectId) && (
-                  <GitHubIssues
-                    onOpenSettings={() => {
-                      setSettingsInitialProjectSection('github');
-                      setIsSettingsDialogOpen(true);
-                    }}
-                    onNavigateToTask={handleGoToTask}
-                  />
-                )}
-                {activeView === 'gitlab-issues' && (activeProjectId || selectedProjectId) && (
-                  <GitLabIssues
-                    onOpenSettings={() => {
-                      setSettingsInitialProjectSection('gitlab');
-                      setIsSettingsDialogOpen(true);
-                    }}
-                    onNavigateToTask={handleGoToTask}
-                  />
-                )}
-                {/* GitHubPRs is always mounted but hidden when not active to preserve review state */}
-                {(activeProjectId || selectedProjectId) && (
-                  <div className={activeView === 'github-prs' ? 'h-full' : 'hidden'}>
-                    <GitHubPRs
-                      onOpenSettings={() => {
-                        setSettingsInitialProjectSection('github');
-                        setIsSettingsDialogOpen(true);
-                      }}
-                      isActive={activeView === 'github-prs'}
-                    />
-                  </div>
-                )}
-                {activeView === 'gitlab-merge-requests' && (activeProjectId || selectedProjectId) && (
-                  <GitLabMergeRequests
-                    projectId={activeProjectId || selectedProjectId!}
-                    onOpenSettings={() => {
-                      setSettingsInitialProjectSection('gitlab');
-                      setIsSettingsDialogOpen(true);
-                    }}
-                  />
-                )}
-                {activeView === 'changelog' && (activeProjectId || selectedProjectId) && (
-                  <Changelog />
-                )}
-                {activeView === 'worktrees' && (activeProjectId || selectedProjectId) && (
-                  <Worktrees projectId={activeProjectId || selectedProjectId!} />
-                )}
-                {activeView === 'agent-tools' && <AgentTools />}
-              </>
+              renderActiveViewForProject(
+                activeProjectId || selectedProjectId!,
+                selectedProject.path
+              )
             ) : (
               <WelcomeScreen
                 projects={projects}

@@ -17,22 +17,13 @@
  * - URL parameters determine window type and content
  */
 
-import { app, BrowserWindow, screen } from 'electron';
+import { app, BrowserWindow, screen, shell } from 'electron';
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { is } from '@electron-toolkit/utils';
 import { isMacOS } from './platform';
-import { IPC_CHANNELS } from '../shared/constants';
+import { IPC_CHANNELS, WINDOW_SIZING } from '../shared/constants';
 import type { WindowConfig, GlobalState } from '../shared/types/window';
-
-// Window sizing constants (reused from index.ts patterns)
-const WINDOW_PREFERRED_WIDTH = 1400;
-const WINDOW_PREFERRED_HEIGHT = 900;
-const WINDOW_MIN_WIDTH = 800;
-const WINDOW_MIN_HEIGHT = 500;
-const WINDOW_SCREEN_MARGIN = 20;
-const DEFAULT_SCREEN_WIDTH = 1920;
-const DEFAULT_SCREEN_HEIGHT = 1080;
 
 /**
  * Persisted window bounds storage format
@@ -274,15 +265,15 @@ export class WindowManager {
         workAreaSize = display.workAreaSize;
       } else {
         console.error('[WindowManager] screen.getPrimaryDisplay() returned unexpected structure');
-        workAreaSize = { width: DEFAULT_SCREEN_WIDTH, height: DEFAULT_SCREEN_HEIGHT };
+        workAreaSize = { width: WINDOW_SIZING.DEFAULT_SCREEN_WIDTH, height: WINDOW_SIZING.DEFAULT_SCREEN_HEIGHT };
       }
     } catch (error: unknown) {
       console.error('[WindowManager] Failed to get primary display:', error);
-      workAreaSize = { width: DEFAULT_SCREEN_WIDTH, height: DEFAULT_SCREEN_HEIGHT };
+      workAreaSize = { width: WINDOW_SIZING.DEFAULT_SCREEN_WIDTH, height: WINDOW_SIZING.DEFAULT_SCREEN_HEIGHT };
     }
 
-    const availableWidth = workAreaSize.width - WINDOW_SCREEN_MARGIN;
-    const availableHeight = workAreaSize.height - WINDOW_SCREEN_MARGIN;
+    const availableWidth = workAreaSize.width - WINDOW_SIZING.SCREEN_MARGIN;
+    const availableHeight = workAreaSize.height - WINDOW_SIZING.SCREEN_MARGIN;
 
     // Check for persisted bounds first, then use provided bounds, then calculate
     const windowKey = this.getWindowKey(config);
@@ -304,12 +295,14 @@ export class WindowManager {
     const boundsToUse = validatedBounds ?? null;
 
     // Use validated bounds if available, otherwise calculate default
-    const width = boundsToUse?.width ?? Math.min(WINDOW_PREFERRED_WIDTH, availableWidth);
-    const height = boundsToUse?.height ?? Math.min(WINDOW_PREFERRED_HEIGHT, availableHeight);
-    const minWidth = Math.min(WINDOW_MIN_WIDTH, width);
-    const minHeight = Math.min(WINDOW_MIN_HEIGHT, height);
+    const width = boundsToUse?.width ?? Math.min(WINDOW_SIZING.PREFERRED_WIDTH, availableWidth);
+    const height = boundsToUse?.height ?? Math.min(WINDOW_SIZING.PREFERRED_HEIGHT, availableHeight);
+    const minWidth = Math.min(WINDOW_SIZING.MIN_WIDTH, width);
+    const minHeight = Math.min(WINDOW_SIZING.MIN_HEIGHT, height);
 
     // Create browser window options
+    // titleBarStyle: 'hiddenInset' is macOS-only (frameless with traffic lights)
+    // On Windows/Linux, use default frame
     const windowOptions: Electron.BrowserWindowConstructorOptions = {
       width,
       height,
@@ -317,8 +310,7 @@ export class WindowManager {
       minHeight,
       show: false,
       autoHideMenuBar: true,
-      titleBarStyle: 'hiddenInset',
-      trafficLightPosition: { x: 15, y: 10 },
+      ...(isMacOS() ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 15, y: 10 } } : {}),
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         sandbox: false,
@@ -364,10 +356,23 @@ export class WindowManager {
       window.show();
     });
 
-    // Open external links in browser
+    // Open external links in browser with URL scheme validation
+    // Mirrors the security pattern from index.ts main window
+    const ALLOWED_URL_SCHEMES = ['http:', 'https:', 'mailto:'];
     window.webContents.setWindowOpenHandler((details) => {
-      const { shell } = require('electron');
-      shell.openExternal(details.url);
+      try {
+        const url = new URL(details.url);
+        if (!ALLOWED_URL_SCHEMES.includes(url.protocol)) {
+          console.warn('[WindowManager] Blocked URL with disallowed scheme:', details.url);
+          return { action: 'deny' };
+        }
+      } catch {
+        console.warn('[WindowManager] Blocked invalid URL:', details.url);
+        return { action: 'deny' };
+      }
+      shell.openExternal(details.url).catch((error) => {
+        console.warn('[WindowManager] Failed to open external URL:', details.url, error);
+      });
       return { action: 'deny' };
     });
 
@@ -399,10 +404,12 @@ export class WindowManager {
       }
     });
 
-    // Clean up on close and save final state
+    // Clean up on close, save final state, and broadcast config change
+    // so other windows can update their popped-out state tracking
     window.on('closed', () => {
       this.windows.delete(window.id);
       this.scheduleSave();
+      this.broadcastConfigChange();
     });
 
     return window;
@@ -750,6 +757,21 @@ export class WindowManager {
       return null;
     }
     return BrowserWindow.fromId(this.mainWindowId);
+  }
+
+  /**
+   * Broadcast window configuration change to all windows
+   * Sends WINDOW_CONFIG_CHANGED event with current window list so
+   * renderers can update their popped-out state tracking.
+   */
+  broadcastConfigChange(): void {
+    const windows = this.getAllWindows();
+    const allBrowserWindows = BrowserWindow.getAllWindows();
+    for (const browserWindow of allBrowserWindows) {
+      if (!browserWindow.isDestroyed()) {
+        browserWindow.webContents.send(IPC_CHANNELS.WINDOW_CONFIG_CHANGED, windows);
+      }
+    }
   }
 }
 

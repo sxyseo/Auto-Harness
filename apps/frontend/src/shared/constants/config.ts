@@ -16,6 +16,27 @@ export const TERMINAL_DOM_UPDATE_DELAY_MS = 250;
 export const PANEL_CLEANUP_GRACE_PERIOD_MS = 150;
 
 // ============================================
+// Window Sizing Constants
+// Shared between index.ts (main window) and window-manager.ts (child windows)
+// ============================================
+
+export const WINDOW_SIZING = {
+  /** Preferred window width on startup */
+  PREFERRED_WIDTH: 1400,
+  /** Preferred window height on startup */
+  PREFERRED_HEIGHT: 900,
+  /** Absolute minimum window width (supports high DPI displays with scaling) */
+  MIN_WIDTH: 800,
+  /** Absolute minimum window height (supports high DPI displays with scaling) */
+  MIN_HEIGHT: 500,
+  /** Margin from screen edges to avoid edge-to-edge windows */
+  SCREEN_MARGIN: 20,
+  /** Default screen dimensions used as fallback when screen.getPrimaryDisplay() fails */
+  DEFAULT_SCREEN_WIDTH: 1920,
+  DEFAULT_SCREEN_HEIGHT: 1080,
+} as const;
+
+// ============================================
 // UI Scale Constants
 // ============================================
 

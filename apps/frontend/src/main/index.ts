@@ -46,7 +46,7 @@ import { pythonEnvManager } from './python-env-manager';
 import { getUsageMonitor } from './claude-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
 import { initializeAppUpdater, stopPeriodicUpdates } from './app-updater';
-import { DEFAULT_APP_SETTINGS, IPC_CHANNELS, SPELL_CHECK_LANGUAGE_MAP, DEFAULT_SPELL_CHECK_LANGUAGE, ADD_TO_DICTIONARY_LABELS } from '../shared/constants';
+import { DEFAULT_APP_SETTINGS, IPC_CHANNELS, SPELL_CHECK_LANGUAGE_MAP, DEFAULT_SPELL_CHECK_LANGUAGE, ADD_TO_DICTIONARY_LABELS, WINDOW_SIZING } from '../shared/constants';
 import { getAppLanguage, initAppLanguage } from './app-language';
 import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
@@ -59,22 +59,7 @@ import { ptyDaemonClient } from './terminal/pty-daemon-client';
 import { getWindowManager } from './window-manager';
 import type { AppSettings, AuthFailureInfo } from '../shared/types';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Window sizing constants
-// ─────────────────────────────────────────────────────────────────────────────
-/** Preferred window width on startup */
-const WINDOW_PREFERRED_WIDTH: number = 1400;
-/** Preferred window height on startup */
-const WINDOW_PREFERRED_HEIGHT: number = 900;
-/** Absolute minimum window width (supports high DPI displays with scaling) */
-const WINDOW_MIN_WIDTH: number = 800;
-/** Absolute minimum window height (supports high DPI displays with scaling) */
-const WINDOW_MIN_HEIGHT: number = 500;
-/** Margin from screen edges to avoid edge-to-edge windows */
-const WINDOW_SCREEN_MARGIN: number = 20;
-/** Default screen dimensions used as fallback when screen.getPrimaryDisplay() fails */
-const DEFAULT_SCREEN_WIDTH: number = 1920;
-const DEFAULT_SCREEN_HEIGHT: number = 1080;
+// Window sizing constants imported from shared/constants (WINDOW_SIZING)
 
 // Setup error logging early (captures uncaught exceptions)
 setupErrorLogging();
@@ -170,24 +155,24 @@ function createWindow(): void {
         '[main] screen.getPrimaryDisplay() returned unexpected structure:',
         JSON.stringify(display)
       );
-      workAreaSize = { width: DEFAULT_SCREEN_WIDTH, height: DEFAULT_SCREEN_HEIGHT };
+      workAreaSize = { width: WINDOW_SIZING.DEFAULT_SCREEN_WIDTH, height: WINDOW_SIZING.DEFAULT_SCREEN_HEIGHT };
     }
   } catch (error: unknown) {
     console.error('[main] Failed to get primary display, using fallback dimensions:', error);
-    workAreaSize = { width: DEFAULT_SCREEN_WIDTH, height: DEFAULT_SCREEN_HEIGHT };
+    workAreaSize = { width: WINDOW_SIZING.DEFAULT_SCREEN_WIDTH, height: WINDOW_SIZING.DEFAULT_SCREEN_HEIGHT };
   }
 
   // Calculate available space with a small margin to avoid edge-to-edge windows
-  const availableWidth: number = workAreaSize.width - WINDOW_SCREEN_MARGIN;
-  const availableHeight: number = workAreaSize.height - WINDOW_SCREEN_MARGIN;
+  const availableWidth: number = workAreaSize.width - WINDOW_SIZING.SCREEN_MARGIN;
+  const availableHeight: number = workAreaSize.height - WINDOW_SIZING.SCREEN_MARGIN;
 
   // Calculate actual dimensions (preferred, but capped to margin-adjusted available space)
-  const width: number = Math.min(WINDOW_PREFERRED_WIDTH, availableWidth);
-  const height: number = Math.min(WINDOW_PREFERRED_HEIGHT, availableHeight);
+  const width: number = Math.min(WINDOW_SIZING.PREFERRED_WIDTH, availableWidth);
+  const height: number = Math.min(WINDOW_SIZING.PREFERRED_HEIGHT, availableHeight);
 
   // Ensure minimum dimensions don't exceed the actual initial window size
-  const minWidth: number = Math.min(WINDOW_MIN_WIDTH, width);
-  const minHeight: number = Math.min(WINDOW_MIN_HEIGHT, height);
+  const minWidth: number = Math.min(WINDOW_SIZING.MIN_WIDTH, width);
+  const minHeight: number = Math.min(WINDOW_SIZING.MIN_HEIGHT, height);
 
   // Create the browser window
   mainWindow = new BrowserWindow({
