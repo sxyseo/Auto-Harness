@@ -15,13 +15,14 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from ..shared import _STORE_DIR, _write_atomic
+
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 # ---------------------------------------------------------------------------
-# Store — JSON-file-backed app settings
+# Store -- JSON-file-backed app settings
 # ---------------------------------------------------------------------------
 
-_STORE_DIR = Path.home() / ".auto-claude-web"
 _SETTINGS_PATH = _STORE_DIR / "settings.json"
 
 # Default application settings (mirrors DEFAULT_APP_SETTINGS from the Electron app)
@@ -56,10 +57,10 @@ def _load_settings() -> dict[str, Any]:
 
 
 def _save_settings(settings: dict[str, Any]) -> None:
-    """Persist app settings to disk."""
+    """Persist app settings to disk atomically."""
     _STORE_DIR.mkdir(parents=True, exist_ok=True)
-    _SETTINGS_PATH.write_text(
-        json.dumps(settings, indent=2, default=str), encoding="utf-8"
+    _write_atomic(
+        _SETTINGS_PATH, json.dumps(settings, indent=2, default=str)
     )
 
 
@@ -69,7 +70,7 @@ def _save_settings(settings: dict[str, Any]) -> None:
 
 
 class SettingsUpdate(BaseModel):
-    """Partial settings update — all fields optional."""
+    """Partial settings update -- all fields optional."""
 
     model_config = {"extra": "allow"}
 

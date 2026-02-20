@@ -8,14 +8,17 @@ the Electron IPC handlers (gitlab/ subdirectory).
 
 from __future__ import annotations
 
-import json
+import ipaddress
+import socket
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+
+from ..shared import _AUTO_CLAUDE_DIRS, _find_project, find_env_file, parse_env_file
 
 router = APIRouter(prefix="/api/gitlab", tags=["gitlab"])
 
@@ -53,43 +56,55 @@ class AutoFixRequest(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
-_STORE_DIR = Path.home() / ".auto-claude-web"
-_STORE_PATH = _STORE_DIR / "projects.json"
-_AUTO_CLAUDE_DIRS = (".auto-claude", "auto-claude")
 
+def _validate_instance_url(url: str) -> str:
+    """Validate that the GitLab instance URL is safe (HTTPS, no private IPs).
 
-def _find_project(project_id: str) -> dict[str, Any]:
-    """Look up a project by ID from the store."""
-    if _STORE_PATH.exists():
-        data = json.loads(_STORE_PATH.read_text())
-        for p in data.get("projects", []):
-            if p.get("id") == project_id:
-                return p
-    raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    Returns the validated URL.
+    Raises ``HTTPException`` if the URL is invalid or unsafe.
+    """
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid GitLab instance URL")
+
+    # Must be HTTPS
+    if parsed.scheme != "https":
+        raise HTTPException(
+            status_code=400, detail="GitLab instance URL must use HTTPS"
+        )
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid GitLab instance URL")
+
+    # Resolve hostname and block private/internal IP ranges to prevent SSRF
+    try:
+        addr_infos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC)
+        for _family, _type, _proto, _canonname, sockaddr in addr_infos:
+            ip = ipaddress.ip_address(sockaddr[0])
+            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
+                raise HTTPException(
+                    status_code=400,
+                    detail="GitLab instance URL resolves to a private/internal IP address",
+                )
+    except socket.gaierror:
+        raise HTTPException(
+            status_code=400, detail="Cannot resolve GitLab instance URL hostname"
+        )
+
+    return url.rstrip("/")
 
 
 def _get_gitlab_config(project_id: str) -> dict[str, str]:
     """Read GitLab token, instance URL, and project from the project's .env file."""
     project = _find_project(project_id)
-    project_path = Path(project["path"])
-
-    env_file: Path | None = None
-    for d in _AUTO_CLAUDE_DIRS:
-        candidate = project_path / d / ".env"
-        if candidate.exists():
-            env_file = candidate
-            break
+    env_file = find_env_file(project)
 
     if env_file is None:
         raise HTTPException(status_code=400, detail="No .env file found for project")
 
-    env_vars: dict[str, str] = {}
-    for line in env_file.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        env_vars[key.strip()] = value.strip().strip("'\"")
+    env_vars = parse_env_file(env_file)
 
     token = env_vars.get("GITLAB_TOKEN", "")
     instance_url = env_vars.get("GITLAB_INSTANCE_URL", "https://gitlab.com")
@@ -100,9 +115,12 @@ def _get_gitlab_config(project_id: str) -> dict[str, str]:
     if not gitlab_project:
         raise HTTPException(status_code=400, detail="GITLAB_PROJECT not configured")
 
+    # Validate instance URL to prevent SSRF
+    validated_url = _validate_instance_url(instance_url)
+
     return {
         "token": token,
-        "instance_url": instance_url.rstrip("/"),
+        "instance_url": validated_url,
         "project": gitlab_project,
     }
 
@@ -112,7 +130,7 @@ def _gitlab_headers(token: str) -> dict[str, str]:
 
 
 def _encode_project(project_path: str) -> str:
-    """URL-encode the project path for GitLab API (e.g. 'group/project' → 'group%2Fproject')."""
+    """URL-encode the project path for GitLab API (e.g. 'group/project' -> 'group%2Fproject')."""
     return quote(project_path, safe="")
 
 
@@ -310,7 +328,7 @@ async def get_merge_request(
 
 
 # ---------------------------------------------------------------------------
-# AI-powered actions (stubs — actual agent integration is a separate subtask)
+# AI-powered actions (stubs -- actual agent integration is a separate subtask)
 # ---------------------------------------------------------------------------
 
 

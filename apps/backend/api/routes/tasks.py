@@ -12,14 +12,19 @@ import json
 import os
 import re
 import shutil
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .projects import _load_store
+from ..shared import (
+    _AUTO_CLAUDE_DIRS,
+    _find_project,
+    _load_store,
+    _now_iso,
+    _write_atomic,
+)
 
 router = APIRouter(prefix="/api", tags=["tasks"])
 
@@ -27,7 +32,6 @@ router = APIRouter(prefix="/api", tags=["tasks"])
 # Constants
 # ---------------------------------------------------------------------------
 
-_AUTO_CLAUDE_DIRS = (".auto-claude", "auto-claude")
 _IMPLEMENTATION_PLAN = "implementation_plan.json"
 _REQUIREMENTS = "requirements.json"
 _TASK_METADATA = "task_metadata.json"
@@ -61,19 +65,6 @@ class UpdateStatusRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _find_project(project_id: str) -> dict[str, Any]:
-    """Look up a project by ID from the store."""
-    store = _load_store()
-    for project in store.get("projects", []):
-        if project["id"] == project_id:
-            return project
-    raise HTTPException(status_code=404, detail="Project not found")
 
 
 def _specs_dir(project: dict[str, Any]) -> Path:
@@ -110,6 +101,31 @@ def _read_json(filepath: Path) -> dict[str, Any] | None:
         return json.loads(filepath.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return None
+
+
+def _validate_task_id(task_id: str, specs_path: Path) -> Path:
+    """Validate that *task_id* does not escape the specs directory.
+
+    Returns the resolved spec folder path.
+    Raises HTTP 403 on path traversal attempts.
+    """
+    spec_folder = specs_path / task_id
+    try:
+        resolved = spec_folder.resolve()
+        if not resolved.is_relative_to(specs_path.resolve()):
+            raise HTTPException(
+                status_code=403, detail="Invalid task ID: path traversal detected"
+            )
+    except (ValueError, OSError):
+        raise HTTPException(
+            status_code=403, detail="Invalid task ID: path traversal detected"
+        )
+    return spec_folder
+
+
+def _write_json(filepath: Path, data: Any) -> None:
+    """Write JSON data atomically."""
+    _write_atomic(filepath, json.dumps(data, indent=2, ensure_ascii=False))
 
 
 def _build_task(
@@ -244,7 +260,7 @@ async def create_task(project_id: str, body: CreateTaskRequest) -> dict[str, Any
 
     now = _now_iso()
 
-    # Create implementation_plan.json
+    # Create implementation_plan.json (atomic write)
     plan = {
         "feature": title,
         "description": body.description,
@@ -253,24 +269,18 @@ async def create_task(project_id: str, body: CreateTaskRequest) -> dict[str, Any
         "status": "pending",
         "phases": [],
     }
-    (spec_dir / _IMPLEMENTATION_PLAN).write_text(
-        json.dumps(plan, indent=2), encoding="utf-8"
-    )
+    _write_json(spec_dir / _IMPLEMENTATION_PLAN, plan)
 
-    # Create requirements.json
+    # Create requirements.json (atomic write)
     meta = body.metadata or TaskMetadata()
     requirements = {
         "task_description": body.description,
         "workflow_type": meta.category or "feature",
     }
-    (spec_dir / _REQUIREMENTS).write_text(
-        json.dumps(requirements, indent=2), encoding="utf-8"
-    )
+    _write_json(spec_dir / _REQUIREMENTS, requirements)
 
-    # Save task metadata
-    (spec_dir / _TASK_METADATA).write_text(
-        json.dumps(meta.model_dump(), indent=2), encoding="utf-8"
-    )
+    # Save task metadata (atomic write)
+    _write_json(spec_dir / _TASK_METADATA, meta.model_dump())
 
     task = {
         "id": spec_id,
@@ -297,7 +307,7 @@ async def get_task(task_id: str, project_id: str) -> dict[str, Any]:
     """
     project = _find_project(project_id)
     specs_path = _specs_dir(project)
-    spec_folder = specs_path / task_id
+    spec_folder = _validate_task_id(task_id, specs_path)
 
     if not spec_folder.exists() or not spec_folder.is_dir():
         raise HTTPException(status_code=404, detail="Task not found")
@@ -316,7 +326,7 @@ async def update_task_status(
     """
     project = _find_project(project_id)
     specs_path = _specs_dir(project)
-    spec_folder = specs_path / task_id
+    spec_folder = _validate_task_id(task_id, specs_path)
 
     if not spec_folder.exists() or not spec_folder.is_dir():
         raise HTTPException(status_code=404, detail="Task not found")
@@ -336,7 +346,7 @@ async def update_task_status(
     plan["status"] = reverse_status_map.get(body.status, body.status)
     plan["updated_at"] = _now_iso()
 
-    plan_path.write_text(json.dumps(plan, indent=2), encoding="utf-8")
+    _write_json(plan_path, plan)
 
     task = _build_task(spec_folder, project_id)
     return {"success": True, "data": task}
@@ -350,7 +360,7 @@ async def delete_task(task_id: str, project_id: str) -> dict[str, Any]:
     """
     project = _find_project(project_id)
     specs_path = _specs_dir(project)
-    spec_folder = specs_path / task_id
+    spec_folder = _validate_task_id(task_id, specs_path)
 
     if not spec_folder.exists() or not spec_folder.is_dir():
         raise HTTPException(status_code=404, detail="Task not found")

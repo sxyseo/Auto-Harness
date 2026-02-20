@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .projects import _load_store
+from ..shared import _AUTO_CLAUDE_DIRS, _find_project
 
 router = APIRouter(prefix="/api/projects", tags=["roadmap"])
 
@@ -23,7 +23,6 @@ router = APIRouter(prefix="/api/projects", tags=["roadmap"])
 # Constants
 # ---------------------------------------------------------------------------
 
-_AUTO_CLAUDE_DIRS = (".auto-claude", "auto-claude")
 _ROADMAP_DIR = "roadmap"
 _ROADMAP_FILE = "roadmap.json"
 _COMPETITOR_ANALYSIS_FILE = "competitor_analysis.json"
@@ -43,15 +42,6 @@ class RoadmapGenerateRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _find_project(project_id: str) -> dict[str, Any]:
-    """Look up a project by ID from the store."""
-    store = _load_store()
-    for project in store.get("projects", []):
-        if project["id"] == project_id:
-            return project
-    raise HTTPException(status_code=404, detail="Project not found")
 
 
 def _roadmap_dir(project: dict[str, Any]) -> Path:

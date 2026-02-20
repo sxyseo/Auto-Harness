@@ -14,7 +14,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from .projects import _load_store
+from ..shared import _AUTO_CLAUDE_DIRS, _find_project, parse_env_file
 
 router = APIRouter(prefix="/api/projects", tags=["context"])
 
@@ -22,7 +22,6 @@ router = APIRouter(prefix="/api/projects", tags=["context"])
 # Constants
 # ---------------------------------------------------------------------------
 
-_AUTO_CLAUDE_DIRS = (".auto-claude", "auto-claude")
 _CONTEXT_DIR = "context"
 _MEMORIES_FILE = "memories.json"
 _PROJECT_INDEX_FILE = "project_index.json"
@@ -32,15 +31,6 @@ _ENV_FILE = ".env"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _find_project(project_id: str) -> dict[str, Any]:
-    """Look up a project by ID from the store."""
-    store = _load_store()
-    for project in store.get("projects", []):
-        if project["id"] == project_id:
-            return project
-    raise HTTPException(status_code=404, detail="Project not found")
 
 
 def _auto_claude_dir(project: dict[str, Any]) -> Path:
@@ -59,18 +49,9 @@ async def get_context(project_id: str) -> dict[str, Any]:
     project = _find_project(project_id)
     ac_dir = _auto_claude_dir(project)
 
-    # Read .env file if present
-    env_config: dict[str, str] = {}
+    # Read .env file if present using shared parser
     env_path = ac_dir / _ENV_FILE
-    if env_path.exists():
-        try:
-            for line in env_path.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key, _, value = line.partition("=")
-                    env_config[key.strip()] = value.strip()
-        except OSError:
-            pass
+    env_config = parse_env_file(env_path)
 
     # Check for Graphiti/memory configuration
     graphiti_enabled = env_config.get("GRAPHITI_ENABLED", "").lower() == "true"

@@ -4,26 +4,29 @@ Terminal WebSocket Namespace
 
 Socket.IO ``/terminal`` namespace handling real-time terminal I/O.
 
-Events (client → server):
-    terminal:create  — Create a new PTY session
-    terminal:input   — Write data to a PTY
-    terminal:resize  — Resize a PTY window
-    terminal:close   — Kill a PTY session
+Events (client -> server):
+    terminal:create  -- Create a new PTY session
+    terminal:input   -- Write data to a PTY
+    terminal:resize  -- Resize a PTY window
+    terminal:close   -- Kill a PTY session
 
-Events (server → client):
-    terminal:output  — PTY output data
-    terminal:exit    — PTY process exited
-    terminal:error   — Error notification
+Events (server -> client):
+    terminal:output  -- PTY output data
+    terminal:exit    -- PTY process exited
+    terminal:error   -- Error notification
 """
 
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 import socketio
 
+from ..auth import validate_socketio_token
 from ..services.terminal_service import TerminalService
+from ..shared import _get_registered_project_paths
 
 logger = logging.getLogger(__name__)
 
@@ -36,21 +39,63 @@ def get_terminal_service() -> TerminalService:
     return _terminal_service
 
 
+def _validate_cwd(cwd: str | None) -> str | None:
+    """Validate that *cwd* is under a registered project directory.
+
+    Returns the validated path, or ``None`` if invalid.
+    """
+    if cwd is None:
+        return None
+
+    try:
+        resolved = Path(cwd).resolve()
+    except (ValueError, OSError):
+        return None
+
+    allowed = _get_registered_project_paths()
+    for project_path in allowed:
+        try:
+            if resolved == Path(project_path).resolve() or resolved.is_relative_to(
+                Path(project_path).resolve()
+            ):
+                return str(resolved)
+        except (ValueError, OSError):
+            continue
+
+    return None
+
+
 class TerminalNamespace(socketio.AsyncNamespace):
     """Socket.IO namespace for /terminal."""
 
     def __init__(self) -> None:
         super().__init__("/terminal")
         self.service = _terminal_service
+        # Track sid -> set of session_ids for cleanup on disconnect
+        self._sid_sessions: dict[str, set[str]] = {}
 
     # ------------------------------------------------------------------
     # Connection lifecycle
     # ------------------------------------------------------------------
 
     async def on_connect(self, sid: str, environ: dict[str, Any]) -> None:
+        if not validate_socketio_token(environ):
+            logger.warning("[TerminalNS] Rejected unauthenticated client: %s", sid)
+            raise ConnectionRefusedError("Authentication required")
+        self._sid_sessions[sid] = set()
         logger.info("[TerminalNS] Client connected: %s", sid)
 
     async def on_disconnect(self, sid: str) -> None:
+        # Clean up any PTY sessions owned by this Socket.IO client
+        session_ids = self._sid_sessions.pop(sid, set())
+        for session_id in session_ids:
+            if self.service.has_session(session_id):
+                await self.service.kill(session_id)
+                logger.info(
+                    "[TerminalNS] Cleaned up orphaned session %s for disconnected client %s",
+                    session_id,
+                    sid,
+                )
         logger.info("[TerminalNS] Client disconnected: %s", sid)
 
     # ------------------------------------------------------------------
@@ -79,7 +124,15 @@ class TerminalNamespace(socketio.AsyncNamespace):
             )
             return {"ok": False, "error": "sessionId is required"}
 
-        cwd = data.get("cwd")
+        raw_cwd = data.get("cwd")
+        cwd = _validate_cwd(raw_cwd)
+        if raw_cwd is not None and cwd is None:
+            error_msg = "cwd is not within a registered project directory"
+            await self.emit(
+                "terminal:error", {"sessionId": session_id, "error": error_msg}, to=sid
+            )
+            return {"ok": False, "error": error_msg}
+
         cols = int(data.get("cols", 80))
         rows = int(data.get("rows", 24))
 
@@ -97,6 +150,9 @@ class TerminalNamespace(socketio.AsyncNamespace):
                     )
 
             await self.service.spawn(session_id, cwd, cols, rows, on_output=_on_output)
+            # Track this session for cleanup on disconnect
+            if sid in self._sid_sessions:
+                self._sid_sessions[sid].add(session_id)
             logger.info(
                 "[TerminalNS] Created session %s for client %s", session_id, sid
             )
@@ -167,6 +223,9 @@ class TerminalNamespace(socketio.AsyncNamespace):
             return
 
         await self.service.kill(session_id)
+        # Remove from tracking
+        if sid in self._sid_sessions:
+            self._sid_sessions[sid].discard(session_id)
         await self.emit("terminal:exit", {"sessionId": session_id}, to=sid)
         logger.info("[TerminalNS] Closed session %s for client %s", session_id, sid)
 

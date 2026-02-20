@@ -13,7 +13,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .tasks import _find_project, _read_json, _specs_dir
+from ..shared import _AUTO_CLAUDE_DIRS, _find_project
+from .tasks import _read_json, _specs_dir
 
 router = APIRouter(prefix="/api", tags=["agents"])
 

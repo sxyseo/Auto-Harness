@@ -8,13 +8,13 @@ the Electron IPC handlers (github/ subdirectory).
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+
+from ..shared import _find_project, find_env_file, parse_env_file
 
 router = APIRouter(prefix="/api/github", tags=["github"])
 
@@ -52,43 +52,16 @@ class AutoFixRequest(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
-_STORE_DIR = Path.home() / ".auto-claude-web"
-_STORE_PATH = _STORE_DIR / "projects.json"
-_AUTO_CLAUDE_DIRS = (".auto-claude", "auto-claude")
-
-
-def _find_project(project_id: str) -> dict[str, Any]:
-    """Look up a project by ID from the store."""
-    if _STORE_PATH.exists():
-        data = json.loads(_STORE_PATH.read_text())
-        for p in data.get("projects", []):
-            if p.get("id") == project_id:
-                return p
-    raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
-
 
 def _get_github_config(project_id: str) -> dict[str, str]:
     """Read GitHub token and repo from the project's .env file."""
     project = _find_project(project_id)
-    project_path = Path(project["path"])
-
-    env_file: Path | None = None
-    for d in _AUTO_CLAUDE_DIRS:
-        candidate = project_path / d / ".env"
-        if candidate.exists():
-            env_file = candidate
-            break
+    env_file = find_env_file(project)
 
     if env_file is None:
         raise HTTPException(status_code=400, detail="No .env file found for project")
 
-    env_vars: dict[str, str] = {}
-    for line in env_file.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        env_vars[key.strip()] = value.strip().strip("'\"")
+    env_vars = parse_env_file(env_file)
 
     token = env_vars.get("GITHUB_TOKEN", "")
     repo = env_vars.get("GITHUB_REPO", "")
@@ -304,7 +277,7 @@ async def get_pull(
 
 
 # ---------------------------------------------------------------------------
-# AI-powered actions (stubs — actual agent integration is a separate subtask)
+# AI-powered actions (stubs -- actual agent integration is a separate subtask)
 # ---------------------------------------------------------------------------
 
 

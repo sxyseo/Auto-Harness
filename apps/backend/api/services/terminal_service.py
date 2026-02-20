@@ -5,23 +5,34 @@ Terminal Service
 Server-side PTY management: spawn, write, resize, and kill pseudo-terminal
 processes. Each terminal session gets its own PTY subprocess with proper
 lifecycle management and cleanup.
+
+Note: PTY functionality is only available on Unix systems (macOS, Linux).
+On Windows, the service will raise ``RuntimeError`` when attempting to spawn.
 """
 
 from __future__ import annotations
 
 import asyncio
-import fcntl
 import logging
 import os
-import pty
-import select
 import signal
 import struct
-import termios
 from collections.abc import Callable
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Cross-platform guards for Unix-only modules
+# ---------------------------------------------------------------------------
+
+_IS_UNIX = os.name != "nt"
+
+if _IS_UNIX:
+    import fcntl
+    import pty
+    import select
+    import termios
 
 
 class _PtySession:
@@ -76,6 +87,11 @@ class TerminalService:
         on_output: Callable[[str, bytes], Any] | None = None,
     ) -> str:
         """Spawn a new PTY process and return its session id."""
+        if not _IS_UNIX:
+            raise RuntimeError(
+                "PTY terminal sessions are only supported on Unix systems (macOS, Linux)"
+            )
+
         if session_id in self._sessions:
             logger.warning(
                 "Session %s already exists, killing old one first", session_id
@@ -89,7 +105,7 @@ class TerminalService:
         child_pid, master_fd = pty.fork()
 
         if child_pid == 0:
-            # Child process — exec shell
+            # Child process -- exec shell
             os.chdir(work_dir)
             env = {
                 **os.environ,
@@ -137,7 +153,7 @@ class TerminalService:
         """Write data to a PTY session."""
         session = self._get_session(session_id)
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, os.write, session.fd, data.encode())
+        await loop.run_in_executor(None, os.write, session.fd, data.encode("utf-8"))
 
     async def resize(self, session_id: str, cols: int, rows: int) -> None:
         """Resize a PTY session."""
@@ -229,7 +245,11 @@ class TerminalService:
                 data = await loop.run_in_executor(
                     None, TerminalService._blocking_read, fd
                 )
+                if data is None:
+                    # Timeout -- no data ready yet, keep looping
+                    continue
                 if not data:
+                    # Real EOF -- process exited
                     break
                 result = on_output(session.session_id, data)
                 if asyncio.iscoroutine(result):
@@ -240,12 +260,18 @@ class TerminalService:
                 break
 
     @staticmethod
-    def _blocking_read(fd: int) -> bytes:
-        """Blocking read from fd, suitable for run_in_executor."""
+    def _blocking_read(fd: int) -> bytes | None:
+        """Blocking read from fd, suitable for run_in_executor.
+
+        Returns:
+            ``bytes`` with data if available,
+            ``None`` on timeout (no data ready),
+            ``b""`` on real EOF or error.
+        """
         try:
             readable, _, _ = select.select([fd], [], [], 0.1)
             if readable:
                 return os.read(fd, 4096)
-            return b""
+            return None  # timeout -- not EOF
         except OSError:
-            return b""
+            return b""  # real error / EOF

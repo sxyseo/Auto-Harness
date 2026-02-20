@@ -4,23 +4,25 @@ Events WebSocket Namespace  (/events)
 
 General-purpose event namespace for broadcasting application-wide events.
 
-Client → Server
+Client -> Server
 ----------------
-(none — this namespace is primarily server-push)
+(none -- this namespace is primarily server-push)
 
-Server → Client
+Server -> Client
 ----------------
-- project:updated        — project metadata changed
-- task:statusChanged     — task status transition
-- settings:changed       — user settings updated
-- rateLimit:detected     — API rate limit hit
-- auth:failure           — authentication failure detected
+- project:updated        -- project metadata changed
+- task:statusChanged     -- task status transition
+- settings:changed       -- user settings updated
+- rateLimit:detected     -- API rate limit hit
+- auth:failure           -- authentication failure detected
 """
 
 import logging
 from typing import Any
 
 import socketio
+
+from ..auth import validate_socketio_token
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,9 @@ class EventsNamespace(socketio.AsyncNamespace):
     # ------------------------------------------------------------------
 
     async def on_connect(self, sid: str, environ: dict) -> None:
+        if not validate_socketio_token(environ):
+            logger.warning("Events: rejected unauthenticated client: %s", sid)
+            raise ConnectionRefusedError("Authentication required")
         logger.info("Events client connected: %s", sid)
 
     async def on_disconnect(self, sid: str) -> None:

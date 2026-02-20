@@ -4,31 +4,34 @@ Agent WebSocket Namespace
 
 Socket.IO ``/agent`` namespace for real-time agent execution control.
 
-Events (client → server):
-    agent:start  — Start an agent build for a task
-    agent:stop   — Stop a running agent
-    agent:join   — Join a task room for progress updates
-    agent:leave  — Leave a task room
+Events (client -> server):
+    agent:start  -- Start an agent build for a task
+    agent:stop   -- Stop a running agent
+    agent:join   -- Join a task room for progress updates
+    agent:leave  -- Leave a task room
 
-Events (server → client):
-    agent:progress — Phase / subtask progress updates
-    agent:log      — Execution log lines
-    agent:complete — Task finished successfully
-    agent:error    — Task failed
+Events (server -> client):
+    agent:progress -- Phase / subtask progress updates
+    agent:log      -- Execution log lines
+    agent:complete -- Task finished successfully
+    agent:error    -- Task failed
 """
 
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 import socketio
 
+from ..auth import validate_socketio_token
 from ..services.agent_runner import AgentRunner
+from ..shared import _get_registered_project_paths
 
 logger = logging.getLogger(__name__)
 
-# Singleton runner — initialised by register_agent_namespace()
+# Singleton runner -- initialised by register_agent_namespace()
 _agent_runner: AgentRunner | None = None
 
 
@@ -36,9 +39,29 @@ def get_agent_runner() -> AgentRunner:
     """Return the global AgentRunner instance."""
     if _agent_runner is None:
         raise RuntimeError(
-            "AgentRunner not initialised — call register_agent_namespace first"
+            "AgentRunner not initialised -- call register_agent_namespace first"
         )
     return _agent_runner
+
+
+def _validate_path_against_projects(path: str) -> bool:
+    """Check that *path* is within one of the registered project directories."""
+    try:
+        resolved = Path(path).resolve()
+    except (ValueError, OSError):
+        return False
+
+    for project_path in _get_registered_project_paths():
+        try:
+            project_resolved = Path(project_path).resolve()
+            if resolved == project_resolved or resolved.is_relative_to(
+                project_resolved
+            ):
+                return True
+        except (ValueError, OSError):
+            continue
+
+    return False
 
 
 class AgentNamespace(socketio.AsyncNamespace):
@@ -53,6 +76,9 @@ class AgentNamespace(socketio.AsyncNamespace):
     # ------------------------------------------------------------------
 
     async def on_connect(self, sid: str, environ: dict[str, Any]) -> None:
+        if not validate_socketio_token(environ):
+            logger.warning("[AgentNS] Rejected unauthenticated client: %s", sid)
+            raise ConnectionRefusedError("Authentication required")
         logger.info("[AgentNS] Client connected: %s", sid)
 
     async def on_disconnect(self, sid: str) -> None:
@@ -118,6 +144,17 @@ class AgentNamespace(socketio.AsyncNamespace):
 
         if not task_id or not project_dir or not spec_dir:
             error = "taskId, projectDir, and specDir are required"
+            await self.emit("agent:error", {"taskId": task_id, "error": error}, to=sid)
+            return {"ok": False, "error": error}
+
+        # Validate paths against registered projects
+        if not _validate_path_against_projects(project_dir):
+            error = "projectDir is not a registered project directory"
+            await self.emit("agent:error", {"taskId": task_id, "error": error}, to=sid)
+            return {"ok": False, "error": error}
+
+        if not _validate_path_against_projects(spec_dir):
+            error = "specDir is not within a registered project directory"
             await self.emit("agent:error", {"taskId": task_id, "error": error}, to=sid)
             return {"ok": False, "error": error}
 

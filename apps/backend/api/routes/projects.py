@@ -8,15 +8,19 @@ the Electron IPC handlers (project-handlers.ts / project-store.ts).
 
 from __future__ import annotations
 
-import json
 import os
 import uuid
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+from ..shared import (
+    _AUTO_CLAUDE_DIRS,
+    _load_store,
+    _now_iso,
+    _save_store,
+)
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -61,28 +65,8 @@ class AddProjectRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Store — JSON-file-backed project list
+# Helpers
 # ---------------------------------------------------------------------------
-
-_AUTO_CLAUDE_DIRS = (".auto-claude", "auto-claude")
-_STORE_DIR = Path.home() / ".auto-claude-web"
-_STORE_PATH = _STORE_DIR / "projects.json"
-
-
-def _load_store() -> dict[str, Any]:
-    """Load the projects store from disk."""
-    if _STORE_PATH.exists():
-        try:
-            return json.loads(_STORE_PATH.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
-    return {"projects": [], "settings": {}}
-
-
-def _save_store(data: dict[str, Any]) -> None:
-    """Persist the projects store to disk."""
-    _STORE_DIR.mkdir(parents=True, exist_ok=True)
-    _STORE_PATH.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
 
 
 def _get_auto_build_path(project_path: str) -> str:
@@ -92,10 +76,6 @@ def _get_auto_build_path(project_path: str) -> str:
         if os.path.isdir(candidate):
             return dirname
     return ""
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 # ---------------------------------------------------------------------------

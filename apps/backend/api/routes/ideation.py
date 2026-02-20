@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .projects import _load_store
+from ..shared import _AUTO_CLAUDE_DIRS, _find_project
 
 router = APIRouter(prefix="/api/projects", tags=["ideation"])
 
@@ -23,7 +23,6 @@ router = APIRouter(prefix="/api/projects", tags=["ideation"])
 # Constants
 # ---------------------------------------------------------------------------
 
-_AUTO_CLAUDE_DIRS = (".auto-claude", "auto-claude")
 _IDEATION_DIR = "ideation"
 _SESSION_FILE = "session.json"
 
@@ -42,15 +41,6 @@ class IdeationGenerateRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _find_project(project_id: str) -> dict[str, Any]:
-    """Look up a project by ID from the store."""
-    store = _load_store()
-    for project in store.get("projects", []):
-        if project["id"] == project_id:
-            return project
-    raise HTTPException(status_code=404, detail="Project not found")
 
 
 def _ideation_dir(project: dict[str, Any]) -> Path:

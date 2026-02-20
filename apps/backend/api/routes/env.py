@@ -8,12 +8,13 @@ Mirrors the data contract from the Electron IPC handlers (env-handlers.ts).
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+from ..shared import _AUTO_CLAUDE_DIRS, _find_project, parse_env_file, update_env_file
 
 router = APIRouter(prefix="/api/projects", tags=["environment"])
 
@@ -21,22 +22,16 @@ router = APIRouter(prefix="/api/projects", tags=["environment"])
 # Helpers
 # ---------------------------------------------------------------------------
 
-_STORE_DIR = Path.home() / ".auto-claude-web"
-_STORE_PATH = _STORE_DIR / "projects.json"
-_AUTO_CLAUDE_DIRS = (".auto-claude", "auto-claude")
-
-
-def _find_project(project_id: str) -> dict[str, Any]:
-    """Look up a project by ID from the store."""
-    if _STORE_PATH.exists():
-        try:
-            store = json.loads(_STORE_PATH.read_text(encoding="utf-8"))
-            for project in store.get("projects", []):
-                if project["id"] == project_id:
-                    return project
-        except (json.JSONDecodeError, OSError):
-            pass
-    raise HTTPException(status_code=404, detail="Project not found")
+# Keys whose values contain sensitive tokens and should be masked in responses
+_SENSITIVE_KEYS = frozenset(
+    {
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "GITHUB_TOKEN",
+        "OPENAI_API_KEY",
+        "GITLAB_TOKEN",
+        "LINEAR_API_KEY",
+    }
+)
 
 
 def _env_path(project: dict[str, Any]) -> Path:
@@ -54,85 +49,71 @@ def _env_path(project: dict[str, Any]) -> Path:
     return Path(project_path) / ".auto-claude" / ".env"
 
 
-def _parse_env_file(content: str) -> dict[str, str]:
-    """Parse a .env file into a key-value dict (ignores comments/blanks)."""
-    result: dict[str, str] = {}
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if "=" in line:
-            key, _, value = line.partition("=")
-            result[key.strip()] = value.strip()
-    return result
+def _mask_value(key: str, value: str) -> str:
+    """Mask sensitive token values — show only the last 4 characters."""
+    env_key = _CONFIG_TO_ENV.get(key, "")
+    if env_key in _SENSITIVE_KEYS and len(value) > 4:
+        return "*" * (len(value) - 4) + value[-4:]
+    return value
 
 
-def _env_to_config(env_vars: dict[str, str]) -> dict[str, Any]:
+def _env_to_config(env_vars: dict[str, str], *, mask: bool = False) -> dict[str, Any]:
     """Map .env variables to a ProjectEnvConfig-style dict."""
     config: dict[str, Any] = {}
-    _map = {
-        "CLAUDE_CODE_OAUTH_TOKEN": "claudeOAuthToken",
-        "AUTO_BUILD_MODEL": "autoBuildModel",
-        "LINEAR_API_KEY": "linearApiKey",
-        "LINEAR_TEAM_ID": "linearTeamId",
-        "LINEAR_PROJECT_ID": "linearProjectId",
-        "GITHUB_TOKEN": "githubToken",
-        "GITHUB_REPO": "githubRepo",
-        "DEFAULT_BRANCH": "defaultBranch",
-        "OPENAI_API_KEY": "openaiApiKey",
-        "GITLAB_TOKEN": "gitlabToken",
-        "GITLAB_INSTANCE_URL": "gitlabInstanceUrl",
-        "GITLAB_PROJECT": "gitlabProject",
-    }
-    for env_key, config_key in _map.items():
+    for env_key, config_key in _ENV_TO_CONFIG.items():
         if env_key in env_vars:
-            config[config_key] = env_vars[env_key]
+            value = env_vars[env_key]
+            if mask and env_key in _SENSITIVE_KEYS and len(value) > 4:
+                value = "*" * (len(value) - 4) + value[-4:]
+            config[config_key] = value
 
     # Boolean fields
-    _bool_map = {
-        "LINEAR_REALTIME_SYNC": "linearRealtimeSync",
-        "GITHUB_AUTO_SYNC": "githubAutoSync",
-        "GRAPHITI_ENABLED": "graphitiEnabled",
-        "GITLAB_ENABLED": "gitlabEnabled",
-        "GITLAB_AUTO_SYNC": "gitlabAutoSync",
-        "ENABLE_FANCY_UI": "enableFancyUi",
-    }
-    for env_key, config_key in _bool_map.items():
+    for env_key, config_key in _ENV_TO_CONFIG_BOOL.items():
         if env_key in env_vars:
             config[config_key] = env_vars[env_key].lower() == "true"
 
     return config
 
 
+# String field mappings: ENV_KEY -> configKey
+_ENV_TO_CONFIG: dict[str, str] = {
+    "CLAUDE_CODE_OAUTH_TOKEN": "claudeOAuthToken",
+    "AUTO_BUILD_MODEL": "autoBuildModel",
+    "LINEAR_API_KEY": "linearApiKey",
+    "LINEAR_TEAM_ID": "linearTeamId",
+    "LINEAR_PROJECT_ID": "linearProjectId",
+    "GITHUB_TOKEN": "githubToken",
+    "GITHUB_REPO": "githubRepo",
+    "DEFAULT_BRANCH": "defaultBranch",
+    "OPENAI_API_KEY": "openaiApiKey",
+    "GITLAB_TOKEN": "gitlabToken",
+    "GITLAB_INSTANCE_URL": "gitlabInstanceUrl",
+    "GITLAB_PROJECT": "gitlabProject",
+}
+
+# Reverse mapping: configKey -> ENV_KEY
+_CONFIG_TO_ENV: dict[str, str] = {v: k for k, v in _ENV_TO_CONFIG.items()}
+
+# Boolean field mappings
+_ENV_TO_CONFIG_BOOL: dict[str, str] = {
+    "LINEAR_REALTIME_SYNC": "linearRealtimeSync",
+    "GITHUB_AUTO_SYNC": "githubAutoSync",
+    "GRAPHITI_ENABLED": "graphitiEnabled",
+    "GITLAB_ENABLED": "gitlabEnabled",
+    "GITLAB_AUTO_SYNC": "gitlabAutoSync",
+    "ENABLE_FANCY_UI": "enableFancyUi",
+}
+
+_CONFIG_BOOL_TO_ENV: dict[str, str] = {v: k for k, v in _ENV_TO_CONFIG_BOOL.items()}
+
+
 def _config_to_env_lines(config: dict[str, Any]) -> dict[str, str]:
     """Map a ProjectEnvConfig-style dict back to env key-value pairs."""
     env_vars: dict[str, str] = {}
-    _map = {
-        "claudeOAuthToken": "CLAUDE_CODE_OAUTH_TOKEN",
-        "autoBuildModel": "AUTO_BUILD_MODEL",
-        "linearApiKey": "LINEAR_API_KEY",
-        "linearTeamId": "LINEAR_TEAM_ID",
-        "linearProjectId": "LINEAR_PROJECT_ID",
-        "githubToken": "GITHUB_TOKEN",
-        "githubRepo": "GITHUB_REPO",
-        "defaultBranch": "DEFAULT_BRANCH",
-        "openaiApiKey": "OPENAI_API_KEY",
-        "gitlabToken": "GITLAB_TOKEN",
-        "gitlabInstanceUrl": "GITLAB_INSTANCE_URL",
-        "gitlabProject": "GITLAB_PROJECT",
-    }
-    _bool_map = {
-        "linearRealtimeSync": "LINEAR_REALTIME_SYNC",
-        "githubAutoSync": "GITHUB_AUTO_SYNC",
-        "graphitiEnabled": "GRAPHITI_ENABLED",
-        "gitlabEnabled": "GITLAB_ENABLED",
-        "gitlabAutoSync": "GITLAB_AUTO_SYNC",
-        "enableFancyUi": "ENABLE_FANCY_UI",
-    }
-    for config_key, env_key in _map.items():
+    for config_key, env_key in _CONFIG_TO_ENV.items():
         if config_key in config and config[config_key] is not None:
             env_vars[env_key] = str(config[config_key])
-    for config_key, env_key in _bool_map.items():
+    for config_key, env_key in _CONFIG_BOOL_TO_ENV.items():
         if config_key in config and config[config_key] is not None:
             env_vars[env_key] = "true" if config[config_key] else "false"
     return env_vars
@@ -144,7 +125,7 @@ def _config_to_env_lines(config: dict[str, Any]) -> dict[str, str]:
 
 
 class EnvConfigUpdate(BaseModel):
-    """Partial env config update — all fields optional."""
+    """Partial env config update -- all fields optional."""
 
     model_config = {"extra": "allow"}
 
@@ -156,7 +137,10 @@ class EnvConfigUpdate(BaseModel):
 
 @router.get("/{project_id}/env")
 async def get_env(project_id: str) -> dict[str, Any]:
-    """Read a project's environment configuration from its .env file."""
+    """Read a project's environment configuration from its .env file.
+
+    Sensitive token values are masked (only last 4 characters shown).
+    """
     project = _find_project(project_id)
     env_file = _env_path(project)
 
@@ -164,9 +148,8 @@ async def get_env(project_id: str) -> dict[str, Any]:
         return {"success": True, "data": {}}
 
     try:
-        content = env_file.read_text(encoding="utf-8")
-        env_vars = _parse_env_file(content)
-        config = _env_to_config(env_vars)
+        env_vars = parse_env_file(env_file)
+        config = _env_to_config(env_vars, mask=True)
         return {"success": True, "data": config}
     except OSError as exc:
         raise HTTPException(status_code=500, detail=f"Failed to read .env: {exc}")
@@ -174,29 +157,20 @@ async def get_env(project_id: str) -> dict[str, Any]:
 
 @router.put("/{project_id}/env")
 async def update_env(project_id: str, body: EnvConfigUpdate) -> dict[str, Any]:
-    """Save a project's environment configuration to its .env file."""
+    """Save a project's environment configuration to its .env file.
+
+    Preserves comments and formatting of untouched lines.
+    """
     project = _find_project(project_id)
     env_file = _env_path(project)
 
-    # Load existing env vars
-    existing_vars: dict[str, str] = {}
-    if env_file.exists():
-        try:
-            existing_vars = _parse_env_file(env_file.read_text(encoding="utf-8"))
-        except OSError:
-            pass
-
-    # Merge new values
+    # Convert config keys back to env variable names
     new_vars = _config_to_env_lines(body.model_dump(exclude_unset=True))
-    existing_vars.update(new_vars)
 
-    # Write back
-    try:
-        env_file.parent.mkdir(parents=True, exist_ok=True)
-        lines = [f"{k}={v}" for k, v in sorted(existing_vars.items())]
-        env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    except OSError as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to write .env: {exc}")
+    # Update env file preserving existing comments and formatting
+    update_env_file(env_file, new_vars)
 
-    config = _env_to_config(existing_vars)
+    # Read back the full config for the response (masked)
+    env_vars = parse_env_file(env_file)
+    config = _env_to_config(env_vars, mask=True)
     return {"success": True, "data": config}
