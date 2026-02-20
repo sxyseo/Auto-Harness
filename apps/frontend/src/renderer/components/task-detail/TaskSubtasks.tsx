@@ -23,8 +23,21 @@ function getSubtaskStatusIcon(status: string) {
   }
 }
 
-function OverflowDescription({ text }: { text: string }) {
-  const [el, setEl] = useState<HTMLParagraphElement | null>(null);
+/**
+ * Generic overflow-aware text component.
+ * Renders children in a line-clamped container and shows a tooltip with the
+ * full text when the content is visually truncated.
+ */
+function OverflowText({
+  text,
+  as: Tag = 'p',
+  className,
+}: {
+  text: string;
+  as?: 'p' | 'span';
+  className?: string;
+}) {
+  const [el, setEl] = useState<HTMLElement | null>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
 
   useEffect(() => {
@@ -39,9 +52,9 @@ function OverflowDescription({ text }: { text: string }) {
   return (
     <Tooltip open={isOverflowing ? undefined : false}>
       <TooltipTrigger asChild>
-        <p ref={setEl} className="mt-1 text-xs text-muted-foreground line-clamp-2 break-words">
+        <Tag ref={(node: HTMLElement | null) => setEl(node)} className={className} tabIndex={isOverflowing ? 0 : undefined}>
           {text}
-        </p>
+        </Tag>
       </TooltipTrigger>
       {isOverflowing && (
         <TooltipContent side="bottom" className="max-w-sm">
@@ -98,12 +111,17 @@ export function TaskSubtasks({ task }: TaskSubtasksProps) {
                     )}>
                       #{index + 1}
                     </span>
-                    <span className="text-sm font-medium text-foreground break-words flex-1 min-w-0 line-clamp-2">
-                      {subtask.title || t('tasks:subtasks.untitled')}
-                    </span>
+                    <OverflowText
+                      text={subtask.title || t('tasks:subtasks.untitled')}
+                      as="span"
+                      className="text-sm font-medium text-foreground break-words flex-1 min-w-0 line-clamp-2"
+                    />
                   </div>
                   {subtask.description && subtask.description !== subtask.title && (
-                    <OverflowDescription text={subtask.description} />
+                    <OverflowText
+                      text={subtask.description}
+                      className="mt-1 text-xs text-muted-foreground line-clamp-2 break-words"
+                    />
                   )}
                   {subtask.files && subtask.files.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
