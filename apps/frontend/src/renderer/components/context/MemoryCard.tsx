@@ -26,9 +26,9 @@ interface ParsedSessionInsight {
   spec_id?: string;
   session_number?: number;
   subtasks_completed?: string[];
-  what_worked?: string[];
-  what_failed?: string[];
-  recommendations_for_next_session?: string[];
+  what_worked?: Array<string | Record<string, unknown>>;
+  what_failed?: Array<string | Record<string, unknown>>;
+  recommendations_for_next_session?: Array<string | Record<string, unknown>>;
   discoveries?: {
     file_insights?: Array<{ path?: string; purpose?: string; changes_made?: string }>;
     patterns_discovered?: Array<{ pattern?: string; applies_to?: string } | string>;
@@ -39,9 +39,32 @@ interface ParsedSessionInsight {
       why_it_worked?: string;
       why_it_failed?: string;
     };
-    recommendations?: string[];
+    recommendations?: Array<string | Record<string, unknown>>;
     changed_files?: string[];
   };
+}
+
+function toSafeString(item: string | Record<string, unknown> | unknown): string {
+  if (typeof item === 'string') return item;
+  if (item === null || item === undefined) return '';
+  if (typeof item === 'object') {
+    const obj = item as Record<string, unknown>;
+    // Handle {category, recommendation} object - the known cause of React Error #31
+    if (typeof obj.category === 'string' && typeof obj.recommendation === 'string') {
+      return `[${obj.category}] ${obj.recommendation}`;
+    }
+    // Try other common single-field patterns
+    if (typeof obj.recommendation === 'string') return obj.recommendation;
+    if (typeof obj.text === 'string') return obj.text;
+    if (typeof obj.description === 'string') return obj.description;
+    if (typeof obj.message === 'string') return obj.message;
+    // Fallback: combine all string values from the object
+    const parts = Object.entries(obj)
+      .filter(([, v]) => typeof v === 'string')
+      .map(([k, v]) => `${k}: ${v}`);
+    return parts.length > 0 ? parts.join(', ') : JSON.stringify(item);
+  }
+  return String(item);
 }
 
 function parseMemoryContent(content: string): ParsedSessionInsight | null {
@@ -207,7 +230,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 <SectionHeader icon={CheckCircle2} title="What Worked" count={parsed.what_worked.length} />
                 <ul className="space-y-0.5">
                   {parsed.what_worked.map((item, idx) => (
-                    <ListItem key={idx} variant="success">{item}</ListItem>
+                    <ListItem key={idx} variant="success">{toSafeString(item)}</ListItem>
                   ))}
                 </ul>
               </div>
@@ -219,7 +242,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 <SectionHeader icon={XCircle} title="What Failed" count={parsed.what_failed.length} />
                 <ul className="space-y-0.5">
                   {parsed.what_failed.map((item, idx) => (
-                    <ListItem key={idx} variant="error">{item}</ListItem>
+                    <ListItem key={idx} variant="error">{toSafeString(item)}</ListItem>
                   ))}
                 </ul>
               </div>
@@ -261,10 +284,10 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 />
                 <ul className="space-y-0.5">
                   {parsed.recommendations_for_next_session?.map((item, idx) => (
-                    <ListItem key={`rec-${idx}`}>{item}</ListItem>
+                    <ListItem key={`rec-${idx}`}>{toSafeString(item)}</ListItem>
                   ))}
                   {parsed.discoveries?.recommendations?.map((item, idx) => (
-                    <ListItem key={`disc-rec-${idx}`}>{item}</ListItem>
+                    <ListItem key={`disc-rec-${idx}`}>{toSafeString(item)}</ListItem>
                   ))}
                 </ul>
               </div>
