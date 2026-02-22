@@ -44,9 +44,10 @@ interface ParsedSessionInsight {
   };
 }
 
-function toSafeString(item: string | Record<string, unknown> | unknown): string {
+function toSafeString(item: unknown): string {
   if (typeof item === 'string') return item;
   if (item === null || item === undefined) return '';
+  if (Array.isArray(item)) return item.map(i => toSafeString(i)).join(', ');
   if (typeof item === 'object') {
     const obj = item as Record<string, unknown>;
     // Handle {category, recommendation} object - the known cause of React Error #31
