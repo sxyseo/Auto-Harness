@@ -374,8 +374,8 @@ export class TaskStateManager {
       taskId,
       {
         phase,
-        phaseProgress: phase === 'complete' ? 100 : 50,
-        overallProgress: phase === 'complete' ? 100 : 50,
+        phaseProgress: phase === 'complete' ? 100 : 0,
+        overallProgress: phase === 'complete' ? 100 : 0,
         message: `State: ${xstateState}`,
         sequenceNumber: 0
       },
