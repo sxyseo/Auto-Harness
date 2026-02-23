@@ -157,8 +157,7 @@ export function AddAccountDialog({
               provider,
               name: name.trim(),
               authType: 'oauth' as const,
-              isActive: false,
-              priority: 999,
+              billingModel: 'subscription' as const,
             };
             const saveResult = await addProviderAccount(payload);
             if (saveResult.success) {
@@ -278,11 +277,10 @@ export function AddAccountDialog({
         provider,
         name: name.trim(),
         authType,
+        billingModel: authType === 'oauth' ? 'subscription' as const : 'pay-per-use' as const,
         apiKey: needsApiKey ? apiKey.trim() : undefined,
         baseUrl: needsBaseUrl && baseUrl.trim() ? baseUrl.trim() : undefined,
         region: needsRegion ? region : undefined,
-        isActive: false,
-        priority: 999,
         claudeProfileId: isOAuthOnly && !isCodexOAuth ? oauthProfileId ?? undefined : undefined,
       };
 

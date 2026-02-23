@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -22,7 +22,6 @@ export function ProviderAccountsList() {
   const { t } = useTranslation('settings');
   const {
     deleteProviderAccount,
-    setActiveProviderAccount,
     getProviderAccounts,
     checkEnvCredentials,
     loadProviderAccounts,
@@ -115,21 +114,6 @@ export function ProviderAccountsList() {
     }
   };
 
-  const handleSetActive = async (id: string) => {
-    const account = allAccounts.find(a => a.id === id);
-    if (!account) return;
-    const result = await setActiveProviderAccount(account.provider, id);
-    if (result.success) {
-      toast({ title: t('providers.toast.activated', { name: account.name }) });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: t('providers.toast.activateFailed'),
-        description: result.error ?? t('accounts.toast.tryAgain'),
-      });
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -154,7 +138,6 @@ export function ProviderAccountsList() {
             onAddAccount={handleAddAccount}
             onEditAccount={handleEditAccount}
             onDeleteAccount={handleDeleteAccount}
-            onSetActive={handleSetActive}
           />
         );
       })}

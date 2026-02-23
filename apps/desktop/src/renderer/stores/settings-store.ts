@@ -52,7 +52,8 @@ interface SettingsState {
   addProviderAccount: (account: Omit<ProviderAccount, 'id' | 'createdAt' | 'updatedAt'>) => Promise<IPCResult<ProviderAccount>>;
   updateProviderAccount: (id: string, updates: Partial<ProviderAccount>) => Promise<IPCResult<ProviderAccount>>;
   deleteProviderAccount: (id: string) => Promise<IPCResult>;
-  setActiveProviderAccount: (provider: BuiltinProvider, accountId: string) => Promise<IPCResult>;
+  setQueueOrder: (order: string[]) => Promise<IPCResult>;
+  saveModelOverrides: (overrides: Record<string, unknown>) => Promise<IPCResult>;
   getProviderAccounts: (provider?: BuiltinProvider) => ProviderAccount[];
   checkEnvCredentials: () => Promise<IPCResult<Record<string, boolean>>>;
   loadProviderAccounts: () => Promise<void>;
@@ -356,14 +357,22 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     return result;
   },
 
-  setActiveProviderAccount: async (provider: BuiltinProvider, accountId: string): Promise<IPCResult> => {
-    const result = await window.electronAPI.setActiveProviderAccount(provider, accountId);
+  setQueueOrder: async (order: string[]): Promise<IPCResult> => {
+    const result = await window.electronAPI.setProviderAccountQueueOrder(order);
     if (result.success) {
       set(state => ({
-        providerAccounts: state.providerAccounts.map(a => ({
-          ...a,
-          isActive: a.provider === provider ? a.id === accountId : a.isActive
-        }))
+        settings: { ...state.settings, globalPriorityOrder: order }
+      }));
+    }
+    return result;
+  },
+
+  saveModelOverrides: async (overrides: Record<string, unknown>): Promise<IPCResult> => {
+    const result = await window.electronAPI.saveModelOverrides(overrides);
+    if (result.success) {
+      set(state => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        settings: { ...state.settings, modelOverrides: overrides as any }
       }));
     }
     return result;

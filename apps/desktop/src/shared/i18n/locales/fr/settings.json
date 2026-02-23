@@ -707,9 +707,7 @@
     },
     "toast": {
       "deleted": "Compte supprimé",
-      "deleteFailed": "Échec de la suppression du compte",
-      "activated": "{{name}} activé",
-      "activateFailed": "Échec de l'activation du compte"
+      "deleteFailed": "Échec de la suppression du compte"
     }
   },
   "debug": {

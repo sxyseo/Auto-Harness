@@ -170,9 +170,10 @@ export const IPC_CHANNELS = {
   PROVIDER_ACCOUNTS_SAVE: 'provider-accounts:save',
   PROVIDER_ACCOUNTS_UPDATE: 'provider-accounts:update',
   PROVIDER_ACCOUNTS_DELETE: 'provider-accounts:delete',
-  PROVIDER_ACCOUNTS_SET_ACTIVE: 'provider-accounts:set-active',
+  PROVIDER_ACCOUNTS_SET_QUEUE_ORDER: 'provider-accounts:set-queue-order',
   PROVIDER_ACCOUNTS_TEST_CONNECTION: 'provider-accounts:test-connection',
   PROVIDER_ACCOUNTS_CHECK_ENV: 'provider-accounts:check-env',
+  MODEL_OVERRIDES_SAVE: 'model-overrides:save',
 
   // Dialogs
   DIALOG_SELECT_DIRECTORY: 'dialog:selectDirectory',

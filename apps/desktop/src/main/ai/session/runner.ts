@@ -25,7 +25,7 @@ import { buildMemoryAwareStopCondition } from '../memory/injection/memory-stop-c
 
 import { createStreamHandler } from './stream-handler';
 import type { FullStreamPart } from './stream-handler';
-import { classifyError, isAuthenticationError } from './error-classifier';
+import { classifyError, isAuthenticationError, isRateLimitError } from './error-classifier';
 import { ProgressTracker } from './progress-tracker';
 import type {
   SessionConfig,
@@ -36,6 +36,7 @@ import type {
   TokenUsage,
   SessionMessage,
 } from './types';
+import type { QueueResolvedAuth } from '../auth/types';
 
 // =============================================================================
 // Constants
@@ -85,6 +86,15 @@ export interface RunnerOptions {
    * search short-circuit) and calibrated step limits.
    */
   memoryContext?: MemorySessionContext;
+  /**
+   * Called when an account switch is needed (429 rate limit or 401 auth failure).
+   * Returns new resolved auth from the next account in the global priority queue, or null.
+   * The caller (orchestration layer) provides this by calling resolveAuthFromQueue()
+   * with the failed account excluded.
+   */
+  onAccountSwitch?: (failedAccountId: string, error: SessionError) => Promise<QueueResolvedAuth | null>;
+  /** Current account ID from the priority queue (needed for account-switch retry) */
+  currentAccountId?: string;
 }
 
 // =============================================================================
@@ -109,14 +119,15 @@ export async function runAgentSession(
   config: SessionConfig,
   options: RunnerOptions = {},
 ): Promise<SessionResult> {
-  const { onEvent, onAuthRefresh, onModelRefresh, tools, memoryContext } = options;
+  const { onEvent, onAuthRefresh, onModelRefresh, tools, memoryContext, onAccountSwitch, currentAccountId } = options;
   const startTime = Date.now();
 
   let authRetries = 0;
   let lastError: SessionError | undefined;
   let activeConfig = config;
+  let activeAccountId = currentAccountId;
 
-  // Retry loop for auth refresh
+  // Retry loop for auth refresh and account switching
   while (authRetries <= MAX_AUTH_RETRIES) {
     try {
       const result = await executeStream(activeConfig, tools, onEvent, memoryContext);
@@ -125,7 +136,37 @@ export async function runAgentSession(
         durationMs: Date.now() - startTime,
       };
     } catch (error: unknown) {
-      // Check for auth failure — attempt token refresh
+      const { sessionError, outcome } = classifyError(error);
+
+      // Account-switch on rate limit (429) or auth failure (401)
+      // This enables cross-provider fallback via the global priority queue
+      if (
+        (isRateLimitError(error) || isAuthenticationError(error)) &&
+        onAccountSwitch &&
+        activeAccountId &&
+        authRetries < MAX_AUTH_RETRIES
+      ) {
+        authRetries++;
+        const newAuth = await onAccountSwitch(activeAccountId, sessionError);
+        if (newAuth) {
+          // Switch to new account — dynamic import to avoid circular deps
+          const { createProviderFromModelId } = await import('../providers/factory');
+          activeConfig = {
+            ...activeConfig,
+            model: createProviderFromModelId(newAuth.resolvedModelId, {
+              apiKey: newAuth.apiKey,
+              baseURL: newAuth.baseURL,
+              headers: newAuth.headers,
+              codexOAuth: newAuth.codexOAuth,
+            }),
+          };
+          activeAccountId = newAuth.accountId;
+          continue;
+        }
+        // No more accounts available — fall through to legacy retry
+      }
+
+      // Legacy auth refresh (single-provider token refresh)
       if (
         isAuthenticationError(error) &&
         authRetries < MAX_AUTH_RETRIES &&
@@ -134,24 +175,19 @@ export async function runAgentSession(
         authRetries++;
         const newToken = await onAuthRefresh();
         if (!newToken) {
-          // Refresh failed — return auth failure
-          const { sessionError } = classifyError(error);
           return buildErrorResult(
             'auth_failure',
             sessionError,
             startTime,
           );
         }
-        // Recreate model with the fresh token if a factory is provided.
-        // Without this, the retry would use the old model with the revoked token.
         if (onModelRefresh) {
           activeConfig = { ...activeConfig, model: onModelRefresh(newToken) };
         }
         continue;
       }
 
-      // Non-auth error or retries exhausted
-      const { sessionError, outcome } = classifyError(error);
+      // Non-retryable error or retries exhausted
       lastError = sessionError;
       return buildErrorResult(outcome, sessionError, startTime);
     }

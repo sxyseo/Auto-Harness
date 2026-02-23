@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Github,
   GitBranch,
-  Key,
+  Cpu,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -35,7 +35,8 @@ import {
   SelectValue
 } from './ui/select';
 import { GitHubOAuthFlow } from './project-settings/GitHubOAuthFlow';
-import { ClaudeOAuthFlow } from './project-settings/ClaudeOAuthFlow';
+import { ProviderAccountsList } from './settings/ProviderAccountsList';
+import { useSettingsStore } from '../stores/settings-store';
 import type { Project, ProjectSettings } from '../../shared/types';
 
 interface GitHubSetupModalProps {
@@ -65,6 +66,7 @@ export function GitHubSetupModal({
   onSkip
 }: GitHubSetupModalProps) {
   const { t } = useTranslation('dialogs');
+  const { getProviderAccounts, loadProviderAccounts } = useSettingsStore();
   const [step, setStep] = useState<SetupStep>('github-auth');
   const [githubToken, setGithubToken] = useState<string | null>(null);
   const [githubRepo, setGithubRepo] = useState<string | null>(null);
@@ -119,25 +121,19 @@ export function GitHubSetupModal({
           const ghTokenResult = await window.electronAPI.getGitHubToken();
           const hasGitHubAuth = ghTokenResult.success && ghTokenResult.data?.token;
 
-          // Check for existing Claude authentication
-          const profilesResult = await window.electronAPI.getClaudeProfiles();
-          let hasClaudeAuth = false;
-          if (profilesResult.success && profilesResult.data) {
-            const activeProfile = profilesResult.data.profiles.find(
-              (p) => p.id === profilesResult.data!.activeProfileId
-            );
-            hasClaudeAuth = !!(activeProfile?.oauthToken || (activeProfile?.isDefault && activeProfile?.configDir));
-          }
+          // Check for existing AI provider accounts
+          await loadProviderAccounts();
+          const accounts = getProviderAccounts();
+          const hasAIAuth = accounts.length > 0;
 
           // Determine starting step based on existing auth
-          if (hasGitHubAuth && hasClaudeAuth) {
+          if (hasGitHubAuth && hasAIAuth) {
             // Both authenticated, go directly to repo detection
             setGithubToken(ghTokenResult.data!.token);
-            // detectRepository will be called and set the step
             setStep('repo'); // Temporary, detectRepository will update
             await detectRepository();
           } else if (hasGitHubAuth) {
-            // Only GitHub authenticated, go to Claude auth
+            // Only GitHub authenticated, go to AI provider auth
             setGithubToken(ghTokenResult.data!.token);
             setStep('claude-auth');
           } else {
@@ -245,33 +241,26 @@ export function GitHubSetupModal({
   const handleGitHubAuthSuccess = async (token: string) => {
     setGithubToken(token);
 
-    // Check if Claude is already authenticated before showing auth step
+    // Check if user already has AI provider accounts configured
     try {
-      const profilesResult = await window.electronAPI.getClaudeProfiles();
-      if (profilesResult.success && profilesResult.data) {
-        const activeProfile = profilesResult.data.profiles.find(
-          (p) => p.id === profilesResult.data!.activeProfileId
-        );
-        // Check if active profile has authentication (oauthToken or default with configDir)
-        if (activeProfile?.oauthToken || (activeProfile?.isDefault && activeProfile?.configDir)) {
-          // Already authenticated, skip Claude auth and go directly to repo detection
-          await detectRepository();
-          return;
-        }
+      await loadProviderAccounts();
+      const accounts = getProviderAccounts();
+      if (accounts.length > 0) {
+        // Already has provider accounts, skip AI auth and go directly to repo detection
+        await detectRepository();
+        return;
       }
     } catch (err) {
-      console.error('Failed to check Claude profiles:', err);
-      // On error, fall through to show Claude auth step
+      console.error('Failed to check provider accounts:', err);
+      // On error, fall through to show AI auth step
     }
 
-    // Not authenticated, show Claude auth step
+    // No provider accounts, show AI auth step
     setStep('claude-auth');
   };
 
-  // Handle Claude OAuth success
-  const handleClaudeAuthSuccess = async () => {
-    // Claude token is already saved to active profile by the OAuth flow
-    // Move to repo detection
+  // Handle AI provider auth continue — called when user has added at least one provider account
+  const handleAIAuthContinue = async () => {
     await detectRepository();
   };
 
@@ -403,20 +392,41 @@ export function GitHubSetupModal({
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                {t('githubSetup.claudeTitle')}
+                <Cpu className="h-5 w-5" />
+                {t('githubSetup.aiProviderTitle')}
               </DialogTitle>
               <DialogDescription>
-                {t('githubSetup.claudeDescription')}
+                {t('githubSetup.aiProviderDescription')}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="py-4">
-              <ClaudeOAuthFlow
-                onSuccess={handleClaudeAuthSuccess}
-                onCancel={onSkip}
-              />
+            <div className="py-4 space-y-4">
+              <ProviderAccountsList />
+
+              {getProviderAccounts().length > 0 && (
+                <div className="flex items-center gap-2 rounded-lg bg-success/10 border border-success/30 p-3">
+                  <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                  <p className="text-sm text-success">
+                    {t('githubSetup.aiProviderReady')}
+                  </p>
+                </div>
+              )}
             </div>
+
+            <DialogFooter>
+              {onSkip && (
+                <Button variant="ghost" onClick={onSkip} size="sm">
+                  {t('githubSetup.skipForNow')}
+                </Button>
+              )}
+              <Button
+                onClick={handleAIAuthContinue}
+                disabled={getProviderAccounts().length === 0}
+              >
+                <ChevronRight className="mr-2 h-4 w-4" />
+                {t('githubSetup.continue')}
+              </Button>
+            </DialogFooter>
           </>
         );
 
@@ -910,7 +920,7 @@ export function GitHubSetupModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={step === 'claude-auth' ? 'sm:max-w-2xl' : 'sm:max-w-md'}>
         {renderProgress()}
         {renderStepContent()}
       </DialogContent>

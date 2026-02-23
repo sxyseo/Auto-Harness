@@ -4,9 +4,13 @@
  * Displays current session/weekly usage as a badge with color-coded status.
  * - Hover to show breakdown popup (auto-closes on mouse leave)
  * - Click to pin popup open (stays until clicking outside)
+ *
+ * Supports all providers from the global priority queue:
+ * - Anthropic OAuth (subscription): shows session/weekly usage bars
+ * - Pay-per-use / non-Anthropic providers: shows "Unlimited" badge
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Activity, TrendingUp, AlertCircle, Clock, ChevronRight, Info, LogIn } from 'lucide-react';
 import {
   Popover,
@@ -23,6 +27,9 @@ import { useTranslation } from 'react-i18next';
 import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot, ProfileUsageSummary } from '../../shared/types/agent';
 import type { AppSection } from './settings/AppSettings';
+import { useSettingsStore } from '../stores/settings-store';
+import { PROVIDER_REGISTRY } from '@shared/constants/providers';
+import type { ProviderAccount } from '@shared/types/provider-account';
 
 /**
  * Usage threshold constants for color coding
@@ -31,6 +38,19 @@ const THRESHOLD_CRITICAL = 95;  // Red: At or near limit
 const THRESHOLD_WARNING = 91;   // Orange: Very high usage
 const THRESHOLD_ELEVATED = 71;  // Yellow: Moderate usage
 // Below 71 is considered normal (green)
+
+const PROVIDER_BADGE_COLORS: Record<string, string> = {
+  'anthropic': 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+  'openai': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  'google': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  'mistral': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  'groq': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+  'xai': 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+  'amazon-bedrock': 'bg-orange-600/10 text-orange-600 border-orange-600/20',
+  'azure': 'bg-sky-500/10 text-sky-500 border-sky-500/20',
+  'ollama': 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  'openai-compatible': 'bg-gray-500/10 text-gray-500 border-gray-500/20',
+};
 
 /**
  * Get color class based on usage percentage
@@ -72,6 +92,10 @@ const getBarColorClass = (percent: number): string => {
   return 'bg-green-500';
 };
 
+const getProviderName = (providerId: string): string => {
+  return PROVIDER_REGISTRY.find(p => p.id === providerId)?.name ?? providerId;
+};
+
 export function UsageIndicator() {
   const { t, i18n } = useTranslation(['common']);
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
@@ -82,6 +106,32 @@ export function UsageIndicator() {
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { providerAccounts, settings, setQueueOrder } = useSettingsStore();
+
+  // Get ordered accounts from global priority queue
+  const orderedAccounts = useMemo(() => {
+    const order = settings.globalPriorityOrder ?? [];
+    const ordered: ProviderAccount[] = [];
+    for (const id of order) {
+      const account = providerAccounts.find(a => a.id === id);
+      if (account) ordered.push(account);
+    }
+    // Add any accounts not in the order
+    for (const account of providerAccounts) {
+      if (!ordered.some(a => a.id === account.id)) {
+        ordered.push(account);
+      }
+    }
+    return ordered;
+  }, [providerAccounts, settings.globalPriorityOrder]);
+
+  const activeAccount = orderedAccounts[0] ?? null;
+  const otherAccounts = orderedAccounts.slice(1);
+
+  // Usage monitoring is only available for Anthropic OAuth accounts
+  const hasUsageMonitoring = activeAccount?.provider === 'anthropic' && activeAccount?.authType === 'oauth';
+  const isPayPerUse = activeAccount?.billingModel === 'pay-per-use';
 
   /**
    * Helper function to get initials from a profile name
@@ -137,7 +187,23 @@ export function UsageIndicator() {
   }, []);
 
   /**
-   * Handle swapping to a different profile
+   * Handle swapping to a different account in the priority queue
+   */
+  const handleSwapAccount = useCallback(async (e: React.MouseEvent, accountId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const currentOrder = settings.globalPriorityOrder ?? providerAccounts.map(a => a.id);
+    const newOrder = [accountId, ...currentOrder.filter(id => id !== accountId)];
+    await setQueueOrder(newOrder);
+
+    // Refresh usage if we switched to an Anthropic account
+    window.electronAPI.requestUsageUpdate();
+    window.electronAPI.requestAllProfilesUsage?.();
+  }, [settings.globalPriorityOrder, providerAccounts, setQueueOrder]);
+
+  /**
+   * Handle swapping to a different profile (legacy Anthropic-only path)
    * Uses optimistic UI update for immediate feedback, then fetches fresh data
    */
   const handleSwapProfile = useCallback(async (e: React.MouseEvent, profileId: string) => {
@@ -151,7 +217,6 @@ export function UsageIndicator() {
     // Find the profile we're swapping to
     const targetProfile = otherProfiles.find(p => p.profileId === profileId);
     if (!targetProfile) {
-      console.error('[UsageIndicator] Target profile not found:', profileId);
       return;
     }
 
@@ -219,12 +284,10 @@ export function UsageIndicator() {
         }
       } else {
         // Revert to captured previous state
-        console.error('[UsageIndicator] Failed to swap profile, reverting');
         if (previousUsage) setUsage(previousUsage);
         setOtherProfiles(previousOtherProfiles);
       }
-    } catch (error) {
-      console.error('[UsageIndicator] Failed to swap profile:', error);
+    } catch {
       // Revert to captured previous state
       if (previousUsage) setUsage(previousUsage);
       setOtherProfiles(previousOtherProfiles);
@@ -336,8 +399,7 @@ export function UsageIndicator() {
       } else {
         setIsAvailable(false);
       }
-    }).catch((error) => {
-      console.warn('[UsageIndicator] Failed to fetch initial usage:', error);
+    }).catch(() => {
       setIsLoading(false);
       setIsAvailable(false);
     });
@@ -353,8 +415,8 @@ export function UsageIndicator() {
           setActiveProfileNeedsReauth(true);
         }
       }
-    }).catch((error) => {
-      console.warn('[UsageIndicator] Failed to fetch all profiles usage:', error);
+    }).catch(() => {
+      // Silently ignore
     });
 
     return () => {
@@ -363,8 +425,8 @@ export function UsageIndicator() {
     };
   }, []);
 
-  // Show loading state
-  if (isLoading) {
+  // Show loading state - only for Anthropic OAuth accounts awaiting usage data
+  if (isLoading && hasUsageMonitoring) {
     return (
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/50 text-muted-foreground">
         <Activity className="h-3.5 w-3.5 motion-safe:animate-pulse" />
@@ -373,7 +435,120 @@ export function UsageIndicator() {
     );
   }
 
-  // Show unavailable state - with better messaging based on cause
+  // For non-Anthropic OAuth or pay-per-use providers, show "Unlimited" immediately
+  if (!hasUsageMonitoring || isPayPerUse) {
+    return (
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
+          <button
+            className="flex items-center gap-1 px-2 py-1.5 rounded-md border transition-all hover:opacity-80 text-green-500 bg-green-500/10 border-green-500/20"
+            aria-label={t('common:usage.usageStatusAriaLabel')}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onClick={handleTriggerClick}
+          >
+            <Activity className="h-3.5 w-3.5" />
+            <span className="text-xs font-semibold">{t('common:usage.unlimited')}</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="end"
+          className="text-xs w-72 p-0"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="p-3 space-y-3">
+            <div className="flex items-center gap-1.5 pb-2 border-b">
+              <Activity className="h-3.5 w-3.5" />
+              <span className="font-semibold text-xs">{t('common:usage.usageBreakdown')}</span>
+            </div>
+            <div className="flex items-center justify-center py-4">
+              <div className="text-center space-y-1">
+                <span className="text-2xl font-bold text-green-500">&#8734;</span>
+                <p className="text-xs text-muted-foreground">
+                  {isPayPerUse ? t('common:usage.unlimitedApiKey') : t('common:usage.noUsageMonitoring')}
+                </p>
+              </div>
+            </div>
+
+            {/* Active account footer */}
+            {activeAccount && (
+              <button
+                type="button"
+                onClick={handleOpenAccounts}
+                className={`w-full pt-3 border-t flex items-center gap-2.5 hover:bg-muted/50 -mx-3 px-3 ${otherAccounts.length === 0 ? '-mb-3 pb-3 rounded-b-md' : 'pb-2'} transition-colors cursor-pointer group`}
+              >
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/10">
+                  <span className="text-xs font-semibold text-primary">
+                    {getInitials(activeAccount.name)}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {t('common:usage.activeAccount')}
+                    </span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border ${
+                      PROVIDER_BADGE_COLORS[activeAccount.provider] ?? PROVIDER_BADGE_COLORS['openai-compatible']
+                    }`}>
+                      {getProviderName(activeAccount.provider)}
+                    </span>
+                  </div>
+                  <div className="font-medium text-xs truncate text-primary">
+                    {activeAccount.name}
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+              </button>
+            )}
+
+            {/* Other accounts from the queue */}
+            {otherAccounts.length > 0 && (
+              <div className="pt-2 -mx-3 px-3 -mb-3 pb-3 space-y-1">
+                <div className="text-[10px] text-muted-foreground font-medium mb-1.5">
+                  {t('common:usage.otherAccounts')}
+                </div>
+                {otherAccounts.map((account) => (
+                  <div
+                    key={account.id}
+                    className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-muted/80">
+                      <span className="text-[10px] font-semibold text-foreground/70">
+                        {getInitials(account.name)}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-medium truncate">{account.name}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border ${
+                          PROVIDER_BADGE_COLORS[account.provider] ?? PROVIDER_BADGE_COLORS['openai-compatible']
+                        }`}>
+                          {getProviderName(account.provider)}
+                        </span>
+                        <button
+                          onClick={(e) => handleSwapAccount(e, account.id)}
+                          className="text-[9px] px-1.5 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded transition-colors ml-auto"
+                        >
+                          {t('common:usage.swap')}
+                        </button>
+                      </div>
+                      <span className="text-[9px] text-green-500">
+                        {t('common:usage.unlimited')}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  // Show unavailable state for Anthropic OAuth accounts - with better messaging based on cause
   if (!isAvailable || !usage) {
     // Check if it's a re-auth issue (better UX than generic "not supported")
     const needsReauth = activeProfileNeedsReauth;
@@ -487,7 +662,7 @@ export function UsageIndicator() {
               <span className={sessionColorClass} title={t('common:usage.sessionShort')}>
                 {Math.round(sessionPercent)}
               </span>
-              <span className="text-muted-foreground/50">│</span>
+              <span className="text-muted-foreground/50">|</span>
               <span className={weeklyColorClass} title={t('common:usage.weeklyShort')}>
                 {Math.round(weeklyPercent)}
               </span>
@@ -610,7 +785,7 @@ export function UsageIndicator() {
           <button
             type="button"
             onClick={handleOpenAccounts}
-            className={`w-full pt-3 border-t flex items-center gap-2.5 hover:bg-muted/50 -mx-3 px-3 ${otherProfiles.length === 0 ? '-mb-3 pb-3 rounded-b-md' : 'pb-2'} transition-colors cursor-pointer group`}
+            className={`w-full pt-3 border-t flex items-center gap-2.5 hover:bg-muted/50 -mx-3 px-3 ${(otherProfiles.length === 0 && otherAccounts.length === 0) ? '-mb-3 pb-3 rounded-b-md' : 'pb-2'} transition-colors cursor-pointer group`}
           >
             {/* Initials Avatar with warning indicator for re-auth needed */}
             <div className="relative">
@@ -640,6 +815,13 @@ export function UsageIndicator() {
                     {t('common:usage.needsReauth')}
                   </span>
                 )}
+                {activeAccount && (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border ${
+                    PROVIDER_BADGE_COLORS[activeAccount.provider] ?? PROVIDER_BADGE_COLORS['openai-compatible']
+                  }`}>
+                    {getProviderName(activeAccount.provider)}
+                  </span>
+                )}
               </div>
               <div className={`font-medium text-xs truncate ${
                 usage.needsReauthentication ? 'text-destructive' : 'text-primary'
@@ -652,8 +834,110 @@ export function UsageIndicator() {
             <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
           </button>
 
-          {/* Other profiles section - sorted by availability */}
-          {otherProfiles.length > 0 && (
+          {/* Other accounts from priority queue (non-Anthropic or non-OAuth) */}
+          {otherAccounts.length > 0 && (
+            <div className="pt-2 -mx-3 px-3 -mb-3 pb-3 space-y-1">
+              <div className="text-[10px] text-muted-foreground font-medium mb-1.5">
+                {t('common:usage.otherAccounts')}
+              </div>
+              {otherAccounts.map((account) => {
+                // Check if this account has Anthropic usage data from otherProfiles
+                const profileData = otherProfiles.find(p => p.profileId === account.claudeProfileId);
+                const isAnthropicOAuth = account.provider === 'anthropic' && account.authType === 'oauth';
+
+                return (
+                  <div
+                    key={account.id}
+                    className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-muted/30 transition-colors"
+                  >
+                    <div className={`relative`}>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        profileData?.isRateLimited || profileData?.needsReauthentication
+                          ? 'bg-red-500/10'
+                          : 'bg-muted/80'
+                      }`}>
+                        <span className={`text-[10px] font-semibold ${
+                          profileData?.isRateLimited || profileData?.needsReauthentication
+                            ? 'text-red-500'
+                            : 'text-foreground/70'
+                        }`}>
+                          {getInitials(account.name)}
+                        </span>
+                      </div>
+                      {(profileData?.isRateLimited || profileData?.needsReauthentication) && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background" />
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-medium truncate">{account.name}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border ${
+                          PROVIDER_BADGE_COLORS[account.provider] ?? PROVIDER_BADGE_COLORS['openai-compatible']
+                        }`}>
+                          {getProviderName(account.provider)}
+                        </span>
+                        <button
+                          onClick={(e) => handleSwapAccount(e, account.id)}
+                          className="text-[9px] px-1.5 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded transition-colors ml-auto"
+                        >
+                          {t('common:usage.swap')}
+                        </button>
+                      </div>
+                      {/* Show usage bars for Anthropic OAuth accounts with data, otherwise Unlimited */}
+                      {isAnthropicOAuth && profileData ? (
+                        profileData.isRateLimited ? (
+                          <span className="text-[9px] text-red-500">
+                            {profileData.rateLimitType === 'weekly'
+                              ? t('common:usage.weeklyLimitReached')
+                              : t('common:usage.sessionLimitReached')}
+                          </span>
+                        ) : profileData.needsReauthentication ? (
+                          <span className="text-[9px] text-destructive">
+                            {t('common:usage.needsReauth')}
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-2.5 w-2.5 text-muted-foreground/70" />
+                              <div className="w-10 h-1 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${getBarColorClass(profileData.sessionPercent)}`}
+                                  style={{ width: `${Math.min(profileData.sessionPercent, 100)}%` }}
+                                />
+                              </div>
+                              <span className={`text-[9px] tabular-nums w-6 ${getColorClass(profileData.sessionPercent).replace('text-green-500', 'text-muted-foreground').replace('500', '600')}`}>
+                                {Math.round(profileData.sessionPercent)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="h-2.5 w-2.5 text-muted-foreground/70" />
+                              <div className="w-10 h-1 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${getBarColorClass(profileData.weeklyPercent)}`}
+                                  style={{ width: `${Math.min(profileData.weeklyPercent, 100)}%` }}
+                                />
+                              </div>
+                              <span className={`text-[9px] tabular-nums w-6 ${getColorClass(profileData.weeklyPercent).replace('text-green-500', 'text-muted-foreground').replace('500', '600')}`}>
+                                {Math.round(profileData.weeklyPercent)}%
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        <span className="text-[9px] text-green-500">
+                          {t('common:usage.unlimited')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Legacy: other Anthropic profiles not in the provider accounts queue */}
+          {otherAccounts.length === 0 && otherProfiles.length > 0 && (
             <div className="pt-2 -mx-3 px-3 -mb-3 pb-3 space-y-1">
               <div className="text-[10px] text-muted-foreground font-medium mb-1.5">
                 {t('common:usage.otherAccounts')}

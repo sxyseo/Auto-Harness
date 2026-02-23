@@ -1,20 +1,14 @@
 /**
  * AuthStatusIndicator - Display current authentication method in header
  *
- * Shows the active authentication method and provider:
- * - OAuth: Shows "OAuth Anthropic" with Lock icon
- * - API Profile: Shows provider name (z.ai, ZHIPU AI) with Key icon and provider-specific colors
- *
- * Provider detection is based on the profile's baseUrl:
- * - api.anthropic.com → Anthropic
- * - api.z.ai → z.ai
- * - open.bigmodel.cn, dev.bigmodel.cn → ZHIPU AI
+ * Shows the active provider from the global priority queue. The badge reflects
+ * the first account in globalPriorityOrder that exists in providerAccounts.
  *
  * Usage warning badge: Shows to the left of provider badge when usage exceeds 90%
  */
 
 import { useMemo, useState, useEffect } from 'react';
-import { AlertTriangle, Key, Lock, Shield, Server, Fingerprint, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Key, Lock, Shield, Server } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -23,34 +17,37 @@ import {
 } from './ui/tooltip';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../stores/settings-store';
-import { detectProvider, getProviderLabel, getProviderBadgeColor, type ApiProvider } from '../../shared/utils/provider-detection';
 import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 
-/**
- * Type-safe mapping from ApiProvider to translation keys
- */
-const PROVIDER_TRANSLATION_KEYS: Readonly<Record<ApiProvider, string>> = {
-  anthropic: 'common:usage.providerAnthropic',
-  zai: 'common:usage.providerZai',
-  zhipu: 'common:usage.providerZhipu',
-  unknown: 'common:usage.providerUnknown'
-} as const;
+const PROVIDER_BADGE_COLORS: Record<string, string> = {
+  'anthropic': 'bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/15',
+  'openai': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/15',
+  'google': 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/15',
+  'mistral': 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/15',
+  'groq': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20 hover:bg-yellow-500/15',
+  'xai': 'bg-slate-500/10 text-slate-500 border-slate-500/20 hover:bg-slate-500/15',
+  'amazon-bedrock': 'bg-orange-600/10 text-orange-600 border-orange-600/20 hover:bg-orange-600/15',
+  'azure': 'bg-sky-500/10 text-sky-500 border-sky-500/20 hover:bg-sky-500/15',
+  'ollama': 'bg-purple-500/10 text-purple-500 border-purple-500/20 hover:bg-purple-500/15',
+  'openai-compatible': 'bg-gray-500/10 text-gray-500 border-gray-500/20 hover:bg-gray-500/15',
+};
 
-/**
- * OAuth fallback state when no profile is active or profile not found
- */
-const OAUTH_FALLBACK = {
-  type: 'oauth' as const,
-  name: 'OAuth',
-  provider: 'anthropic' as const,
-  providerLabel: 'Anthropic',
-  badgeColor: 'bg-orange-500/10 text-orange-500 border-orange-500/20 hover:bg-orange-500/15'
-} as const;
+const PROVIDER_I18N_KEYS: Record<string, string> = {
+  'anthropic': 'common:usage.providerAnthropic',
+  'openai': 'common:usage.providerOpenAI',
+  'google': 'common:usage.providerGoogle',
+  'mistral': 'common:usage.providerMistral',
+  'groq': 'common:usage.providerGroq',
+  'xai': 'common:usage.providerXai',
+  'amazon-bedrock': 'common:usage.providerBedrock',
+  'azure': 'common:usage.providerAzure',
+  'ollama': 'common:usage.providerOllama',
+  'openai-compatible': 'common:usage.providerCustomEndpoint',
+};
 
 export function AuthStatusIndicator() {
-  // Subscribe to profile state from settings store
-  const { profiles, activeProfileId } = useSettingsStore();
+  const { providerAccounts, settings } = useSettingsStore();
   const { t } = useTranslation(['common']);
 
   // Track usage data for warning badge
@@ -94,67 +91,38 @@ export function AuthStatusIndicator() {
     : 0;
 
   // Get formatted reset times (calculated dynamically from timestamps)
-  // Only fall back to sessionResetTime if it doesn't contain placeholder/hardcoded text
   const sessionResetTime = usage?.sessionResetTimestamp
     ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ??
       (hasHardcodedText(usage?.sessionResetTime) ? undefined : usage?.sessionResetTime))
     : (hasHardcodedText(usage?.sessionResetTime) ? undefined : usage?.sessionResetTime);
 
-  // Compute auth status and provider detection using useMemo to avoid unnecessary re-renders
-  const authStatus = useMemo(() => {
-    if (activeProfileId) {
-      const activeProfile = profiles.find(p => p.id === activeProfileId);
-      if (activeProfile) {
-        // Detect provider from profile's baseUrl
-        const provider = detectProvider(activeProfile.baseUrl);
-        const providerLabel = getProviderLabel(provider);
-        return {
-          type: 'profile' as const,
-          name: activeProfile.name,
-          id: activeProfile.id,
-          baseUrl: activeProfile.baseUrl,
-          createdAt: activeProfile.createdAt,
-          provider,
-          providerLabel,
-          badgeColor: getProviderBadgeColor(provider)
-        };
-      }
-      // Profile ID set but profile not found - fallback to OAuth
-      return OAUTH_FALLBACK;
+  // Get the active account: first in globalPriorityOrder that exists in providerAccounts
+  const activeAccount = useMemo(() => {
+    const order = settings.globalPriorityOrder ?? [];
+    for (const id of order) {
+      const account = providerAccounts.find(a => a.id === id);
+      if (account) return account;
     }
-    // No active profile - using OAuth
-    return OAUTH_FALLBACK;
-  }, [activeProfileId, profiles]);
+    // Fallback: first provider account
+    return providerAccounts[0] ?? null;
+  }, [providerAccounts, settings.globalPriorityOrder]);
 
-  // Helper function to truncate ID for display
-  const truncateId = (id: string): string => {
-    return id.slice(0, 8);
-  };
+  const Icon = !activeAccount ? Server : activeAccount.authType === 'oauth' ? Lock : Key;
 
-  // Get localized provider label for display
-  // Uses type-safe mapping with fallback to getProviderLabel for unknown providers
-  const getLocalizedProviderLabel = (provider: ApiProvider): string => {
-    const translationKey = PROVIDER_TRANSLATION_KEYS[provider];
+  const badgeLabel = activeAccount
+    ? t(PROVIDER_I18N_KEYS[activeAccount.provider] ?? 'common:usage.providerUnknown')
+    : t('common:usage.noAccount');
+  const badgeColor = activeAccount
+    ? (PROVIDER_BADGE_COLORS[activeAccount.provider] ?? PROVIDER_BADGE_COLORS['openai-compatible'])
+    : 'bg-muted text-muted-foreground border-border';
 
-    // If we have a translation key (including providerUnknown), use it
-    if (translationKey) {
-      const translated = t(translationKey);
-      // If translation returns the key itself (not found), use getProviderLabel fallback
-      if (translated !== translationKey) {
-        return translated;
-      }
-    }
-
-    // Fallback to getProviderLabel for providers without translation keys
-    return getProviderLabel(provider);
-  };
-
-  const isOAuth = authStatus.type === 'oauth';
-  const Icon = isOAuth ? Lock : Key;
-  // Compute once and reuse for aria-label and displayed text
-  const localizedProviderLabel = getLocalizedProviderLabel(authStatus.provider);
-  // Badge label: "Claude Code" for OAuth, "API Key" for API profiles
-  const badgeLabel = isOAuth ? t('common:usage.claudeCode') : t('common:usage.apiKey');
+  // Queue position info
+  const queuePosition = useMemo(() => {
+    if (!activeAccount) return null;
+    const order = settings.globalPriorityOrder ?? [];
+    const pos = order.indexOf(activeAccount.id);
+    return { position: pos >= 0 ? pos + 1 : 1, total: providerAccounts.length };
+  }, [activeAccount, settings.globalPriorityOrder, providerAccounts.length]);
 
   return (
     <div className="flex items-center gap-2">
@@ -189,7 +157,7 @@ export function AuthStatusIndicator() {
           <TooltipTrigger asChild>
             <button
               type="button"
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${authStatus.badgeColor}`}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${badgeColor}`}
               aria-label={t('common:usage.authenticationAriaLabel', { provider: badgeLabel })}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -206,71 +174,66 @@ export function AuthStatusIndicator() {
                   <Shield className="h-3.5 w-3.5" />
                   <span className="font-semibold text-xs">{t('common:usage.authenticationDetails')}</span>
                 </div>
-                <div className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                  isOAuth
-                    ? 'bg-orange-500/15 text-orange-500'
-                    : 'bg-primary/15 text-primary'
-                }`}>
-                  {isOAuth ? t('common:usage.oauth') : t('common:usage.apiKey')}
-                </div>
-              </div>
-
-              {/* Provider info */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Server className="h-3.5 w-3.5" />
-                  <span className="font-medium text-[11px]">{t('common:usage.provider')}</span>
-                </div>
-                <span className="font-semibold text-xs">{localizedProviderLabel}</span>
-              </div>
-
-              {/* Claude Code subscription label for OAuth */}
-              {isOAuth && (
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Lock className="h-3 w-3" />
-                    <span className="text-[10px]">{t('common:usage.subscription')}</span>
+                {activeAccount && (
+                  <div className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                    activeAccount.authType === 'oauth'
+                      ? 'bg-orange-500/15 text-orange-500'
+                      : 'bg-primary/15 text-primary'
+                  }`}>
+                    {activeAccount.authType === 'oauth' ? t('common:usage.oauth') : t('common:usage.apiKey')}
                   </div>
-                  <span className="font-medium text-[10px]">{t('common:usage.claudeCodeSubscription')}</span>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Profile details for API profiles */}
-              {!isOAuth && (
-                <div className="pt-2 border-t space-y-2">
-                    {/* Profile name with icon */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Key className="h-3 w-3" />
-                        <span className="text-[10px]">{t('common:usage.profile')}</span>
-                      </div>
-                      <span className="font-medium text-[10px]">{authStatus.name}</span>
+              {activeAccount ? (
+                <>
+                  {/* Provider info */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Server className="h-3.5 w-3.5" />
+                      <span className="font-medium text-[11px]">{t('common:usage.provider')}</span>
                     </div>
+                    <span className="font-semibold text-xs">{badgeLabel}</span>
+                  </div>
 
-                    {/* Profile ID with icon */}
-                    <div className="flex items-center justify-between">
+                  {/* Billing model */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Key className="h-3 w-3" />
+                      <span className="text-[10px]">{t('common:usage.subscription')}</span>
+                    </div>
+                    <span className="font-medium text-[10px]">
+                      {activeAccount.billingModel === 'subscription'
+                        ? t('common:usage.billingSubscription')
+                        : t('common:usage.billingPayPerUse')}
+                    </span>
+                  </div>
+
+                  {/* Account name */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Lock className="h-3 w-3" />
+                      <span className="text-[10px]">{t('common:usage.accountName')}</span>
+                    </div>
+                    <span className="font-medium text-[10px]">{activeAccount.name}</span>
+                  </div>
+
+                  {/* Queue position */}
+                  {queuePosition && (
+                    <div className="flex items-center justify-between pt-2 border-t">
                       <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Fingerprint className="h-3 w-3" />
-                        <span className="text-[10px]">{t('common:usage.id')}</span>
+                        <span className="text-[10px]">{t('common:usage.queuePosition')}</span>
                       </div>
-                      <span className="font-mono text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        {truncateId(authStatus.id)}
+                      <span className="font-medium text-[10px]">
+                        #{queuePosition.position} of {queuePosition.total}
                       </span>
                     </div>
-
-                    {/* API Endpoint with better styling */}
-                    {authStatus.baseUrl && (
-                      <div className="pt-1">
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
-                          <ExternalLink className="h-3 w-3" />
-                          <span>{t('common:usage.apiEndpoint')}</span>
-                        </div>
-                        <div className="text-[10px] font-mono bg-muted px-2 py-1.5 rounded break-all border">
-                          {authStatus.baseUrl}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-[11px] text-muted-foreground">
+                  {t('common:usage.noAccountDescription')}
+                </div>
               )}
             </div>
           </TooltipContent>

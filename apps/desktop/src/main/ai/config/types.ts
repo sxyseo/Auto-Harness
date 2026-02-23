@@ -145,3 +145,27 @@ export const MODEL_PROVIDER_MAP: Record<string, SupportedProvider> = {
   'llama-': 'groq',
   'grok-': 'xai',
 } as const;
+
+// ============================================
+// Reasoning Parameter Resolution
+// ============================================
+
+import type { ReasoningConfig } from '../../../shared/constants/models';
+
+export function resolveReasoningParams(config: ReasoningConfig): Record<string, unknown> {
+  switch (config.type) {
+    case 'thinking_tokens':
+      return { maxThinkingTokens: THINKING_BUDGET_MAP[config.level ?? 'medium'] };
+    case 'adaptive_effort':
+      return {
+        maxThinkingTokens: THINKING_BUDGET_MAP[config.level ?? 'high'],
+        effortLevel: config.level ?? 'high',
+      };
+    case 'reasoning_effort':
+      return { reasoningEffort: config.level ?? 'medium' };
+    case 'thinking_toggle':
+      return { thinking: config.level !== undefined };
+    case 'none':
+      return {};
+  }
+}

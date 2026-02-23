@@ -16,12 +16,17 @@
 
 import { ensureValidToken, reactiveTokenRefresh } from '../../claude-profile/token-refresh';
 import type { SupportedProvider } from '../providers/types';
-import type { AuthResolverContext, ResolvedAuth } from './types';
+import type { AuthResolverContext, QueueResolvedAuth, ResolvedAuth } from './types';
 import {
   PROVIDER_BASE_URL_ENV,
   PROVIDER_ENV_VARS,
   PROVIDER_SETTINGS_KEY,
 } from './types';
+import type { ProviderAccount } from '../../../shared/types/provider-account';
+import type { BuiltinProvider } from '../../../shared/types/provider-account';
+import { resolveModelEquivalent } from '../../../shared/constants/models';
+import { scoreProviderAccount } from '../../claude-profile/profile-scorer';
+import type { ClaudeAutoSwitchSettings } from '../../../shared/types/agent';
 
 // ============================================
 // Settings Accessor
@@ -286,4 +291,139 @@ export async function resolveAuth(ctx: AuthResolverContext): Promise<ResolvedAut
  */
 export async function hasCredentials(ctx: AuthResolverContext): Promise<boolean> {
   return (await resolveAuth(ctx)) !== null;
+}
+
+// ============================================
+// Queue-Based Resolution (Global Priority Queue)
+// ============================================
+
+/**
+ * Provider name to SupportedProvider mapping.
+ * Maps BuiltinProvider (from provider-account.ts) to SupportedProvider (from providers/types.ts).
+ */
+const BUILTIN_TO_SUPPORTED: Record<string, SupportedProvider> = {
+  anthropic: 'anthropic',
+  openai: 'openai',
+  google: 'google',
+  'amazon-bedrock': 'bedrock',
+  azure: 'azure',
+  mistral: 'mistral',
+  groq: 'groq',
+  xai: 'xai',
+  ollama: 'ollama',
+};
+
+/**
+ * Resolve auth from the global priority queue.
+ *
+ * Algorithm:
+ * 1. Walk queue in order
+ * 2. Skip excluded accounts (previously failed)
+ * 3. Check availability (scoring: subscription = check limits, pay-per-use = always available)
+ * 4. Find model equivalent for account's provider (user overrides → defaults)
+ * 5. Resolve credentials (OAuth token refresh, API key, etc.)
+ * 6. Return first match with resolved model + reasoning config
+ */
+export async function resolveAuthFromQueue(
+  requestedModel: string,
+  queue: ProviderAccount[],
+  options?: {
+    excludeAccountIds?: string[];
+    userModelOverrides?: Record<string, Partial<Record<BuiltinProvider, import('../../../shared/constants/models').ProviderModelSpec>>>;
+    autoSwitchSettings?: ClaudeAutoSwitchSettings;
+  }
+): Promise<QueueResolvedAuth | null> {
+  const excludeSet = new Set(options?.excludeAccountIds ?? []);
+  const defaultSettings: ClaudeAutoSwitchSettings = {
+    enabled: true,
+    proactiveSwapEnabled: false,
+    sessionThreshold: 95,
+    weeklyThreshold: 99,
+    autoSwitchOnRateLimit: true,
+    autoSwitchOnAuthFailure: true,
+    usageCheckInterval: 30000,
+  };
+  const settings = options?.autoSwitchSettings ?? defaultSettings;
+
+  for (const account of queue) {
+    // Skip excluded accounts
+    if (excludeSet.has(account.id)) continue;
+
+    // Score account availability
+    const { available } = scoreProviderAccount(account, settings);
+    if (!available) continue;
+
+    // Map BuiltinProvider to SupportedProvider
+    const supportedProvider = BUILTIN_TO_SUPPORTED[account.provider];
+    if (!supportedProvider) continue;
+
+    // Find model equivalent for this provider
+    const modelSpec = resolveModelEquivalent(
+      requestedModel,
+      account.provider,
+      options?.userModelOverrides,
+    );
+    if (!modelSpec) continue;
+
+    // Resolve credentials for this account
+    const auth = await resolveCredentialsForAccount(account, supportedProvider);
+    if (!auth) continue;
+
+    // Success — return the fully resolved auth
+    return {
+      ...auth,
+      accountId: account.id,
+      resolvedProvider: supportedProvider,
+      resolvedModelId: modelSpec.modelId,
+      reasoningConfig: modelSpec.reasoning,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Resolve credentials for a specific ProviderAccount.
+ * Handles OAuth token refresh, API keys, and Codex OAuth.
+ */
+async function resolveCredentialsForAccount(
+  account: ProviderAccount,
+  provider: SupportedProvider,
+): Promise<ResolvedAuth | null> {
+  // Codex OAuth (OpenAI subscription)
+  if (account.authType === 'oauth' && account.provider === 'openai') {
+    try {
+      const { ensureValidCodexToken } = await import('./codex-oauth');
+      const token = await ensureValidCodexToken();
+      if (token) {
+        return {
+          apiKey: 'codex-oauth-placeholder',
+          source: 'codex-oauth',
+          codexOAuth: true,
+        };
+      }
+    } catch { /* fall through */ }
+    return null;
+  }
+
+  // Anthropic OAuth — refresh token via existing claude-profile system
+  if (account.authType === 'oauth' && account.provider === 'anthropic') {
+    if (account.claudeProfileId) {
+      // Delegate to profile OAuth resolution
+      const ctx: AuthResolverContext = { provider, profileId: account.claudeProfileId };
+      return resolveAuth(ctx);
+    }
+    return null;
+  }
+
+  // API key accounts
+  if (account.authType === 'api-key' && account.apiKey) {
+    return {
+      apiKey: account.apiKey,
+      source: 'profile-api-key',
+      baseURL: account.baseUrl,
+    };
+  }
+
+  return null;
 }

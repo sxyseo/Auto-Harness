@@ -14,7 +14,7 @@
 
 import type { Tool as AITool } from 'ai';
 
-import { resolveAuth } from '../auth/resolver';
+import { resolveAuth, resolveAuthFromQueue } from '../auth/resolver';
 import {
   getDefaultThinkingLevel,
   getRequiredMcpServers,
@@ -22,10 +22,12 @@ import {
 import type { McpServerResolveOptions } from '../config/agent-configs';
 import { resolveModelId } from '../config/phase-config';
 import type { ThinkingLevel } from '../config/types';
+import { resolveReasoningParams } from '../config/types';
 import { createMcpClientsForAgent, closeAllMcpClients, mergeMcpTools } from '../mcp/client';
 import type { McpClientResult } from '../mcp/types';
 import { createProviderFromModelId, detectProviderFromModel } from '../providers/factory';
 import { ToolRegistry } from '../tools/registry';
+import type { QueueResolvedAuth } from '../auth/types';
 import type {
   AgentClientConfig,
   AgentClientResult,
@@ -83,28 +85,60 @@ export async function createAgentClient(
     maxSteps = DEFAULT_MAX_STEPS,
     profileId,
     additionalMcpServers,
+    queueConfig,
   } = config;
 
-  // 1. Resolve model ID from shorthand (or use phase default)
-  const modelId = resolveModelId(modelShorthand ?? phase);
+  // 1 & 2. Resolve model + auth credentials
+  let model;
+  let resolvedThinkingLevel: ThinkingLevel;
+  let queueAuth: QueueResolvedAuth | null = null;
 
-  // 2. Resolve auth credentials (async — proactively refreshes OAuth token)
-  const detectedProvider = detectProviderFromModel(modelId) ?? 'anthropic';
-  const auth = await resolveAuth({
-    provider: detectedProvider,
-    profileId,
-  });
+  if (queueConfig) {
+    // Queue-based resolution: use global priority queue
+    queueAuth = await resolveAuthFromQueue(
+      queueConfig.requestedModel,
+      queueConfig.queue,
+      {
+        excludeAccountIds: queueConfig.excludeAccountIds,
+        userModelOverrides: queueConfig.userModelOverrides as any,
+      }
+    );
 
-  const model = createProviderFromModelId(modelId, {
-    apiKey: auth?.apiKey,
-    baseURL: auth?.baseURL,
-    headers: auth?.headers,
-    codexOAuth: auth?.codexOAuth,
-  });
+    if (!queueAuth) {
+      throw new Error('No available account in priority queue for model: ' + queueConfig.requestedModel);
+    }
 
-  // 3. Resolve thinking level
-  const resolvedThinkingLevel: ThinkingLevel =
-    thinkingLevel ?? getDefaultThinkingLevel(agentType);
+    model = createProviderFromModelId(queueAuth.resolvedModelId, {
+      apiKey: queueAuth.apiKey,
+      baseURL: queueAuth.baseURL,
+      headers: queueAuth.headers,
+      codexOAuth: queueAuth.codexOAuth,
+    });
+
+    // Derive thinking level from reasoning config
+    resolveReasoningParams(queueAuth.reasoningConfig);
+    resolvedThinkingLevel = (queueAuth.reasoningConfig.level as ThinkingLevel) ??
+      thinkingLevel ?? getDefaultThinkingLevel(agentType);
+  } else {
+    // Legacy per-provider resolution
+    const modelId = resolveModelId(modelShorthand ?? phase);
+    const detectedProvider = detectProviderFromModel(modelId) ?? 'anthropic';
+    const auth = await resolveAuth({
+      provider: detectedProvider,
+      profileId,
+    });
+
+    model = createProviderFromModelId(modelId, {
+      apiKey: auth?.apiKey,
+      baseURL: auth?.baseURL,
+      headers: auth?.headers,
+      codexOAuth: auth?.codexOAuth,
+    });
+
+    resolvedThinkingLevel = thinkingLevel ?? getDefaultThinkingLevel(agentType);
+  }
+
+  // 3. (Thinking level resolved above)
 
   // 4. Bind builtin tools via ToolRegistry
   const registry = new ToolRegistry();
@@ -143,6 +177,7 @@ export async function createAgentClient(
     maxSteps,
     thinkingLevel: resolvedThinkingLevel,
     cleanup,
+    ...(queueAuth ? { queueAuth } : {}),
   };
 }
 
@@ -172,28 +207,61 @@ export async function createSimpleClient(
     profileId,
     maxSteps = DEFAULT_SIMPLE_MAX_STEPS,
     tools = {},
+    queueConfig,
   } = config;
 
-  // Resolve model
-  const modelId = resolveModelId(modelShorthand);
-  const detectedProvider = detectProviderFromModel(modelId) ?? 'anthropic';
-  const auth = await resolveAuth({
-    provider: detectedProvider,
-    profileId,
-  });
+  // Resolve model + auth
+  let model;
+  let resolvedThinkingLevel: ThinkingLevel = thinkingLevel;
+  let queueAuth: QueueResolvedAuth | null = null;
 
-  const model = createProviderFromModelId(modelId, {
-    apiKey: auth?.apiKey,
-    baseURL: auth?.baseURL,
-    headers: auth?.headers,
-    codexOAuth: auth?.codexOAuth,
-  });
+  if (queueConfig) {
+    // Queue-based resolution: use global priority queue
+    queueAuth = await resolveAuthFromQueue(
+      queueConfig.requestedModel,
+      queueConfig.queue,
+      {
+        excludeAccountIds: queueConfig.excludeAccountIds,
+        userModelOverrides: queueConfig.userModelOverrides as any,
+      }
+    );
+
+    if (!queueAuth) {
+      throw new Error('No available account in priority queue for model: ' + queueConfig.requestedModel);
+    }
+
+    model = createProviderFromModelId(queueAuth.resolvedModelId, {
+      apiKey: queueAuth.apiKey,
+      baseURL: queueAuth.baseURL,
+      headers: queueAuth.headers,
+      codexOAuth: queueAuth.codexOAuth,
+    });
+
+    resolveReasoningParams(queueAuth.reasoningConfig);
+    resolvedThinkingLevel = (queueAuth.reasoningConfig.level as ThinkingLevel) ?? thinkingLevel;
+  } else {
+    // Legacy per-provider resolution
+    const modelId = resolveModelId(modelShorthand);
+    const detectedProvider = detectProviderFromModel(modelId) ?? 'anthropic';
+    const auth = await resolveAuth({
+      provider: detectedProvider,
+      profileId,
+    });
+
+    model = createProviderFromModelId(modelId, {
+      apiKey: auth?.apiKey,
+      baseURL: auth?.baseURL,
+      headers: auth?.headers,
+      codexOAuth: auth?.codexOAuth,
+    });
+  }
 
   return {
     model,
     tools,
     systemPrompt,
     maxSteps,
-    thinkingLevel,
+    thinkingLevel: resolvedThinkingLevel,
+    ...(queueAuth ? { queueAuth } : {}),
   };
 }

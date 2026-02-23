@@ -79,7 +79,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
         type: account.authType === 'oauth' ? 'oauth' : 'api',
         displayName: account.name,
         identifier: account.baseUrl ?? account.provider,
-        isActive: account.isActive,
+        isActive: priorityOrder.length > 0 ? priorityOrder[0] === account.id : false,
         isNext: false,
         isAvailable: true,
         hasUnlimitedUsage: account.authType === 'api-key',

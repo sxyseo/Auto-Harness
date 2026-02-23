@@ -3,6 +3,7 @@
  */
 /**
  * Tests for AuthStatusIndicator component
+ * Updated to use provider accounts + global priority queue model
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -10,7 +11,7 @@ import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { AuthStatusIndicator } from './AuthStatusIndicator';
 import { useSettingsStore } from '../stores/settings-store';
-import type { APIProfile } from '../../shared/types/profile';
+import type { ProviderAccount } from '../../shared/types/provider-account';
 
 // Mock the settings store
 vi.mock('../stores/settings-store', () => ({
@@ -21,27 +22,35 @@ vi.mock('../stores/settings-store', () => ({
 vi.mock('react-i18next', () => ({
   useTranslation: vi.fn(() => ({
     t: (key: string, params?: Record<string, unknown>) => {
-      // For translation keys, return values for testing
       const translations: Record<string, string> = {
         'common:usage.authentication': 'Authentication',
         'common:usage.oauth': 'OAuth',
-        'common:usage.apiProfile': 'API Profile',
+        'common:usage.apiKey': 'API Key',
         'common:usage.provider': 'Provider',
         'common:usage.providerAnthropic': 'Anthropic',
+        'common:usage.providerOpenAI': 'OpenAI',
+        'common:usage.providerGoogle': 'Google AI',
         'common:usage.providerZai': 'z.ai',
         'common:usage.providerZhipu': 'ZHIPU AI',
+        'common:usage.providerUnknown': 'Unknown',
         'common:usage.authenticationAriaLabel': 'Authentication: {{provider}}',
-        'common:usage.profile': 'Profile',
-        'common:usage.id': 'ID',
-        'common:usage.apiEndpoint': 'API Endpoint',
+        'common:usage.authenticationDetails': 'Authentication Details',
         'common:usage.claudeCode': 'Claude Code',
-        'common:usage.apiKey': 'API Key'
+        'common:usage.noAccount': 'No Account',
+        'common:usage.noAccountDescription': 'Add an account in Settings to get started',
+        'common:usage.billingSubscription': 'Subscription',
+        'common:usage.billingPayPerUse': 'Pay-per-use',
+        'common:usage.queuePosition': 'Queue Position',
+        'common:usage.inUse': 'In Use',
+        'common:usage.accountName': 'Account',
       };
-      // Handle interpolation (e.g., "Authentication: {{provider}}")
       if (params && Object.keys(params).length > 0) {
         const translated = translations[key] || key;
         if (translated.includes('{{provider}}')) {
           return translated.replace('{{provider}}', String(params.provider));
+        }
+        if (translated.includes('{{position}}') && translated.includes('{{total}}')) {
+          return translated.replace('{{position}}', String(params.position)).replace('{{total}}', String(params.total));
         }
         return translated;
       }
@@ -50,19 +59,57 @@ vi.mock('react-i18next', () => ({
   }))
 }));
 
+// Test provider accounts
+const testAccounts: ProviderAccount[] = [
+  {
+    id: 'account-anthropic',
+    provider: 'anthropic',
+    name: 'Claude Pro',
+    authType: 'oauth',
+    billingModel: 'subscription',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  {
+    id: 'account-openai',
+    provider: 'openai',
+    name: 'OpenAI API',
+    authType: 'api-key',
+    billingModel: 'pay-per-use',
+    apiKey: 'sk-openai-xxx',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  {
+    id: 'account-google',
+    provider: 'google',
+    name: 'Google AI Key',
+    authType: 'api-key',
+    billingModel: 'pay-per-use',
+    apiKey: 'AIza-xxx',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+];
+
 /**
- * Creates a mock settings store with optional overrides
- * @param overrides - Partial store state to override defaults
- * @returns Complete mock settings store object
+ * Creates a mock settings store with provider accounts model
  */
-function createUseSettingsStoreMock(overrides?: Partial<ReturnType<typeof useSettingsStore>>) {
+function createStoreMock(overrides?: {
+  providerAccounts?: ProviderAccount[];
+  globalPriorityOrder?: string[];
+}) {
   return {
-    profiles: testProfiles,
+    providerAccounts: overrides?.providerAccounts ?? testAccounts,
+    settings: {
+      globalPriorityOrder: overrides?.globalPriorityOrder ?? ['account-anthropic', 'account-openai', 'account-google'],
+    },
+    // Legacy fields (still in store type but not used by new component)
+    profiles: [],
     activeProfileId: null,
     deleteProfile: vi.fn().mockResolvedValue(true),
     setActiveProfile: vi.fn().mockResolvedValue(true),
     profilesLoading: false,
-    settings: {} as any,
     isLoading: false,
     error: null,
     setSettings: vi.fn(),
@@ -75,173 +122,126 @@ function createUseSettingsStoreMock(overrides?: Partial<ReturnType<typeof useSet
     saveProfile: vi.fn().mockResolvedValue(true),
     updateProfile: vi.fn().mockResolvedValue(true),
     profilesError: null,
-    ...overrides
   };
 }
-
-// Test profile data
-const testProfiles: APIProfile[] = [
-  {
-    id: 'profile-1',
-    name: 'Production API',
-    baseUrl: 'https://api.anthropic.com',
-    apiKey: 'sk-ant-prod-key-1234',
-    models: { default: 'claude-sonnet-4-5-20250929' },
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  },
-  {
-    id: 'profile-2',
-    name: 'Development API',
-    baseUrl: 'https://dev-api.example.com/v1',
-    apiKey: 'sk-ant-test-key-5678',
-    models: undefined,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  },
-  {
-    id: 'profile-3',
-    name: 'z.ai Global',
-    baseUrl: 'https://api.z.ai/api/anthropic',
-    apiKey: 'sk-zai-key-1234',
-    models: undefined,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  },
-  {
-    id: 'profile-4',
-    name: 'ZHIPU China',
-    baseUrl: 'https://open.bigmodel.cn/api/anthropic',
-    apiKey: 'zhipu-key-5678',
-    models: undefined,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  }
-];
 
 describe('AuthStatusIndicator', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock window.electronAPI usage functions
     (window as any).electronAPI = {
-      onUsageUpdated: vi.fn(() => vi.fn()), // Returns unsubscribe function
+      onUsageUpdated: vi.fn(() => vi.fn()),
       requestUsageUpdate: vi.fn().mockResolvedValue({ success: false, data: null })
     };
   });
 
-  describe('when using OAuth (no active profile)', () => {
+  describe('when Anthropic OAuth is the active account', () => {
     beforeEach(() => {
       vi.mocked(useSettingsStore).mockReturnValue(
-        createUseSettingsStoreMock({ activeProfileId: null })
+        createStoreMock({
+          providerAccounts: testAccounts,
+          globalPriorityOrder: ['account-anthropic', 'account-openai'],
+        }) as any
       );
     });
 
-    it('should display Claude Code badge with Lock icon for OAuth', () => {
+    it('should display Anthropic provider badge', () => {
       render(<AuthStatusIndicator />);
-
-      expect(screen.getByText('Claude Code')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /authentication: claude code/i })).toBeInTheDocument();
+      expect(screen.getByText('Anthropic')).toBeInTheDocument();
     });
 
-    it('should have correct aria-label for OAuth', () => {
+    it('should have correct aria-label', () => {
       render(<AuthStatusIndicator />);
+      expect(screen.getByRole('button', { name: /authentication: anthropic/i })).toBeInTheDocument();
+    });
 
-      expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Authentication: Claude Code');
+    it('should apply orange color classes for Anthropic', () => {
+      render(<AuthStatusIndicator />);
+      const button = screen.getByRole('button');
+      expect(button.className).toContain('text-orange-500');
     });
   });
 
-  describe('when using API profile', () => {
+  describe('when OpenAI is the active account', () => {
     beforeEach(() => {
       vi.mocked(useSettingsStore).mockReturnValue(
-        createUseSettingsStoreMock({ activeProfileId: 'profile-1' })
+        createStoreMock({
+          providerAccounts: testAccounts,
+          globalPriorityOrder: ['account-openai', 'account-anthropic'],
+        }) as any
       );
     });
 
-    it('should display API Key badge with Key icon for API profile', () => {
+    it('should display OpenAI provider badge', () => {
       render(<AuthStatusIndicator />);
-
-      expect(screen.getByText('API Key')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /authentication: api key/i })).toBeInTheDocument();
+      expect(screen.getByText('OpenAI')).toBeInTheDocument();
     });
 
-    it('should have correct aria-label for profile', () => {
+    it('should apply green/emerald color classes for OpenAI', () => {
       render(<AuthStatusIndicator />);
-
-      expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Authentication: API Key');
+      const button = screen.getByRole('button');
+      expect(button.className).toContain('text-emerald-500');
     });
   });
 
-  describe('when active profile ID references non-existent profile', () => {
+  describe('when Google AI is the active account', () => {
     beforeEach(() => {
       vi.mocked(useSettingsStore).mockReturnValue(
-        createUseSettingsStoreMock({ activeProfileId: 'non-existent-id' })
+        createStoreMock({
+          providerAccounts: testAccounts,
+          globalPriorityOrder: ['account-google', 'account-anthropic'],
+        }) as any
       );
     });
 
-    it('should fallback to OAuth (Claude Code) when profile not found', () => {
+    it('should display Google AI provider badge', () => {
       render(<AuthStatusIndicator />);
+      expect(screen.getByText('Google AI')).toBeInTheDocument();
+    });
 
-      expect(screen.getByText('Claude Code')).toBeInTheDocument();
+    it('should apply blue color classes for Google', () => {
+      render(<AuthStatusIndicator />);
+      const button = screen.getByRole('button');
+      expect(button.className).toContain('text-blue-500');
     });
   });
 
-  describe('provider detection for different API profiles', () => {
-    it('should display API Key badge for z.ai profile', () => {
+  describe('when no accounts exist', () => {
+    beforeEach(() => {
       vi.mocked(useSettingsStore).mockReturnValue(
-        createUseSettingsStoreMock({ activeProfileId: 'profile-3' })
+        createStoreMock({
+          providerAccounts: [],
+          globalPriorityOrder: [],
+        }) as any
       );
-
-      render(<AuthStatusIndicator />);
-
-      expect(screen.getByText('API Key')).toBeInTheDocument();
-      expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Authentication: API Key');
     });
 
-    it('should display API Key badge for ZHIPU profile', () => {
-      vi.mocked(useSettingsStore).mockReturnValue(
-        createUseSettingsStoreMock({ activeProfileId: 'profile-4' })
-      );
-
+    it('should display No Account badge', () => {
       render(<AuthStatusIndicator />);
+      expect(screen.getByText('No Account')).toBeInTheDocument();
+    });
+  });
 
-      expect(screen.getByText('API Key')).toBeInTheDocument();
-      expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Authentication: API Key');
+  describe('fallback when globalPriorityOrder is empty', () => {
+    beforeEach(() => {
+      vi.mocked(useSettingsStore).mockReturnValue(
+        createStoreMock({
+          providerAccounts: testAccounts,
+          globalPriorityOrder: [],
+        }) as any
+      );
     });
 
-    it('should apply correct color classes for each provider', () => {
-      // Test Anthropic (orange)
-      vi.mocked(useSettingsStore).mockReturnValue(
-        createUseSettingsStoreMock({ activeProfileId: 'profile-1' })
-      );
-
-      const { rerender } = render(<AuthStatusIndicator />);
-      const anthropicButton = screen.getByRole('button');
-      expect(anthropicButton.className).toContain('text-orange-500');
-
-      // Test z.ai (blue)
-      vi.mocked(useSettingsStore).mockReturnValue(
-        createUseSettingsStoreMock({ activeProfileId: 'profile-3' })
-      );
-
-      rerender(<AuthStatusIndicator />);
-      const zaiButton = screen.getByRole('button');
-      expect(zaiButton.className).toContain('text-blue-500');
-
-      // Test ZHIPU (purple)
-      vi.mocked(useSettingsStore).mockReturnValue(
-        createUseSettingsStoreMock({ activeProfileId: 'profile-4' })
-      );
-
-      rerender(<AuthStatusIndicator />);
-      const zhipuButton = screen.getByRole('button');
-      expect(zhipuButton.className).toContain('text-purple-500');
+    it('should fallback to first provider account', () => {
+      render(<AuthStatusIndicator />);
+      // First account in array is Anthropic
+      expect(screen.getByText('Anthropic')).toBeInTheDocument();
     });
   });
 
   describe('component structure', () => {
     beforeEach(() => {
       vi.mocked(useSettingsStore).mockReturnValue(
-        createUseSettingsStoreMock()
+        createStoreMock() as any
       );
     });
 

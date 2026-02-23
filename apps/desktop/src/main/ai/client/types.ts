@@ -13,6 +13,9 @@ import type { AgentType } from '../config/agent-configs';
 import type { ModelShorthand, Phase, ThinkingLevel } from '../config/types';
 import type { McpClientResult } from '../mcp/types';
 import type { ToolContext } from '../tools/types';
+import type { QueueResolvedAuth } from '../auth/types';
+import type { ProviderAccount } from '../../../shared/types/provider-account';
+import type { ProviderModelSpec } from '../../../shared/constants/models';
 
 // =============================================================================
 // Client Configuration
@@ -43,6 +46,13 @@ export interface AgentClientConfig {
   abortSignal?: AbortSignal;
   /** Additional custom MCP server IDs to enable */
   additionalMcpServers?: string[];
+  /** Optional queue-based resolution config (if provided, uses global priority queue instead of per-provider auth) */
+  queueConfig?: {
+    queue: ProviderAccount[];
+    requestedModel: string;
+    excludeAccountIds?: string[];
+    userModelOverrides?: Record<string, Partial<Record<string, ProviderModelSpec>>>;
+  };
 }
 
 /**
@@ -63,6 +73,13 @@ export interface SimpleClientConfig {
   maxSteps?: number;
   /** Specific tools to include (if any) */
   tools?: Record<string, AITool>;
+  /** Optional queue-based resolution config (if provided, uses global priority queue instead of per-provider auth) */
+  queueConfig?: {
+    queue: ProviderAccount[];
+    requestedModel: string;
+    excludeAccountIds?: string[];
+    userModelOverrides?: Record<string, Partial<Record<string, ProviderModelSpec>>>;
+  };
 }
 
 // =============================================================================
@@ -88,6 +105,8 @@ export interface AgentClientResult {
   thinkingLevel: ThinkingLevel;
   /** Cleanup function — closes all MCP connections */
   cleanup: () => Promise<void>;
+  /** Queue-resolved auth (present when queueConfig was used) */
+  queueAuth?: QueueResolvedAuth;
 }
 
 /**
@@ -105,4 +124,6 @@ export interface SimpleClientResult {
   maxSteps: number;
   /** Resolved thinking level */
   thinkingLevel: ThinkingLevel;
+  /** Queue-resolved auth (present when queueConfig was used) */
+  queueAuth?: QueueResolvedAuth;
 }

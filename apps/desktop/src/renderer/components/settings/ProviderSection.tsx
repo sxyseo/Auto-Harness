@@ -14,7 +14,6 @@ interface ProviderSectionProps {
   onAddAccount: (provider: BuiltinProvider, authType: 'oauth' | 'api-key') => void;
   onEditAccount: (account: ProviderAccount) => void;
   onDeleteAccount: (id: string) => void;
-  onSetActive: (id: string) => void;
 }
 
 export function ProviderSection({
@@ -24,7 +23,6 @@ export function ProviderSection({
   onAddAccount,
   onEditAccount,
   onDeleteAccount,
-  onSetActive,
 }: ProviderSectionProps) {
   const { t } = useTranslation('settings');
   const [isOpen, setIsOpen] = useState(accounts.length > 0);
@@ -101,7 +99,6 @@ export function ProviderSection({
                     account={account}
                     onEdit={onEditAccount}
                     onDelete={onDeleteAccount}
-                    onSetActive={onSetActive}
                   />
                 ))
               )}

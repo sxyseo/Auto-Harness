@@ -270,3 +270,89 @@ export const MEMORY_BACKENDS = [
   { value: 'file', label: 'File-based (default)' },
   { value: 'graphiti', label: 'Graphiti (LadybugDB)' }
 ] as const;
+
+// ============================================
+// Reasoning Configuration Types
+// ============================================
+
+export type ReasoningType =
+  | 'thinking_tokens'     // Anthropic: budget-based thinking
+  | 'adaptive_effort'     // Anthropic Opus 4.6: effort level + budget cap
+  | 'reasoning_effort'    // OpenAI o-series: reasoning_effort param
+  | 'thinking_toggle'     // Google: thinking enabled/disabled
+  | 'none';               // No reasoning/thinking API
+
+export interface ReasoningConfig {
+  type: ReasoningType;
+  level?: 'low' | 'medium' | 'high';
+}
+
+export interface ProviderModelSpec {
+  modelId: string;
+  reasoning: ReasoningConfig;
+}
+
+export const DEFAULT_MODEL_EQUIVALENCES: Record<string, Partial<Record<BuiltinProvider, ProviderModelSpec>>> = {
+  'opus': {
+    anthropic: { modelId: 'claude-opus-4-6', reasoning: { type: 'adaptive_effort', level: 'high' } },
+    openai: { modelId: 'o3', reasoning: { type: 'reasoning_effort', level: 'high' } },
+    google: { modelId: 'gemini-2.5-pro', reasoning: { type: 'thinking_toggle', level: 'high' } },
+    xai: { modelId: 'grok-3', reasoning: { type: 'none' } },
+    mistral: { modelId: 'mistral-large-latest', reasoning: { type: 'none' } },
+  },
+  'opus-1m': {
+    anthropic: { modelId: 'claude-opus-4-6', reasoning: { type: 'adaptive_effort', level: 'high' } },
+    openai: { modelId: 'gpt-4.1', reasoning: { type: 'none' } },
+    google: { modelId: 'gemini-2.5-pro', reasoning: { type: 'thinking_toggle', level: 'high' } },
+  },
+  'opus-4.5': {
+    anthropic: { modelId: 'claude-opus-4-5-20251101', reasoning: { type: 'thinking_tokens', level: 'high' } },
+    openai: { modelId: 'o3', reasoning: { type: 'reasoning_effort', level: 'high' } },
+    google: { modelId: 'gemini-2.5-pro', reasoning: { type: 'thinking_toggle', level: 'high' } },
+  },
+  'sonnet': {
+    anthropic: { modelId: 'claude-sonnet-4-5-20250929', reasoning: { type: 'thinking_tokens', level: 'medium' } },
+    openai: { modelId: 'gpt-4o', reasoning: { type: 'none' } },
+    google: { modelId: 'gemini-2.5-flash', reasoning: { type: 'thinking_toggle', level: 'medium' } },
+    mistral: { modelId: 'mistral-large-latest', reasoning: { type: 'none' } },
+    groq: { modelId: 'llama-3.3-70b-versatile', reasoning: { type: 'none' } },
+    xai: { modelId: 'grok-3-mini', reasoning: { type: 'none' } },
+  },
+  'haiku': {
+    anthropic: { modelId: 'claude-haiku-4-5-20251001', reasoning: { type: 'none' } },
+    openai: { modelId: 'gpt-4.1-mini', reasoning: { type: 'none' } },
+    google: { modelId: 'gemini-2.0-flash', reasoning: { type: 'none' } },
+    mistral: { modelId: 'mistral-small-latest', reasoning: { type: 'none' } },
+    groq: { modelId: 'llama-3.3-70b-versatile', reasoning: { type: 'none' } },
+  },
+  'gpt-4.1': {
+    openai: { modelId: 'gpt-4.1', reasoning: { type: 'none' } },
+    anthropic: { modelId: 'claude-opus-4-6', reasoning: { type: 'adaptive_effort', level: 'high' } },
+    google: { modelId: 'gemini-2.5-pro', reasoning: { type: 'thinking_toggle', level: 'high' } },
+  },
+  'gpt-4o': {
+    openai: { modelId: 'gpt-4o', reasoning: { type: 'none' } },
+    anthropic: { modelId: 'claude-sonnet-4-5-20250929', reasoning: { type: 'thinking_tokens', level: 'medium' } },
+    google: { modelId: 'gemini-2.5-flash', reasoning: { type: 'thinking_toggle', level: 'medium' } },
+  },
+  'o3': {
+    openai: { modelId: 'o3', reasoning: { type: 'reasoning_effort', level: 'high' } },
+    anthropic: { modelId: 'claude-opus-4-6', reasoning: { type: 'adaptive_effort', level: 'high' } },
+    google: { modelId: 'gemini-2.5-pro', reasoning: { type: 'thinking_toggle', level: 'high' } },
+  },
+  'gemini-2.5-pro': {
+    google: { modelId: 'gemini-2.5-pro', reasoning: { type: 'thinking_toggle', level: 'high' } },
+    anthropic: { modelId: 'claude-opus-4-6', reasoning: { type: 'adaptive_effort', level: 'high' } },
+    openai: { modelId: 'o3', reasoning: { type: 'reasoning_effort', level: 'high' } },
+  },
+};
+
+export function resolveModelEquivalent(
+  modelValue: string,
+  targetProvider: BuiltinProvider,
+  userOverrides?: Record<string, Partial<Record<BuiltinProvider, ProviderModelSpec>>>
+): ProviderModelSpec | null {
+  const override = userOverrides?.[modelValue]?.[targetProvider];
+  if (override) return override;
+  return DEFAULT_MODEL_EQUIVALENCES[modelValue]?.[targetProvider] ?? null;
+}

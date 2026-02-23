@@ -37,7 +37,6 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
 
   const accounts: ProviderAccount[] = settings.providerAccounts ? [...settings.providerAccounts] : [];
   const now = Date.now();
-  let priority = accounts.length;
 
   const genId = () => `pa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -46,11 +45,10 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
     accounts.push({
       id: genId(),
       provider: 'anthropic',
-      name: 'Default',
+      name: 'Anthropic API Key',
       authType: 'api-key',
       apiKey: settings.globalAnthropicApiKey,
-      isActive: true,
-      priority: priority++,
+      billingModel: 'pay-per-use' as const,
       createdAt: now,
       updatedAt: now,
     });
@@ -61,11 +59,10 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
     accounts.push({
       id: genId(),
       provider: 'openai',
-      name: 'Default',
+      name: 'OpenAI API Key',
       authType: 'api-key',
       apiKey: settings.globalOpenAIApiKey,
-      isActive: true,
-      priority: priority++,
+      billingModel: 'pay-per-use' as const,
       createdAt: now,
       updatedAt: now,
     });
@@ -76,11 +73,10 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
     accounts.push({
       id: genId(),
       provider: 'google',
-      name: 'Default',
+      name: 'Google API Key',
       authType: 'api-key',
       apiKey: settings.globalGoogleApiKey,
-      isActive: true,
-      priority: priority++,
+      billingModel: 'pay-per-use' as const,
       createdAt: now,
       updatedAt: now,
     });
@@ -91,11 +87,10 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
     accounts.push({
       id: genId(),
       provider: 'groq',
-      name: 'Default',
+      name: 'Groq API Key',
       authType: 'api-key',
       apiKey: settings.globalGroqApiKey,
-      isActive: true,
-      priority: priority++,
+      billingModel: 'pay-per-use' as const,
       createdAt: now,
       updatedAt: now,
     });
@@ -106,11 +101,10 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
     accounts.push({
       id: genId(),
       provider: 'mistral',
-      name: 'Default',
+      name: 'Mistral API Key',
       authType: 'api-key',
       apiKey: settings.globalMistralApiKey,
-      isActive: true,
-      priority: priority++,
+      billingModel: 'pay-per-use' as const,
       createdAt: now,
       updatedAt: now,
     });
@@ -121,11 +115,10 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
     accounts.push({
       id: genId(),
       provider: 'xai',
-      name: 'Default',
+      name: 'xAI API Key',
       authType: 'api-key',
       apiKey: settings.globalXAIApiKey,
-      isActive: true,
-      priority: priority++,
+      billingModel: 'pay-per-use' as const,
       createdAt: now,
       updatedAt: now,
     });
@@ -136,12 +129,11 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
     accounts.push({
       id: genId(),
       provider: 'azure',
-      name: 'Default',
+      name: 'Azure API Key',
       authType: 'api-key',
       apiKey: settings.globalAzureApiKey,
       baseUrl: settings.globalAzureBaseUrl,
-      isActive: true,
-      priority: priority++,
+      billingModel: 'pay-per-use' as const,
       createdAt: now,
       updatedAt: now,
     });
@@ -162,8 +154,7 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
         authType: 'api-key',
         apiKey: apiProfile.apiKey,
         baseUrl: apiProfile.baseUrl,
-        isActive: profilesFile.activeProfileId === apiProfile.id,
-        priority: priority++,
+        billingModel: 'pay-per-use' as const,
         createdAt: apiProfile.createdAt ?? now,
         updatedAt: apiProfile.updatedAt ?? now,
       });
@@ -188,8 +179,7 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
           name: claudeProfile.name,
           authType: 'oauth',
           apiKey: claudeProfile.oauthToken,
-          isActive: claudeStore.activeProfileId === claudeProfile.id,
-          priority: priority++,
+          billingModel: 'subscription' as const,
           createdAt: claudeProfile.createdAt instanceof Date ? claudeProfile.createdAt.getTime() : now,
           updatedAt: now,
           claudeProfileId: claudeProfile.id,
@@ -200,11 +190,15 @@ async function migrateToProviderAccounts(settings: AppSettings): Promise<{ chang
     // claude-profiles.json may not exist — skip silently
   }
 
+  // Build globalPriorityOrder from migrated accounts
+  const globalPriorityOrder = accounts.map(a => a.id);
+
   return {
     changed: true,
     settings: {
       ...settings,
       providerAccounts: accounts,
+      globalPriorityOrder,
       _migratedProviderAccounts: true,
     },
   };
@@ -1199,24 +1193,38 @@ export function registerSettingsHandlers(
     }
   );
 
-  // SET ACTIVE provider account (deactivate others for that provider, activate this one)
+  // SET QUEUE ORDER for provider accounts (global priority queue)
   ipcMain.handle(
-    IPC_CHANNELS.PROVIDER_ACCOUNTS_SET_ACTIVE,
-    async (_event, provider: string, accountId: string): Promise<IPCResult> => {
+    IPC_CHANNELS.PROVIDER_ACCOUNTS_SET_QUEUE_ORDER,
+    async (_event, order: string[]): Promise<IPCResult> => {
       try {
-        const accounts = readProviderAccounts();
-        for (const account of accounts) {
-          if (account.provider === provider) {
-            account.isActive = account.id === accountId;
-            account.updatedAt = Date.now();
-          }
-        }
-        writeProviderAccounts(accounts);
-        console.warn('[PROVIDER_ACCOUNTS_SET_ACTIVE] Set active for provider', provider, ':', accountId);
+        const settings = readSettingsFile() ?? {};
+        settings.globalPriorityOrder = order;
+        const currentSettingsPath = getSettingsPath();
+        writeFileSync(currentSettingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+        console.warn('[PROVIDER_ACCOUNTS_SET_QUEUE_ORDER] Queue order updated:', order.length, 'accounts');
         return { success: true };
       } catch (error) {
-        console.error('[PROVIDER_ACCOUNTS_SET_ACTIVE] Error:', error);
-        return { success: false, error: error instanceof Error ? error.message : 'Failed to set active provider account' };
+        console.error('[PROVIDER_ACCOUNTS_SET_QUEUE_ORDER] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to set queue order' };
+      }
+    }
+  );
+
+  // SAVE MODEL OVERRIDES (cross-provider model equivalence user overrides)
+  ipcMain.handle(
+    IPC_CHANNELS.MODEL_OVERRIDES_SAVE,
+    async (_event, overrides: Record<string, unknown>): Promise<IPCResult> => {
+      try {
+        const settings = readSettingsFile() ?? {};
+        settings.modelOverrides = overrides;
+        const currentSettingsPath = getSettingsPath();
+        writeFileSync(currentSettingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+        console.warn('[MODEL_OVERRIDES_SAVE] Model overrides saved');
+        return { success: true };
+      } catch (error) {
+        console.error('[MODEL_OVERRIDES_SAVE] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to save model overrides' };
       }
     }
   );

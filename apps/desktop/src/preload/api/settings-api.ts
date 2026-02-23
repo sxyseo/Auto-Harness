@@ -46,7 +46,8 @@ export interface SettingsAPI {
   saveProviderAccount: (account: any) => Promise<IPCResult<any>>;
   updateProviderAccount: (id: string, updates: any) => Promise<IPCResult<any>>;
   deleteProviderAccount: (id: string) => Promise<IPCResult>;
-  setActiveProviderAccount: (provider: string, accountId: string) => Promise<IPCResult>;
+  setProviderAccountQueueOrder: (order: string[]) => Promise<IPCResult>;
+  saveModelOverrides: (overrides: Record<string, unknown>) => Promise<IPCResult>;
   testProviderConnection: (provider: string, config: any) => Promise<IPCResult<{ success: boolean; error?: string }>>;
   checkEnvCredentials: () => Promise<IPCResult<Record<string, boolean>>>;
 
@@ -116,8 +117,10 @@ export const createSettingsAPI = (): SettingsAPI => ({
     ipcRenderer.invoke(IPC_CHANNELS.PROVIDER_ACCOUNTS_UPDATE, id, updates),
   deleteProviderAccount: (id: string): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.PROVIDER_ACCOUNTS_DELETE, id),
-  setActiveProviderAccount: (provider: string, accountId: string): Promise<IPCResult> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PROVIDER_ACCOUNTS_SET_ACTIVE, provider, accountId),
+  setProviderAccountQueueOrder: (order: string[]): Promise<IPCResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROVIDER_ACCOUNTS_SET_QUEUE_ORDER, order),
+  saveModelOverrides: (overrides: Record<string, unknown>): Promise<IPCResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MODEL_OVERRIDES_SAVE, overrides),
   testProviderConnection: (provider: string, config: any): Promise<IPCResult<{ success: boolean; error?: string }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.PROVIDER_ACCOUNTS_TEST_CONNECTION, provider, config),
   checkEnvCredentials: (): Promise<IPCResult<Record<string, boolean>>> =>

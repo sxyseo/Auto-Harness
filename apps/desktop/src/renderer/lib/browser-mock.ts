@@ -193,8 +193,7 @@ const browserMockAPI: ElectronAPI = {
       provider: 'anthropic' as const,
       name: 'Mock Account',
       authType: 'api-key' as const,
-      isActive: false,
-      priority: 0,
+      billingModel: 'pay-per-use' as const,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       ...updates
@@ -205,7 +204,11 @@ const browserMockAPI: ElectronAPI = {
     success: true
   }),
 
-  setActiveProviderAccount: async (_provider: string, _accountId: string) => ({
+  setProviderAccountQueueOrder: async (_order: string[]) => ({
+    success: true
+  }),
+
+  saveModelOverrides: async (_overrides: Record<string, unknown>) => ({
     success: true
   }),
 

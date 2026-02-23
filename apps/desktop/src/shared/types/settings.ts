@@ -5,7 +5,8 @@
 import type { NotificationSettings, GraphitiEmbeddingProvider } from './project';
 import type { ChangelogFormat, ChangelogAudience, ChangelogEmojiLevel } from './changelog';
 import type { SupportedLanguage } from '../constants/i18n';
-import type { ProviderAccount } from './provider-account';
+import type { ProviderAccount, BuiltinProvider } from './provider-account';
+import type { ProviderModelSpec } from '../constants/models';
 
 // Color theme types for multi-theme support
 export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo' | 'forest';
@@ -248,6 +249,10 @@ export interface AppSettings {
   globalBedrockRegion?: string;
   // Unified provider accounts (multi-provider)
   providerAccounts?: ProviderAccount[];
+  /** Global priority order — array of ProviderAccount IDs. First = highest priority. */
+  globalPriorityOrder?: string[];
+  /** User overrides for model equivalence mapping per provider */
+  modelOverrides?: Record<string, Partial<Record<BuiltinProvider, ProviderModelSpec>>>;
   _migratedProviderAccounts?: boolean;
   // Graphiti LLM provider settings (legacy)
   graphitiLlmProvider?: 'openai' | 'anthropic' | 'google' | 'groq' | 'ollama';

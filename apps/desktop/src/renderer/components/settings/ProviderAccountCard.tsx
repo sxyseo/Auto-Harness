@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next';
 import {
   Pencil,
   Trash2,
-  Star,
-  Check,
   Clock,
   TrendingUp,
   Eye,
@@ -20,7 +18,6 @@ interface ProviderAccountCardProps {
   account: ProviderAccount;
   onEdit: (account: ProviderAccount) => void;
   onDelete: (id: string) => void;
-  onSetActive: (id: string) => void;
 }
 
 function maskKey(key: string): string {
@@ -66,7 +63,7 @@ function UsageBar({ percent, icon: Icon, tooltipKey }: {
   );
 }
 
-export function ProviderAccountCard({ account, onEdit, onDelete, onSetActive }: ProviderAccountCardProps) {
+export function ProviderAccountCard({ account, onEdit, onDelete }: ProviderAccountCardProps) {
   const { t } = useTranslation('settings');
   const [showKey, setShowKey] = useState(false);
 
@@ -81,12 +78,7 @@ export function ProviderAccountCard({ account, onEdit, onDelete, onSetActive }: 
 
   return (
     <div
-      className={cn(
-        'rounded-lg border transition-colors p-3',
-        account.isActive
-          ? 'border-primary bg-primary/5'
-          : 'border-border bg-background hover:bg-muted/30'
-      )}
+      className="rounded-lg border transition-colors p-3 border-border bg-background hover:bg-muted/30"
     >
       <div className="flex items-start justify-between gap-2">
         {/* Left: name + badges + identifier */}
@@ -104,13 +96,6 @@ export function ProviderAccountCard({ account, onEdit, onDelete, onSetActive }: 
               {isOAuth ? t('providers.card.oauth') : t('providers.card.apiKey')}
             </span>
 
-            {/* Active badge */}
-            {account.isActive && (
-              <span className="text-[10px] bg-success/15 text-success px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0">
-                <Star className="h-2.5 w-2.5" />
-                {t('providers.card.active')}
-              </span>
-            )}
           </div>
 
           {/* Identifier row */}
@@ -151,17 +136,6 @@ export function ProviderAccountCard({ account, onEdit, onDelete, onSetActive }: 
 
         {/* Right: actions */}
         <div className="flex items-center gap-1 shrink-0">
-          {!account.isActive && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onSetActive(account.id)}
-              className="h-7 text-xs gap-1"
-            >
-              <Check className="h-3 w-3" />
-              {t('providers.card.setDefault')}
-            </Button>
-          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

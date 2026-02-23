@@ -7,6 +7,7 @@
  */
 
 import type { SupportedProvider } from '../providers/types';
+import type { ReasoningConfig } from '../../../shared/constants/models';
 
 // ============================================
 // Auth Source Tracking
@@ -101,3 +102,22 @@ export const PROVIDER_BASE_URL_ENV: Partial<Record<SupportedProvider, string>> =
   openai: 'OPENAI_BASE_URL',
   azure: 'AZURE_OPENAI_ENDPOINT',
 } as const;
+
+// ============================================
+// Queue-Based Resolution Types
+// ============================================
+
+/**
+ * Extended auth result from the global priority queue.
+ * Includes model + reasoning mapping for cross-provider fallback.
+ */
+export interface QueueResolvedAuth extends ResolvedAuth {
+  /** The account ID from the priority queue */
+  accountId: string;
+  /** The resolved provider for this account */
+  resolvedProvider: SupportedProvider;
+  /** The resolved model ID for this provider (from equivalence mapping) */
+  resolvedModelId: string;
+  /** Reasoning configuration for this model on this provider */
+  reasoningConfig: ReasoningConfig;
+}
