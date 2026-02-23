@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Terminal } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,8 @@ const AWS_REGIONS = [
   'eu-west-1', 'eu-west-2', 'eu-central-1',
   'ap-southeast-1', 'ap-southeast-2', 'ap-northeast-1',
 ];
+
+type OAuthStatus = 'idle' | 'authenticating' | 'waiting' | 'success' | 'error';
 
 interface AddAccountDialogProps {
   open: boolean;
@@ -51,6 +53,17 @@ export function AddAccountDialog({
   const [region, setRegion] = useState('us-east-1');
   const [isSaving, setIsSaving] = useState(false);
 
+  // OAuth subprocess state
+  const [oauthStatus, setOauthStatus] = useState<OAuthStatus>('idle');
+  const [oauthEmail, setOauthEmail] = useState<string | null>(null);
+  const [oauthProfileId, setOauthProfileId] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [showFallbackTerminal, setShowFallbackTerminal] = useState(false);
+
+  // AuthTerminal fallback state
+  const [fallbackTerminalId, setFallbackTerminalId] = useState<string | null>(null);
+  const [fallbackConfigDir, setFallbackConfigDir] = useState<string | null>(null);
+
   // Reset form when dialog opens/editAccount changes
   useEffect(() => {
     if (open) {
@@ -65,22 +78,196 @@ export function AddAccountDialog({
         setBaseUrl(provider === 'ollama' ? 'http://localhost:11434' : '');
         setRegion('us-east-1');
       }
+      // Reset OAuth state
+      setOauthStatus('idle');
+      setOauthEmail(null);
+      setOauthProfileId(null);
+      setOauthError(null);
+      setShowFallbackTerminal(false);
+      setFallbackTerminalId(null);
+      setFallbackConfigDir(null);
     }
   }, [open, editAccount, provider]);
+
+  // Subscribe to Anthropic OAuth progress events (not used for Codex/OpenAI)
+  useEffect(() => {
+    if (!open || oauthStatus === 'idle' || oauthStatus === 'success') return;
+    if (isCodexOAuth) return;
+
+    const unsubscribe = window.electronAPI.onClaudeAuthLoginProgress((data) => {
+      switch (data.status) {
+        case 'authenticating':
+          setOauthStatus('authenticating');
+          break;
+        case 'waiting':
+          setOauthStatus('waiting');
+          break;
+        case 'success':
+          setOauthStatus('success');
+          if (data.message) setOauthEmail(data.message);
+          break;
+        case 'error':
+          setOauthStatus('error');
+          setOauthError(data.message ?? 'Unknown error');
+          break;
+      }
+    });
+
+    return unsubscribe;
+  }, [open, oauthStatus]);
 
   const needsApiKey = provider !== 'ollama' && authType === 'api-key';
   const needsBaseUrl = provider === 'ollama' || provider === 'azure' || provider === 'openai-compatible' || (provider === 'anthropic' && authType === 'api-key');
   const needsRegion = provider === 'amazon-bedrock';
-  const isOAuthOnly = provider === 'anthropic' && authType === 'oauth';
+  const isOAuthOnly = (provider === 'anthropic' || provider === 'openai') && authType === 'oauth';
+  const isCodexOAuth = provider === 'openai' && authType === 'oauth';
 
   const isBaseUrlRequired = provider === 'ollama' || provider === 'azure' || provider === 'openai-compatible';
 
   const canSave = () => {
     if (!name.trim()) return false;
+    if (isOAuthOnly) return oauthStatus === 'success';
     if (needsApiKey && !apiKey.trim()) return false;
     if (isBaseUrlRequired && !baseUrl.trim()) return false;
     return true;
   };
+
+  const handleAuthenticate = useCallback(async () => {
+    if (!name.trim()) {
+      toast({
+        variant: 'destructive',
+        title: t('providers.dialog.oauthNameRequired'),
+      });
+      return;
+    }
+
+    setOauthStatus('authenticating');
+    setOauthError(null);
+
+    // Handle OpenAI Codex OAuth flow separately
+    if (isCodexOAuth) {
+      try {
+        setOauthStatus('waiting');
+        const result = await window.electronAPI.codexAuthLogin();
+        if (result.success) {
+          setOauthStatus('success');
+          // Auto-save and close after a brief delay so user sees the success state
+          setTimeout(async () => {
+            const payload = {
+              provider,
+              name: name.trim(),
+              authType: 'oauth' as const,
+              isActive: false,
+              priority: 999,
+            };
+            const saveResult = await addProviderAccount(payload);
+            if (saveResult.success) {
+              toast({
+                title: t('providers.dialog.toast.added'),
+                description: name.trim(),
+              });
+            }
+            onOpenChange(false);
+          }, 800);
+        } else {
+          setOauthStatus('error');
+          setOauthError(result.error ?? 'Authentication failed');
+        }
+      } catch (err) {
+        setOauthStatus('error');
+        setOauthError(err instanceof Error ? err.message : 'Unexpected error');
+      }
+      return;
+    }
+
+    try {
+      // First, create a Claude profile for this account
+      const profileResult = await window.electronAPI.saveClaudeProfile({
+        id: '',
+        name: name.trim(),
+        isDefault: false,
+        isAuthenticated: false,
+        configDir: '',
+        createdAt: new Date(),
+      });
+
+      if (!profileResult.success || !profileResult.data) {
+        setOauthStatus('error');
+        setOauthError('Failed to create profile');
+        return;
+      }
+
+      const profileId = profileResult.data.id;
+      setOauthProfileId(profileId);
+
+      // Run the subprocess auth
+      const result = await window.electronAPI.claudeAuthLoginSubprocess(profileId);
+
+      if (result.success && result.data?.authenticated) {
+        setOauthStatus('success');
+        setOauthEmail(result.data.email ?? null);
+      } else {
+        setOauthStatus('error');
+        setOauthError(result.error ?? 'Authentication failed');
+      }
+    } catch (err) {
+      setOauthStatus('error');
+      setOauthError(err instanceof Error ? err.message : 'Unexpected error');
+    }
+  }, [name, t, toast, isCodexOAuth, provider, addProviderAccount, onOpenChange]);
+
+  const handleFallbackTerminal = useCallback(async () => {
+    if (!name.trim()) {
+      toast({
+        variant: 'destructive',
+        title: t('providers.dialog.oauthNameRequired'),
+      });
+      return;
+    }
+
+    try {
+      // Create a profile if we don't have one yet
+      let profileId = oauthProfileId;
+      if (!profileId) {
+        const profileResult = await window.electronAPI.saveClaudeProfile({
+          id: '',
+          name: name.trim(),
+          isDefault: false,
+          isAuthenticated: false,
+          configDir: '',
+          createdAt: new Date(),
+        });
+        if (!profileResult.success || !profileResult.data) {
+          toast({ variant: 'destructive', title: 'Failed to create profile' });
+          return;
+        }
+        profileId = profileResult.data.id;
+        setOauthProfileId(profileId);
+      }
+
+      // Get terminal config for embedded AuthTerminal
+      const authResult = await window.electronAPI.authenticateClaudeProfile(profileId);
+      if (!authResult.success || !authResult.data) {
+        toast({ variant: 'destructive', title: authResult.error ?? 'Failed to prepare terminal' });
+        return;
+      }
+
+      setFallbackTerminalId(authResult.data.terminalId);
+      setFallbackConfigDir(authResult.data.configDir);
+      setShowFallbackTerminal(true);
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: err instanceof Error ? err.message : 'Unexpected error',
+      });
+    }
+  }, [name, oauthProfileId, t, toast]);
+
+  const handleFallbackAuthSuccess = useCallback((email?: string) => {
+    setOauthStatus('success');
+    setOauthEmail(email ?? null);
+    setShowFallbackTerminal(false);
+  }, []);
 
   const handleSave = async () => {
     if (!canSave()) return;
@@ -96,6 +283,7 @@ export function AddAccountDialog({
         region: needsRegion ? region : undefined,
         isActive: false,
         priority: 999,
+        claudeProfileId: isOAuthOnly && !isCodexOAuth ? oauthProfileId ?? undefined : undefined,
       };
 
       let result;
@@ -134,21 +322,114 @@ export function AddAccountDialog({
     ? t('providers.dialog.editTitle', { provider })
     : t('providers.dialog.addTitle', { provider });
 
+  const isAuthInProgress = oauthStatus === 'authenticating' || oauthStatus === 'waiting';
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => {
+      // Prevent closing during auth
+      if (isAuthInProgress) return;
+      onOpenChange(v);
+    }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {isOAuthOnly
-              ? t('providers.dialog.oauthDescription')
-              : t('providers.dialog.apiKeyDescription')}
+            {isCodexOAuth
+              ? t('providers.dialog.codexOAuthDescription')
+              : isOAuthOnly
+                ? t('providers.dialog.oauthDescription')
+                : t('providers.dialog.apiKeyDescription')}
           </DialogDescription>
         </DialogHeader>
 
         {isOAuthOnly ? (
-          <div className="rounded-lg bg-muted/50 border border-border p-4 text-sm text-muted-foreground">
-            {t('providers.dialog.oauthInstructions')}
+          <div className="space-y-4">
+            {/* Account Name */}
+            <div className="space-y-2">
+              <Label htmlFor="oauth-account-name">{t('providers.dialog.fields.name')}</Label>
+              <Input
+                id="oauth-account-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('providers.dialog.placeholders.name')}
+                disabled={oauthStatus === 'success' || isAuthInProgress}
+                autoFocus
+              />
+            </div>
+
+            {/* Authenticate Button */}
+            {oauthStatus === 'idle' && (
+              <Button
+                onClick={handleAuthenticate}
+                className="w-full"
+                disabled={!name.trim()}
+              >
+                {isCodexOAuth ? t('providers.dialog.codexAuthenticate') : t('providers.dialog.oauthAuthenticate')}
+              </Button>
+            )}
+
+            {/* Progress States */}
+            {oauthStatus === 'authenticating' && (
+              <div className="flex items-center gap-2 rounded-lg bg-muted/50 border border-border p-3 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>{isCodexOAuth ? t('providers.dialog.codexAuthenticating') : t('providers.dialog.oauthAuthenticating')}</span>
+              </div>
+            )}
+
+            {oauthStatus === 'waiting' && (
+              <div className="flex items-center gap-2 rounded-lg bg-muted/50 border border-border p-3 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>{isCodexOAuth ? t('providers.dialog.codexWaiting') : t('providers.dialog.oauthWaiting')}</span>
+              </div>
+            )}
+
+            {oauthStatus === 'success' && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-600 dark:text-green-400">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>{isCodexOAuth ? t('providers.dialog.codexSuccess') : t('providers.dialog.oauthSuccess', { email: oauthEmail ?? 'Unknown' })}</span>
+              </div>
+            )}
+
+            {oauthStatus === 'error' && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{isCodexOAuth ? t('providers.dialog.codexError', { error: oauthError ?? 'Unknown' }) : t('providers.dialog.oauthError', { error: oauthError ?? 'Unknown' })}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleAuthenticate}
+                  className="w-full"
+                  disabled={!name.trim()}
+                >
+                  {isCodexOAuth ? t('providers.dialog.codexAuthenticate') : t('providers.dialog.oauthAuthenticate')}
+                </Button>
+              </div>
+            )}
+
+            {/* Fallback Terminal Link (Anthropic OAuth only) */}
+            {!isCodexOAuth && !showFallbackTerminal && oauthStatus !== 'success' && !isAuthInProgress && (
+              <button
+                type="button"
+                onClick={handleFallbackTerminal}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                disabled={!name.trim()}
+              >
+                <Terminal className="h-3 w-3" />
+                {t('providers.dialog.oauthFallback')}
+              </button>
+            )}
+
+            {/* Fallback AuthTerminal (Anthropic OAuth only) */}
+            {!isCodexOAuth && showFallbackTerminal && fallbackTerminalId && fallbackConfigDir && (
+              <FallbackTerminalWrapper
+                terminalId={fallbackTerminalId}
+                configDir={fallbackConfigDir}
+                profileName={name.trim()}
+                onClose={() => setShowFallbackTerminal(false)}
+                onAuthSuccess={handleFallbackAuthSuccess}
+              />
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -224,10 +505,10 @@ export function AddAccountDialog({
         )}
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving || isAuthInProgress}>
             {t('providers.dialog.cancel')}
           </Button>
-          {!isOAuthOnly && (
+          {(isOAuthOnly ? oauthStatus === 'success' : true) && (
             <Button onClick={handleSave} disabled={!canSave() || isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {isEditing ? t('providers.dialog.save') : t('providers.dialog.add')}
@@ -236,5 +517,57 @@ export function AddAccountDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Lazy wrapper for AuthTerminal to avoid importing xterm.js unless needed.
+ * AuthTerminal is rendered inside the dialog only when the user clicks "Use Terminal (Fallback)".
+ */
+function FallbackTerminalWrapper({
+  terminalId,
+  configDir,
+  profileName,
+  onClose,
+  onAuthSuccess,
+}: {
+  terminalId: string;
+  configDir: string;
+  profileName: string;
+  onClose: () => void;
+  onAuthSuccess: (email?: string) => void;
+}) {
+  const [AuthTerminalComponent, setAuthTerminalComponent] = useState<React.ComponentType<{
+    terminalId: string;
+    configDir: string;
+    profileName: string;
+    onClose: () => void;
+    onAuthSuccess?: (email?: string) => void;
+  }> | null>(null);
+
+  useEffect(() => {
+    import('./AuthTerminal').then((mod) => {
+      setAuthTerminalComponent(() => mod.AuthTerminal);
+    });
+  }, []);
+
+  if (!AuthTerminalComponent) {
+    return (
+      <div className="flex items-center justify-center h-48 rounded-lg border border-border">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border overflow-hidden" style={{ height: 280 }}>
+      <AuthTerminalComponent
+        terminalId={terminalId}
+        configDir={configDir}
+        profileName={profileName}
+        onClose={onClose}
+        onAuthSuccess={onAuthSuccess}
+      />
+    </div>
   );
 }

@@ -18,6 +18,7 @@ import type { SupportedProvider } from '../providers/types';
  */
 export type AuthSource =
   | 'profile-oauth'       // OAuth token from claude-profile credential store
+  | 'codex-oauth'         // OAuth token from OpenAI Codex PKCE flow
   | 'profile-api-key'     // API key stored in profile settings
   | 'environment'         // Environment variable (ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.)
   | 'default'             // Default provider credentials (e.g., built-in defaults)
@@ -39,6 +40,8 @@ export interface ResolvedAuth {
   baseURL?: string;
   /** Optional additional headers (e.g., auth tokens for proxies) */
   headers?: Record<string, string>;
+  /** Signals provider factory to use Codex fetch interceptor for token injection */
+  codexOAuth?: boolean;
 }
 
 // ============================================

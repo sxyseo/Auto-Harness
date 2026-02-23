@@ -96,5 +96,8 @@ export const claudeProfileMock = {
   verifyClaudeProfileAuth: async (_profileId: string) => ({
     success: true,
     data: { authenticated: false, email: undefined }
-  })
+  }),
+
+  claudeAuthLoginSubprocess: async () => ({ success: true, data: { authenticated: false } }),
+  onClaudeAuthLoginProgress: () => () => {},
 };

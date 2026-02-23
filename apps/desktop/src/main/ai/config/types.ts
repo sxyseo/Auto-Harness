@@ -138,6 +138,7 @@ export const MODEL_PROVIDER_MAP: Record<string, SupportedProvider> = {
   'o1-': 'openai',
   'o3-': 'openai',
   'o4-': 'openai',
+  'codex-': 'openai',           // OpenAI Codex subscription models
   'gemini-': 'google',
   'mistral-': 'mistral',
   'codestral-': 'mistral',

@@ -25,6 +25,7 @@ export function ProviderAccountsList() {
     setActiveProviderAccount,
     getProviderAccounts,
     checkEnvCredentials,
+    loadProviderAccounts,
     envCredentials,
   } = useSettingsStore();
   const { toast } = useToast();
@@ -45,12 +46,15 @@ export function ProviderAccountsList() {
     authType: 'api-key',
   });
 
-  // Check env credentials on mount
+  // Load provider accounts and check env credentials on mount
   useEffect(() => {
+    loadProviderAccounts().catch(() => {
+      // Non-fatal - accounts may already be loaded from settings init
+    });
     checkEnvCredentials().catch(() => {
       // Non-fatal
     });
-  }, [checkEnvCredentials]);
+  }, [loadProviderAccounts, checkEnvCredentials]);
 
   const allAccounts = getProviderAccounts();
 

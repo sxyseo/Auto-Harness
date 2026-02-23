@@ -73,6 +73,20 @@ async function resolveFromProviderAccount(ctx: AuthResolverContext): Promise<Res
   const account = accounts.find(a => a.provider === ctx.provider && a.isActive);
   if (!account) return null;
 
+  // OpenAI Codex OAuth accounts
+  if (account.authType === 'oauth' && account.provider === 'openai') {
+    const { ensureValidCodexToken } = await import('./codex-oauth');
+    const token = await ensureValidCodexToken();
+    if (token) {
+      return {
+        apiKey: 'codex-oauth-placeholder', // Dummy key; real token injected via custom fetch
+        source: 'codex-oauth',
+        codexOAuth: true,
+      };
+    }
+    return null;
+  }
+
   // OAuth accounts — delegate to profile OAuth flow
   if (account.authType === 'oauth' && account.claudeProfileId) {
     // Let the existing OAuth stage handle it

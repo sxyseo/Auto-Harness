@@ -108,6 +108,8 @@ export interface TerminalAPI {
   setClaudeProfileToken: (profileId: string, token: string, email?: string) => Promise<IPCResult>;
   authenticateClaudeProfile: (profileId: string) => Promise<IPCResult<{ terminalId: string; configDir: string }>>;
   verifyClaudeProfileAuth: (profileId: string) => Promise<IPCResult<{ authenticated: boolean; email?: string }>>;
+  claudeAuthLoginSubprocess: (profileId: string) => Promise<IPCResult<{ authenticated: boolean; email?: string }>>;
+  onClaudeAuthLoginProgress: (callback: (data: { status: string; message?: string }) => void) => () => void;
   getAutoSwitchSettings: () => Promise<IPCResult<import('../../shared/types').ClaudeAutoSwitchSettings>>;
   updateAutoSwitchSettings: (settings: Partial<import('../../shared/types').ClaudeAutoSwitchSettings>) => Promise<IPCResult>;
   getAccountPriorityOrder: () => Promise<IPCResult<string[]>>;
@@ -462,6 +464,24 @@ export const createTerminalAPI = (): TerminalAPI => ({
 
   verifyClaudeProfileAuth: (profileId: string): Promise<IPCResult<{ authenticated: boolean; email?: string }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_PROFILE_VERIFY_AUTH, profileId),
+
+  claudeAuthLoginSubprocess: (profileId: string): Promise<IPCResult<{ authenticated: boolean; email?: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_SUBPROCESS, profileId),
+
+  onClaudeAuthLoginProgress: (
+    callback: (data: { status: string; message?: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { status: string; message?: string }
+    ): void => {
+      callback(data);
+    };
+    ipcRenderer.on(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_PROGRESS, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_PROGRESS, handler);
+    };
+  },
 
   getAutoSwitchSettings: (): Promise<IPCResult<import('../../shared/types').ClaudeAutoSwitchSettings>> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLAUDE_PROFILE_AUTO_SWITCH_SETTINGS),

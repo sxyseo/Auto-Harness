@@ -336,6 +336,10 @@ export interface ElectronAPI {
   authenticateClaudeProfile: (profileId: string) => Promise<IPCResult<{ terminalId: string; configDir: string }>>;
   /** Check if a profile has been authenticated (by checking .claude.json) */
   verifyClaudeProfileAuth: (profileId: string) => Promise<IPCResult<{ authenticated: boolean; email?: string }>>;
+  /** Run `claude auth login` as a subprocess (no terminal needed) */
+  claudeAuthLoginSubprocess: (profileId: string) => Promise<IPCResult<{ authenticated: boolean; email?: string }>>;
+  /** Listen for OAuth subprocess progress events */
+  onClaudeAuthLoginProgress: (callback: (data: { status: string; message?: string }) => void) => () => void;
   /** Get auto-switch settings */
   getAutoSwitchSettings: () => Promise<IPCResult<ClaudeAutoSwitchSettings>>;
   /** Update auto-switch settings */
@@ -414,6 +418,11 @@ export interface ElectronAPI {
   setActiveProviderAccount: (provider: string, accountId: string) => Promise<IPCResult>;
   testProviderConnection: (provider: string, config: { apiKey?: string; baseUrl?: string; region?: string }) => Promise<IPCResult<{ success: boolean; error?: string }>>;
   checkEnvCredentials: () => Promise<IPCResult<Record<string, boolean>>>;
+
+  // Codex OAuth authentication
+  codexAuthLogin: () => Promise<{ success: boolean; data?: { accessToken: string; refreshToken: string; expiresAt: number }; error?: string }>;
+  codexAuthStatus: () => Promise<{ success: boolean; data?: { isAuthenticated: boolean; expiresAt?: number }; error?: string }>;
+  codexAuthLogout: () => Promise<{ success: boolean; error?: string }>;
 
   // Dialog operations
   selectDirectory: () => Promise<string | null>;

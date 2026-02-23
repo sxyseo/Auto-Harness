@@ -1092,4 +1092,170 @@ export function registerSettingsHandlers(
       }
     }
   );
+
+  // ============================================
+  // Provider Account CRUD Handlers
+  // ============================================
+
+  const genAccountId = () => `pa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  /** Read providerAccounts array from settings.json */
+  function readProviderAccounts(): ProviderAccount[] {
+    const settings = readSettingsFile();
+    if (!settings) return [];
+    return (settings.providerAccounts as ProviderAccount[] | undefined) ?? [];
+  }
+
+  /** Write providerAccounts array back to settings.json (merges with existing settings) */
+  function writeProviderAccounts(accounts: ProviderAccount[]): void {
+    const settings = readSettingsFile() ?? {};
+    settings.providerAccounts = accounts;
+    const settingsPath = getSettingsPath();
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+  }
+
+  // GET all provider accounts
+  ipcMain.handle(
+    IPC_CHANNELS.PROVIDER_ACCOUNTS_GET,
+    async (): Promise<IPCResult<{ accounts: ProviderAccount[] }>> => {
+      try {
+        const accounts = readProviderAccounts();
+        return { success: true, data: { accounts } };
+      } catch (error) {
+        console.error('[PROVIDER_ACCOUNTS_GET] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to get provider accounts' };
+      }
+    }
+  );
+
+  // SAVE (create) a new provider account
+  ipcMain.handle(
+    IPC_CHANNELS.PROVIDER_ACCOUNTS_SAVE,
+    async (_event, account: Omit<ProviderAccount, 'id' | 'createdAt' | 'updatedAt'>): Promise<IPCResult<ProviderAccount>> => {
+      try {
+        const accounts = readProviderAccounts();
+        const now = Date.now();
+        const newAccount: ProviderAccount = {
+          ...account,
+          id: genAccountId(),
+          createdAt: now,
+          updatedAt: now,
+        };
+        accounts.push(newAccount);
+        writeProviderAccounts(accounts);
+        console.warn('[PROVIDER_ACCOUNTS_SAVE] Created account:', newAccount.id, newAccount.name, newAccount.provider);
+        return { success: true, data: newAccount };
+      } catch (error) {
+        console.error('[PROVIDER_ACCOUNTS_SAVE] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to save provider account' };
+      }
+    }
+  );
+
+  // UPDATE an existing provider account
+  ipcMain.handle(
+    IPC_CHANNELS.PROVIDER_ACCOUNTS_UPDATE,
+    async (_event, id: string, updates: Partial<ProviderAccount>): Promise<IPCResult<ProviderAccount>> => {
+      try {
+        const accounts = readProviderAccounts();
+        const index = accounts.findIndex(a => a.id === id);
+        if (index === -1) {
+          return { success: false, error: `Account not found: ${id}` };
+        }
+        const updated: ProviderAccount = {
+          ...accounts[index],
+          ...updates,
+          id, // prevent id override
+          updatedAt: Date.now(),
+        };
+        accounts[index] = updated;
+        writeProviderAccounts(accounts);
+        console.warn('[PROVIDER_ACCOUNTS_UPDATE] Updated account:', id);
+        return { success: true, data: updated };
+      } catch (error) {
+        console.error('[PROVIDER_ACCOUNTS_UPDATE] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to update provider account' };
+      }
+    }
+  );
+
+  // DELETE a provider account
+  ipcMain.handle(
+    IPC_CHANNELS.PROVIDER_ACCOUNTS_DELETE,
+    async (_event, id: string): Promise<IPCResult> => {
+      try {
+        const accounts = readProviderAccounts();
+        const filtered = accounts.filter(a => a.id !== id);
+        if (filtered.length === accounts.length) {
+          return { success: false, error: `Account not found: ${id}` };
+        }
+        writeProviderAccounts(filtered);
+        console.warn('[PROVIDER_ACCOUNTS_DELETE] Deleted account:', id);
+        return { success: true };
+      } catch (error) {
+        console.error('[PROVIDER_ACCOUNTS_DELETE] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to delete provider account' };
+      }
+    }
+  );
+
+  // SET ACTIVE provider account (deactivate others for that provider, activate this one)
+  ipcMain.handle(
+    IPC_CHANNELS.PROVIDER_ACCOUNTS_SET_ACTIVE,
+    async (_event, provider: string, accountId: string): Promise<IPCResult> => {
+      try {
+        const accounts = readProviderAccounts();
+        for (const account of accounts) {
+          if (account.provider === provider) {
+            account.isActive = account.id === accountId;
+            account.updatedAt = Date.now();
+          }
+        }
+        writeProviderAccounts(accounts);
+        console.warn('[PROVIDER_ACCOUNTS_SET_ACTIVE] Set active for provider', provider, ':', accountId);
+        return { success: true };
+      } catch (error) {
+        console.error('[PROVIDER_ACCOUNTS_SET_ACTIVE] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to set active provider account' };
+      }
+    }
+  );
+
+  // TEST CONNECTION for a provider account
+  ipcMain.handle(
+    IPC_CHANNELS.PROVIDER_ACCOUNTS_TEST_CONNECTION,
+    async (_event, _provider: string, _config: { apiKey?: string; baseUrl?: string; region?: string }): Promise<IPCResult<{ success: boolean; error?: string }>> => {
+      // Basic stub - connection testing can be enhanced later per-provider
+      return { success: true, data: { success: true } };
+    }
+  );
+
+  // CHECK ENV credentials (detect which providers have env vars set)
+  ipcMain.handle(
+    IPC_CHANNELS.PROVIDER_ACCOUNTS_CHECK_ENV,
+    async (): Promise<IPCResult<Record<string, boolean>>> => {
+      try {
+        const envMap: Record<string, boolean> = {};
+        const envVarMapping: Record<string, string> = {
+          ANTHROPIC_API_KEY: 'anthropic',
+          OPENAI_API_KEY: 'openai',
+          GOOGLE_GENERATIVE_AI_API_KEY: 'google',
+          MISTRAL_API_KEY: 'mistral',
+          GROQ_API_KEY: 'groq',
+          XAI_API_KEY: 'xai',
+          AWS_ACCESS_KEY_ID: 'amazon-bedrock',
+          AZURE_OPENAI_API_KEY: 'azure',
+        };
+        for (const [envVar, provider] of Object.entries(envVarMapping)) {
+          if (process.env[envVar]) {
+            envMap[provider] = true;
+          }
+        }
+        return { success: true, data: envMap };
+      } catch (error) {
+        console.error('[PROVIDER_ACCOUNTS_CHECK_ENV] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to check env credentials' };
+      }
+    }
+  );
 }

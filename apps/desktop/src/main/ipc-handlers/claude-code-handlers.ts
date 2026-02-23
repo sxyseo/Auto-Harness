@@ -1431,5 +1431,204 @@ export function registerClaudeCodeHandlers(): void {
     }
   );
 
+  // Run `claude auth login` as a subprocess (no terminal needed)
+  // Same OAuth flow (opens browser → Anthropic consent → token saved to Keychain)
+  // but without spawning a full PTY/xterm.js terminal
+  ipcMain.handle(
+    IPC_CHANNELS.CLAUDE_AUTH_LOGIN_SUBPROCESS,
+    async (event, profileId: string): Promise<IPCResult<{ authenticated: boolean; email?: string }>> => {
+      try {
+        console.warn('[Claude Code] Starting auth login subprocess for profile:', profileId);
+
+        const profileManager = getClaudeProfileManager();
+        const profile = profileManager.getProfile(profileId);
+
+        if (!profile) {
+          return { success: false, error: `Profile not found: ${profileId}` };
+        }
+
+        // Resolve configDir (same logic as CLAUDE_PROFILE_AUTHENTICATE)
+        const configDir = profile.configDir || '~/.claude';
+        if (!isValidConfigDir(configDir)) {
+          return { success: false, error: `Invalid config directory path: ${configDir}` };
+        }
+
+        const expandedConfigDir = configDir.startsWith('~')
+          ? path.join(os.homedir(), configDir.slice(1))
+          : configDir;
+
+        await mkdir(expandedConfigDir, { recursive: true });
+
+        // Backup existing .claude.json (same logic as CLAUDE_PROFILE_AUTHENTICATE)
+        const claudeJsonPath = path.join(expandedConfigDir, '.claude.json');
+        const claudeJsonBakPath = path.join(expandedConfigDir, '.claude.json.bak');
+
+        if (existsSync(claudeJsonPath)) {
+          try {
+            const content = readFileSync(claudeJsonPath, 'utf-8');
+            const data = JSON.parse(content);
+            if (data.oauthAccount) {
+              console.warn('[Claude Code] Found existing OAuth credentials, backing up for re-authentication');
+              if (existsSync(claudeJsonBakPath)) {
+                await unlink(claudeJsonBakPath);
+              }
+              await rename(claudeJsonPath, claudeJsonBakPath);
+            }
+          } catch (backupError) {
+            console.warn('[Claude Code] Could not backup existing credentials:', backupError);
+          }
+        }
+
+        // Resolve the claude binary path
+        const claudeInfo = getToolInfo('claude');
+        if (!claudeInfo.found || !claudeInfo.path) {
+          return { success: false, error: 'Claude CLI not found. Please install Claude Code first.' };
+        }
+
+        const claudePath = claudeInfo.path;
+
+        // Send progress: opening browser
+        const sender = event.sender;
+        sender.send(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_PROGRESS, {
+          status: 'authenticating',
+          message: 'Opening browser for authentication...'
+        });
+
+        // Spawn `claude auth login` subprocess
+        return new Promise<IPCResult<{ authenticated: boolean; email?: string }>>((resolve) => {
+          const env: Record<string, string | undefined> = { ...process.env, CLAUDE_CONFIG_DIR: expandedConfigDir };
+          // Remove ELECTRON_RUN_AS_NODE if set (otherwise claude binary may not work properly)
+          delete env.ELECTRON_RUN_AS_NODE;
+
+          const args = ['auth', 'login'];
+          const child = spawn(claudePath, args, {
+            env,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            // On Windows, .cmd files need shell: true
+            shell: isWindows() && claudePath.endsWith('.cmd'),
+          });
+
+          let stdout = '';
+          let stderr = '';
+
+          child.stdout?.on('data', (data: Buffer) => {
+            const text = data.toString();
+            stdout += text;
+            console.warn('[Claude Code] auth login stdout:', text.trim());
+
+            // Send progress updates based on output
+            if (text.toLowerCase().includes('browser') || text.toLowerCase().includes('open')) {
+              sender.send(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_PROGRESS, {
+                status: 'waiting',
+                message: 'Waiting for authorization in browser...'
+              });
+            }
+          });
+
+          child.stderr?.on('data', (data: Buffer) => {
+            const text = data.toString();
+            stderr += text;
+            console.warn('[Claude Code] auth login stderr:', text.trim());
+          });
+
+          // Timeout after 5 minutes
+          const timeout = setTimeout(() => {
+            child.kill();
+            sender.send(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_PROGRESS, {
+              status: 'error',
+              message: 'Authentication timed out'
+            });
+            resolve({
+              success: false,
+              error: 'Authentication timed out after 5 minutes'
+            });
+          }, 5 * 60 * 1000);
+
+          child.on('close', async (code) => {
+            clearTimeout(timeout);
+
+            if (code === 0) {
+              // Verify authentication
+              const result = checkProfileAuthentication(configDir);
+              console.warn('[Claude Code] Auth subprocess result:', result);
+
+              if (result.authenticated) {
+                // Update profile metadata (same logic as VERIFY_AUTH handler)
+                profile.isAuthenticated = true;
+                if (result.email) {
+                  profile.email = result.email;
+                }
+                updateProfileSubscriptionMetadata(profile, expandedConfigDir);
+                profileManager.saveProfile(profile);
+                clearKeychainCache(expandedConfigDir);
+                const usageMonitor = getUsageMonitor();
+                usageMonitor.clearProfileUsageCache(profileId);
+
+                // Clean up backup
+                if (existsSync(claudeJsonBakPath)) {
+                  try { await unlink(claudeJsonBakPath); } catch { /* non-fatal */ }
+                }
+
+                sender.send(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_PROGRESS, {
+                  status: 'success',
+                  message: result.email || 'Authenticated'
+                });
+
+                resolve({
+                  success: true,
+                  data: { authenticated: true, email: result.email }
+                });
+              } else {
+                // Process exited 0 but no credentials found
+                sender.send(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_PROGRESS, {
+                  status: 'error',
+                  message: 'Authentication completed but credentials not found'
+                });
+                resolve({
+                  success: false,
+                  error: 'Authentication completed but credentials were not saved'
+                });
+              }
+            } else {
+              // Restore backup on failure
+              if (existsSync(claudeJsonBakPath)) {
+                try {
+                  if (existsSync(claudeJsonPath)) await unlink(claudeJsonPath);
+                  await rename(claudeJsonBakPath, claudeJsonPath);
+                } catch { /* non-fatal */ }
+              }
+
+              const errorMsg = stderr.trim() || `Process exited with code ${code}`;
+              sender.send(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_PROGRESS, {
+                status: 'error',
+                message: errorMsg
+              });
+              resolve({
+                success: false,
+                error: `Authentication failed: ${errorMsg}`
+              });
+            }
+          });
+
+          child.on('error', (err) => {
+            clearTimeout(timeout);
+            sender.send(IPC_CHANNELS.CLAUDE_AUTH_LOGIN_PROGRESS, {
+              status: 'error',
+              message: err.message
+            });
+            resolve({
+              success: false,
+              error: `Failed to start authentication: ${err.message}`
+            });
+          });
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Claude Code] Auth login subprocess failed:', errorMsg, error);
+        return { success: false, error: `Authentication failed: ${errorMsg}` };
+      }
+    }
+  );
+
   console.warn('[IPC] Claude Code handlers registered');
 }

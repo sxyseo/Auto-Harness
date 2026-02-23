@@ -99,6 +99,7 @@ export async function createAgentClient(
     apiKey: auth?.apiKey,
     baseURL: auth?.baseURL,
     headers: auth?.headers,
+    codexOAuth: auth?.codexOAuth,
   });
 
   // 3. Resolve thinking level
@@ -185,6 +186,7 @@ export async function createSimpleClient(
     apiKey: auth?.apiKey,
     baseURL: auth?.baseURL,
     headers: auth?.headers,
+    codexOAuth: auth?.codexOAuth,
   });
 
   return {

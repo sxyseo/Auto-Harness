@@ -7,8 +7,8 @@ export const PROVIDER_REGISTRY: ProviderInfo[] = [
     configFields: [], website: 'https://console.anthropic.com/settings/keys',
   },
   {
-    id: 'openai', name: 'OpenAI', description: 'GPT and o-series models',
-    authMethods: ['api-key'], envVars: ['OPENAI_API_KEY'],
+    id: 'openai', name: 'OpenAI', description: 'GPT and Codex models',
+    authMethods: ['oauth', 'api-key'], envVars: ['OPENAI_API_KEY'],
     configFields: [], website: 'https://platform.openai.com/api-keys',
   },
   {

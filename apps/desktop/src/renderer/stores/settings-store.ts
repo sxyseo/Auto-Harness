@@ -444,6 +444,9 @@ export async function loadSettings(): Promise<void> {
         });
       }
 
+      // Load provider accounts from the dedicated IPC handler
+      await store.loadProviderAccounts();
+
       // Only mark settings as loaded on SUCCESS
       // This ensures Sentry respects user's opt-out preference even if settings fail to load
       // (If settings fail to load, Sentry's beforeSend drops all events until successful load)

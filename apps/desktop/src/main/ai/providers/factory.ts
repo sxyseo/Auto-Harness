@@ -37,6 +37,64 @@ function isOAuthToken(token: string | undefined): boolean {
 }
 
 // =============================================================================
+// Codex OAuth Fetch Interceptor
+// =============================================================================
+
+/**
+ * Creates a custom fetch function for Codex OAuth.
+ * Strips the dummy API key, injects the real OAuth token,
+ * and rewrites the URL to the Codex API endpoint.
+ */
+function createCodexFetch(): typeof globalThis.fetch {
+  const debug = process.env.DEBUG === 'true' || process.argv.includes('--debug');
+
+  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    // Dynamic import to avoid loading Electron APIs at module level
+    const { ensureValidCodexToken } = await import('../auth/codex-oauth');
+
+    // 1. Get valid OAuth token
+    const token = await ensureValidCodexToken();
+    if (!token) {
+      throw new Error('Codex OAuth: No valid token available. Please re-authenticate.');
+    }
+
+    // 2. Build headers — strip dummy Authorization, inject real token
+    const headers = new Headers(init?.headers);
+    headers.delete('authorization');
+    headers.delete('Authorization');
+    headers.set('Authorization', `Bearer ${token}`);
+
+    // 3. Rewrite URL to Codex endpoint
+    const CODEX_API_ENDPOINT = 'https://chatgpt.com/backend-api/codex/responses';
+    let url: string;
+    if (typeof input === 'string') {
+      url = input;
+    } else if (input instanceof URL) {
+      url = input.toString();
+    } else if (input instanceof Request) {
+      url = input.url;
+    } else {
+      url = String(input);
+    }
+
+    const originalUrl = url;
+    const parsedUrl = new URL(url);
+    if (parsedUrl.pathname.includes('/chat/completions') || parsedUrl.pathname.includes('/v1/responses')) {
+      url = CODEX_API_ENDPOINT;
+    }
+
+    if (debug) {
+      console.log(`[CodexFetch] ${originalUrl} → ${url} (token: ${token.slice(0, 10)}...)`);
+    }
+
+    return globalThis.fetch(url, {
+      ...init,
+      headers,
+    });
+  };
+}
+
+// =============================================================================
 // Provider Instance Creators
 // =============================================================================
 
@@ -68,12 +126,22 @@ function createProviderInstance(config: ProviderConfig) {
       });
     }
 
-    case SupportedProvider.OpenAI:
+    case SupportedProvider.OpenAI: {
+      // Codex OAuth: use custom fetch to inject token + rewrite URL
+      if (config.codexOAuth) {
+        return createOpenAI({
+          apiKey: apiKey ?? 'codex-oauth-placeholder',
+          baseURL,
+          headers,
+          fetch: createCodexFetch(),
+        });
+      }
       return createOpenAI({
         apiKey,
         baseURL,
         headers,
       });
+    }
 
     case SupportedProvider.Google:
       return createGoogleGenerativeAI({
