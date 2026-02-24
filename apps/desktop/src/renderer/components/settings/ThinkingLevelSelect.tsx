@@ -128,7 +128,12 @@ export function ThinkingLevelSelect({
     );
   }
 
-  // ── Standard Low / Medium / High dropdown ────────────────────────────────
+  // ── Standard Low / Medium / High / Extra High dropdown ───────────────────
+  // Only show 'xhigh' (Extra High) for reasoning_effort models (OpenAI, xAI)
+  const levels = reasoningType === 'reasoning_effort'
+    ? THINKING_LEVELS
+    : THINKING_LEVELS.filter((l) => l.value !== 'xhigh');
+
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1.5">
@@ -142,7 +147,7 @@ export function ThinkingLevelSelect({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {THINKING_LEVELS.map((level) => (
+          {levels.map((level) => (
             <SelectItem key={level.value} value={level.value}>
               {level.label}
             </SelectItem>

@@ -6,7 +6,7 @@ import type { BuiltinProvider } from '@shared/types/provider-account';
 import { ProviderTabBar } from './ProviderTabBar';
 import { AgentProfileSettings } from './AgentProfileSettings';
 import { FeatureModelSettings } from './FeatureModelSettings';
-import { ProviderModelOverrides } from './ProviderModelOverrides';
+import { CrossProviderTabContent } from './CrossProviderTabContent';
 import { Separator } from '../ui/separator';
 
 /**
@@ -31,13 +31,18 @@ export function ProviderAgentTabs() {
     return sorted;
   }, [connectedProviders]);
 
-  const [activeTab, setActiveTab] = useState<BuiltinProvider | null>(null);
+  const [activeTab, setActiveTab] = useState<BuiltinProvider | 'cross-provider' | null>(null);
 
-  // Keep active tab valid when providers change; fall back to first in list
+  // Keep active tab valid when providers change; fall back to first in list.
+  // When cross-provider is active, resolvedTab is null (no provider selected).
   const resolvedTab: BuiltinProvider | null =
-    activeTab && orderedProviders.includes(activeTab)
-      ? activeTab
-      : orderedProviders[0] ?? null;
+    activeTab === 'cross-provider'
+      ? null
+      : activeTab && orderedProviders.includes(activeTab)
+        ? activeTab
+        : orderedProviders[0] ?? null;
+
+  const isCrossProviderActive = activeTab === 'cross-provider';
 
   if (orderedProviders.length === 0) {
     return (
@@ -66,25 +71,31 @@ export function ProviderAgentTabs() {
       {/* Tab strip (below heading) */}
       <ProviderTabBar
         providers={orderedProviders}
-        activeProvider={resolvedTab as BuiltinProvider}
+        activeProvider={resolvedTab}
         onProviderChange={(provider) => setActiveTab(provider)}
+        showCrossProvider={connectedProviders.length >= 2}
+        isCrossProviderActive={isCrossProviderActive}
+        onCrossProviderClick={() => setActiveTab('cross-provider')}
       />
 
-      {/* Subtitle */}
-      {resolvedTab !== null && (
-        <p className="text-sm text-muted-foreground">
-          {t('agentProfile.providerTabs.configureFor', { provider: providerDisplayName })}
-        </p>
+      {isCrossProviderActive ? (
+        <CrossProviderTabContent />
+      ) : (
+        <>
+          {/* Subtitle */}
+          {resolvedTab !== null && (
+            <p className="text-sm text-muted-foreground">
+              {t('agentProfile.providerTabs.configureFor', { provider: providerDisplayName })}
+            </p>
+          )}
+
+          {/* Provider-scoped agent profile settings */}
+          <AgentProfileSettings provider={resolvedTab ?? undefined} />
+
+          {/* Provider-scoped feature model settings */}
+          {resolvedTab && <FeatureModelSettings provider={resolvedTab} />}
+        </>
       )}
-
-      {/* Provider-scoped agent profile settings */}
-      <AgentProfileSettings provider={resolvedTab} />
-
-      {/* Provider-scoped feature model settings */}
-      <FeatureModelSettings provider={resolvedTab} />
-
-      {/* Provider model overrides (manages its own provider state) */}
-      <ProviderModelOverrides />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Search, Check, Brain, Eye, Wrench, ExternalLink } from 'lucide-react';
-import { ALL_AVAILABLE_MODELS, type ModelOption } from '@shared/constants/models';
+import { ALL_AVAILABLE_MODELS, resolveModelEquivalent, type ModelOption } from '@shared/constants/models';
 import { PROVIDER_REGISTRY } from '@shared/constants/providers';
 import type { BuiltinProvider } from '@shared/types/provider-account';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -72,8 +72,27 @@ export function MultiProviderModelSelect({ value, onChange, className, filterPro
     return filtered;
   }, [search, groupedModels]);
 
+  // Resolve value to provider-equivalent when filterProvider is set
+  // e.g., 'opus' → 'gpt-5.3' when filterProvider='openai'
+  const resolvedValue = useMemo(() => {
+    if (!filterProvider || !value) return value;
+    // Check if the value already belongs to the target provider
+    const directMatch = ALL_AVAILABLE_MODELS.find(m => m.value === value && m.provider === filterProvider);
+    if (directMatch) return value;
+    // Resolve via equivalence mapping
+    const equiv = resolveModelEquivalent(value, filterProvider);
+    if (equiv) {
+      // Find the catalog entry for the resolved model ID
+      const catalogEntry = ALL_AVAILABLE_MODELS.find(
+        m => m.provider === filterProvider && m.value === equiv.modelId
+      );
+      if (catalogEntry) return catalogEntry.value;
+    }
+    return value;
+  }, [value, filterProvider]);
+
   // Find current selection label
-  const selectedModel = ALL_AVAILABLE_MODELS.find(m => m.value === value);
+  const selectedModel = ALL_AVAILABLE_MODELS.find(m => m.value === resolvedValue);
   const displayLabel = selectedModel?.label ?? value;
 
   const handleOpen = () => {
@@ -196,7 +215,7 @@ export function MultiProviderModelSelect({ value, onChange, className, filterPro
 
                     {/* Models in this provider */}
                     {models.map(model => {
-                      const isSelected = value === model.value;
+                      const isSelected = resolvedValue === model.value;
                       return (
                         <button
                           key={model.value}

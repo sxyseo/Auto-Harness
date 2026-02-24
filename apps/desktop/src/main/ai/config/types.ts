@@ -16,10 +16,10 @@ import type { SupportedProvider } from '../providers/types';
 export type ModelShorthand = 'opus' | 'opus-1m' | 'opus-4.5' | 'sonnet' | 'haiku';
 
 /** Valid thinking levels */
-export type ThinkingLevel = 'low' | 'medium' | 'high';
+export type ThinkingLevel = 'low' | 'medium' | 'high' | 'xhigh';
 
 /** Valid effort levels for adaptive thinking models */
-export type EffortLevel = 'low' | 'medium' | 'high';
+export type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh';
 
 /** Execution phases for task pipeline */
 export type Phase = 'spec' | 'planning' | 'coding' | 'qa';
@@ -38,7 +38,7 @@ export const MODEL_ID_MAP: Record<ModelShorthand, string> = {
   opus: 'claude-opus-4-6',
   'opus-1m': 'claude-opus-4-6',
   'opus-4.5': 'claude-opus-4-5-20251101',
-  sonnet: 'claude-sonnet-4-5-20250929',
+  sonnet: 'claude-sonnet-4-6',
   haiku: 'claude-haiku-4-5-20251001',
 } as const;
 
@@ -64,6 +64,7 @@ export const THINKING_BUDGET_MAP: Record<ThinkingLevel, number> = {
   low: 1024,
   medium: 4096,
   high: 16384,
+  xhigh: 32768,
 } as const;
 
 /**
@@ -74,6 +75,7 @@ export const EFFORT_LEVEL_MAP: Record<EffortLevel, string> = {
   low: 'low',
   medium: 'medium',
   high: 'high',
+  xhigh: 'xhigh',
 } as const;
 
 /**
@@ -88,12 +90,12 @@ export const ADAPTIVE_THINKING_MODELS: ReadonlySet<string> = new Set([
 // Phase Configuration Types
 // ============================================
 
-/** Per-phase model configuration */
+/** Per-phase model configuration — values can be shorthands or concrete model IDs */
 export interface PhaseModelConfig {
-  spec: ModelShorthand;
-  planning: ModelShorthand;
-  coding: ModelShorthand;
-  qa: ModelShorthand;
+  spec: string;
+  planning: string;
+  coding: string;
+  qa: string;
 }
 
 /** Per-phase thinking level configuration */

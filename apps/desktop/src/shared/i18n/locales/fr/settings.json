@@ -104,9 +104,9 @@
       "haikuLabel": "Modèle Haiku (optionnel)",
       "sonnetLabel": "Modèle Sonnet (optionnel)",
       "opusLabel": "Modèle Opus (optionnel)",
-      "defaultPlaceholder": "ex. : claude-sonnet-4-5-20250929",
+      "defaultPlaceholder": "ex. : claude-sonnet-4-6",
       "haikuPlaceholder": "ex. : claude-haiku-4-5-20251001",
-      "sonnetPlaceholder": "ex. : claude-sonnet-4-5-20250929",
+      "sonnetPlaceholder": "ex. : claude-sonnet-4-6",
       "opusPlaceholder": "ex. : claude-opus-4-6",
       "opus1mPlaceholder": "ex. : claude-opus-4-6 (contexte 1M)"
     },
@@ -168,7 +168,7 @@
   },
   "modelSelect": {
     "placeholder": "Sélectionner un modèle ou saisir manuellement",
-    "placeholderManual": "Saisir le nom du modèle (ex. : claude-sonnet-4-5-20250929)",
+    "placeholderManual": "Saisir le nom du modèle (ex. : claude-sonnet-4-6)",
     "searchPlaceholder": "Rechercher des modèles...",
     "noResults": "Aucun modèle ne correspond à votre recherche",
     "discoveryNotAvailable": "Découverte de modèles indisponible. Saisissez le nom du modèle manuellement."
@@ -462,7 +462,15 @@
     "providerTabs": {
       "moreProviders": "Plus",
       "noProviders": "Aucun fournisseur connecté. Ajoutez des comptes dans les paramètres Comptes pour configurer les paramètres d'agent par fournisseur.",
-      "configureFor": "Configurer les paramètres d'agent pour {{provider}}"
+      "configureFor": "Configurer les paramètres d'agent pour {{provider}}",
+      "crossProvider": "Multi-fournisseur"
+    },
+    "crossProviderTab": {
+      "title": "Configuration multi-fournisseur",
+      "description": "Attribuez un fournisseur et un modèle différents à chaque phase du pipeline pour une flexibilité maximale.",
+      "activateInfo": "Les tâches créées avec cette configuration active utiliseront la configuration multi-fournisseur.",
+      "featureModelsTitle": "Modèles de fonctionnalités",
+      "featureModelsDescription": "Configurer les modèles pour les fonctionnalités hors pipeline (Insights, Idéation, etc.)"
     },
     "customProfile": {
       "name": "Personnalisé (Multi-fournisseur)",

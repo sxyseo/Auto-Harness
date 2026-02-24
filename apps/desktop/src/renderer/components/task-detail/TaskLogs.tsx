@@ -23,7 +23,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../ui/colla
 import { cn } from '../../lib/utils';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { Task, TaskLogs, TaskLogPhase, TaskPhaseLog, TaskLogEntry, TaskMetadata } from '../../../shared/types';
-import type { PhaseModelConfig, ThinkingLevel, ModelTypeShort } from '../../../shared/types/settings';
+import type { PhaseModelConfig, ThinkingLevel } from '../../../shared/types/settings';
 
 interface TaskLogsProps {
   task: Task;
@@ -63,8 +63,8 @@ const LOG_PHASE_TO_CONFIG_PHASE: Record<TaskLogPhase, keyof PhaseModelConfig> = 
   validation: 'qa'
 };
 
-// Short labels for models
-const MODEL_SHORT_LABELS: Record<ModelTypeShort, string> = {
+// Short labels for models (indexed by string to support both shorthands and concrete IDs)
+const MODEL_SHORT_LABELS: Record<string, string> = {
   opus: 'Opus',
   'opus-1m': 'Opus (1M)',
   'opus-4.5': 'Opus 4.5',
@@ -76,7 +76,8 @@ const MODEL_SHORT_LABELS: Record<ModelTypeShort, string> = {
 const THINKING_SHORT_LABELS: Record<ThinkingLevel, string> = {
   low: 'Low',
   medium: 'Med',
-  high: 'High'
+  high: 'High',
+  xhigh: 'XHigh'
 };
 
 // Helper to get model and thinking info for a log phase

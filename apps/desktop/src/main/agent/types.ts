@@ -60,20 +60,22 @@ export interface SpecCreationMetadata {
   // Auto profile - phase-based model and thinking configuration
   isAutoProfile?: boolean;
   phaseModels?: {
-    spec: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
-    planning: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
-    coding: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
-    qa: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
+    spec: string;
+    planning: string;
+    coding: string;
+    qa: string;
   };
   phaseThinking?: {
-    spec: 'low' | 'medium' | 'high';
-    planning: 'low' | 'medium' | 'high';
-    coding: 'low' | 'medium' | 'high';
-    qa: 'low' | 'medium' | 'high';
+    spec: string;
+    planning: string;
+    coding: string;
+    qa: string;
   };
+  /** Per-phase provider preference (e.g. { spec: 'openai', coding: 'anthropic' }) */
+  phaseProviders?: Record<string, string>;
   // Non-auto profile - single model and thinking level
-  model?: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
-  thinkingLevel?: 'low' | 'medium' | 'high';
+  model?: string;
+  thinkingLevel?: string;
   // Workspace mode - whether to use worktree isolation
   useWorktree?: boolean; // If false, use --direct mode (no worktree isolation)
   useLocalBranch?: boolean; // If true, use local branch directly instead of preferring origin/branch

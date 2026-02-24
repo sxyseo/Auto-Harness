@@ -159,8 +159,8 @@ export interface ColorThemeDefinition {
   previewColors: ThemePreviewColors;
 }
 
-// Thinking level for Claude model (budget token allocation)
-export type ThinkingLevel = 'low' | 'medium' | 'high';
+// Thinking level for model (budget token allocation or reasoning effort)
+export type ThinkingLevel = 'low' | 'medium' | 'high' | 'xhigh';
 
 // Model type shorthand
 export type ModelTypeShort = 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
@@ -170,11 +170,12 @@ export type ModelSelection = ModelTypeShort | (string & {});
 
 // Phase-based model configuration for Auto profile
 // Each phase can use a different model optimized for that task type
+// Values can be Claude shorthands ('opus', 'sonnet') or concrete model IDs ('gpt-5.3-codex', 'gemini-2.5-pro')
 export interface PhaseModelConfig {
-  spec: ModelTypeShort;       // Spec creation (discovery, requirements, context)
-  planning: ModelTypeShort;   // Implementation planning
-  coding: ModelTypeShort;     // Actual coding implementation
-  qa: ModelTypeShort;         // QA review and fixing
+  spec: string;       // Spec creation (discovery, requirements, context)
+  planning: string;   // Implementation planning
+  coding: string;     // Actual coding implementation
+  qa: string;         // QA review and fixing
 }
 
 // Thinking level configuration per phase
@@ -186,13 +187,14 @@ export interface PhaseThinkingConfig {
 }
 
 // Feature-specific model configuration (for non-pipeline features)
+// Values can be Claude shorthands or concrete model IDs
 export interface FeatureModelConfig {
-  insights: ModelTypeShort;    // Insights chat feature
-  ideation: ModelTypeShort;    // Ideation generation
-  roadmap: ModelTypeShort;     // Roadmap generation
-  githubIssues: ModelTypeShort; // GitHub Issues automation
-  githubPrs: ModelTypeShort;    // GitHub PR review automation
-  utility: ModelTypeShort;      // Utility agents (commit message, merge resolver)
+  insights: string;    // Insights chat feature
+  ideation: string;    // Ideation generation
+  roadmap: string;     // Roadmap generation
+  githubIssues: string; // GitHub Issues automation
+  githubPrs: string;    // GitHub PR review automation
+  utility: string;      // Utility agents (commit message, merge resolver)
 }
 
 // Feature-specific thinking level configuration
@@ -211,7 +213,7 @@ export interface AgentProfile {
   id: string;
   name: string;
   description: string;
-  model: ModelTypeShort;           // Primary model (shown in profile card)
+  model: string;                   // Primary model (shown in profile card) — shorthand or concrete ID
   thinkingLevel: ThinkingLevel;    // Primary thinking level (shown in profile card)
   icon?: string;                   // Lucide icon name
   // Per-phase configuration - all profiles now have this

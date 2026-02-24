@@ -2,16 +2,17 @@
  * Agent Settings Resolution Hook
  *
  * Provides centralized logic for resolving agent model and thinking settings
- * based on the selected agent profile, custom overrides, and defaults.
+ * based on the selected agent profile, custom overrides, provider-specific config,
+ * and cross-provider mixed config.
  *
  * Resolution order for phase settings:
- * 1. Custom phase overrides (if user has customized)
- * 2. Selected profile's phaseModels/phaseThinking
- * 3. DEFAULT_PHASE_MODELS/DEFAULT_PHASE_THINKING (fallback)
+ * 1. Cross-provider mode active (customMixedProfileActive) → extract from mixed config entries
+ * 2. Provider-specific config exists (providerAgentConfig[provider]) → use its overrides or profile defaults
+ * 3. Get provider preset via getProviderPresetOrFallback(provider, profileId) for defaults
+ * 4. Apply user's custom phase overrides on top of preset defaults
+ * 5. Fallback to global settings
  *
- * Feature settings are not tied to profiles and use:
- * 1. Custom feature overrides (if user has customized)
- * 2. DEFAULT_FEATURE_MODELS/DEFAULT_FEATURE_THINKING (fallback)
+ * Feature settings follow the same provider-aware resolution order.
  */
 
 import { useMemo } from 'react';
@@ -21,6 +22,7 @@ import {
   DEFAULT_PHASE_THINKING,
   DEFAULT_FEATURE_MODELS,
   DEFAULT_FEATURE_THINKING,
+  getProviderPresetOrFallback,
 } from '../../shared/constants/models';
 import type {
   AppSettings,
@@ -28,9 +30,9 @@ import type {
   PhaseThinkingConfig,
   FeatureModelConfig,
   FeatureThinkingConfig,
-  ModelTypeShort,
   ThinkingLevel,
 } from '../../shared/types/settings';
+import type { BuiltinProvider } from '../../shared/types/provider-account';
 
 /**
  * Resolved agent settings configuration
@@ -54,59 +56,109 @@ export interface ResolvedAgentSettings {
 export type AgentSettingsSource =
   | { type: 'phase'; phase: 'spec' | 'planning' | 'coding' | 'qa' }
   | { type: 'feature'; feature: 'insights' | 'ideation' | 'roadmap' | 'githubIssues' | 'githubPrs' | 'utility' }
-  | { type: 'fixed'; model: ModelTypeShort; thinking: ThinkingLevel };
+  | { type: 'fixed'; model: string; thinking: ThinkingLevel };
 
 /**
  * Resolved model and thinking for an agent
  */
 export interface AgentModelConfig {
-  model: ModelTypeShort;
+  model: string;
   thinking: ThinkingLevel;
 }
 
 /**
- * Hook to resolve agent settings based on the selected profile and custom overrides
+ * Hook to resolve agent settings based on provider, mixed config, profile, and custom overrides
  *
  * @param settings - The application settings containing selected profile and custom overrides
- * @returns Resolved agent settings with proper profile resolution
+ * @param provider - Optional provider to use for provider-specific resolution
+ * @returns Resolved agent settings with proper provider-aware profile resolution
  *
  * @example
  * ```tsx
- * const { phaseModels, phaseThinking, featureModels, featureThinking } = useResolvedAgentSettings(settings);
+ * const { phaseModels, phaseThinking, featureModels, featureThinking } = useResolvedAgentSettings(settings, 'anthropic');
  * ```
  */
-export function useResolvedAgentSettings(settings: AppSettings): ResolvedAgentSettings {
+export function useResolvedAgentSettings(
+  settings: AppSettings,
+  provider?: BuiltinProvider,
+): ResolvedAgentSettings {
   return useMemo(() => {
-    // Get selected profile ID, default to 'auto'
-    const selectedProfileId = settings.selectedAgentProfile || 'auto';
+    // 1. Cross-provider mode: extract from mixed config
+    if (settings.customMixedProfileActive && settings.customMixedPhaseConfig) {
+      const mixed = settings.customMixedPhaseConfig;
+      const phaseModels: PhaseModelConfig = {
+        spec: mixed.spec.modelId,
+        planning: mixed.planning.modelId,
+        coding: mixed.coding.modelId,
+        qa: mixed.qa.modelId,
+      };
+      const phaseThinking: PhaseThinkingConfig = {
+        spec: mixed.spec.thinkingLevel,
+        planning: mixed.planning.thinkingLevel,
+        coding: mixed.coding.thinkingLevel,
+        qa: mixed.qa.thinkingLevel,
+      };
 
-    // Find the selected profile
+      // Feature models from mixed feature config or defaults
+      const mixedFeature = settings.customMixedFeatureConfig;
+      const featureModels: FeatureModelConfig = mixedFeature
+        ? {
+            insights: mixedFeature.insights.modelId,
+            ideation: mixedFeature.ideation.modelId,
+            roadmap: mixedFeature.roadmap.modelId,
+            githubIssues: mixedFeature.githubIssues.modelId,
+            githubPrs: mixedFeature.githubPrs.modelId,
+            utility: mixedFeature.utility.modelId,
+          }
+        : settings.featureModels || DEFAULT_FEATURE_MODELS;
+      const featureThinking: FeatureThinkingConfig = mixedFeature
+        ? {
+            insights: mixedFeature.insights.thinkingLevel,
+            ideation: mixedFeature.ideation.thinkingLevel,
+            roadmap: mixedFeature.roadmap.thinkingLevel,
+            githubIssues: mixedFeature.githubIssues.thinkingLevel,
+            githubPrs: mixedFeature.githubPrs.thinkingLevel,
+            utility: mixedFeature.utility.thinkingLevel,
+          }
+        : settings.featureThinking || DEFAULT_FEATURE_THINKING;
+
+      return { phaseModels, phaseThinking, featureModels, featureThinking };
+    }
+
+    // 2. Provider-specific config
+    const providerConfig = provider ? settings.providerAgentConfig?.[provider] : undefined;
+    const selectedProfileId = providerConfig?.selectedAgentProfile ?? settings.selectedAgentProfile ?? 'auto';
+
+    // 3. Resolve defaults from provider preset
+    const presetDefaults = provider
+      ? getProviderPresetOrFallback(provider, selectedProfileId)
+      : null;
+
+    // Profile fallback (for when no provider-specific preset exists)
     const selectedProfile = DEFAULT_AGENT_PROFILES.find((p) => p.id === selectedProfileId) || DEFAULT_AGENT_PROFILES[0];
+    const profilePhaseModels = presetDefaults?.phaseModels ?? selectedProfile.phaseModels ?? DEFAULT_PHASE_MODELS;
+    const profilePhaseThinking = presetDefaults?.phaseThinking ?? selectedProfile.phaseThinking ?? DEFAULT_PHASE_THINKING;
 
-    // Profile defaults (used when no custom overrides exist)
-    const profilePhaseModels = selectedProfile.phaseModels || DEFAULT_PHASE_MODELS;
-    const profilePhaseThinking = selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING;
+    // 4. Custom overrides take priority
+    const phaseModels = providerConfig?.customPhaseModels ?? settings.customPhaseModels ?? profilePhaseModels;
+    const phaseThinking = providerConfig?.customPhaseThinking ?? settings.customPhaseThinking ?? profilePhaseThinking;
 
-    // Effective phase config: custom overrides take priority over profile defaults
-    const phaseModels = settings.customPhaseModels || profilePhaseModels;
-    const phaseThinking = settings.customPhaseThinking || profilePhaseThinking;
+    // Feature settings
+    const featureModels = providerConfig?.featureModels ?? settings.featureModels ?? DEFAULT_FEATURE_MODELS;
+    const featureThinking = providerConfig?.featureThinking ?? settings.featureThinking ?? DEFAULT_FEATURE_THINKING;
 
-    // Feature settings (not tied to profiles, use custom or defaults)
-    const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
-    const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
-
-    return {
-      phaseModels,
-      phaseThinking,
-      featureModels,
-      featureThinking,
-    };
+    return { phaseModels, phaseThinking, featureModels, featureThinking };
   }, [
+    settings.customMixedProfileActive,
+    settings.customMixedPhaseConfig,
+    settings.customMixedFeatureConfig,
     settings.selectedAgentProfile,
     settings.customPhaseModels,
     settings.customPhaseThinking,
     settings.featureModels,
     settings.featureThinking,
+    settings.providerAgentConfig,
+    provider,
   ]);
 }
 
@@ -119,7 +171,7 @@ export function useResolvedAgentSettings(settings: AppSettings): ResolvedAgentSe
  *
  * @example
  * ```tsx
- * const resolvedSettings = useResolvedAgentSettings(settings);
+ * const resolvedSettings = useResolvedAgentSettings(settings, 'anthropic');
  * const { model, thinking } = resolveAgentSettings(agentConfig.settingsSource, resolvedSettings);
  * ```
  */
@@ -138,7 +190,6 @@ export function resolveAgentSettings(
       thinking: resolvedSettings.featureThinking[settingsSource.feature],
     };
   } else {
-    // Fixed settings
     return {
       model: settingsSource.model,
       thinking: settingsSource.thinking,

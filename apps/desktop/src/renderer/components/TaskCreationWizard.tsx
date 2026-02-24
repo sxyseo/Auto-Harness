@@ -443,6 +443,32 @@ export function TaskCreationWizard({
         metadata.phaseModels = phaseModels;
         metadata.phaseThinking = phaseThinking;
       }
+
+      // Cross-provider mode: override phaseModels/phaseThinking from mixed config
+      // and add phaseProviders to metadata
+      if (settings.customMixedProfileActive && settings.customMixedPhaseConfig) {
+        const mixed = settings.customMixedPhaseConfig;
+        metadata.phaseModels = {
+          spec: mixed.spec.modelId,
+          planning: mixed.planning.modelId,
+          coding: mixed.coding.modelId,
+          qa: mixed.qa.modelId,
+        };
+        metadata.phaseThinking = {
+          spec: mixed.spec.thinkingLevel,
+          planning: mixed.planning.thinkingLevel,
+          coding: mixed.coding.thinkingLevel,
+          qa: mixed.qa.thinkingLevel,
+        };
+        metadata.phaseProviders = {
+          spec: mixed.spec.provider,
+          planning: mixed.planning.provider,
+          coding: mixed.coding.provider,
+          qa: mixed.qa.provider,
+        };
+        metadata.isAutoProfile = true; // Ensure per-phase resolution is used
+      }
+
       if (images.length > 0) metadata.attachedImages = images;
       if (allReferencedFiles.length > 0) metadata.referencedFiles = allReferencedFiles;
       if (requireReviewBeforeCoding) metadata.requireReviewBeforeCoding = true;

@@ -10,7 +10,7 @@ import {
   FEATURE_LABELS,
 } from '@shared/constants/models';
 import type { BuiltinProvider } from '@shared/types/provider-account';
-import type { FeatureModelConfig, ModelTypeShort, ThinkingLevel } from '@shared/types/settings';
+import type { FeatureModelConfig, ThinkingLevel } from '@shared/types/settings';
 
 interface FeatureModelSettingsProps {
   provider: BuiltinProvider;
@@ -42,7 +42,7 @@ export function FeatureModelSettings({ provider }: FeatureModelSettingsProps) {
 
   const handleModelChange = (feature: keyof FeatureModelConfig, value: string) => {
     saveProviderAgentConfig(provider, {
-      featureModels: { ...featureModels, [feature]: value as ModelTypeShort },
+      featureModels: { ...featureModels, [feature]: value },
     });
   };
 

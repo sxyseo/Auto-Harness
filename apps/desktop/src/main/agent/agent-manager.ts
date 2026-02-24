@@ -131,6 +131,7 @@ export class AgentManager extends EventEmitter {
    */
   private async resolveAuthFromProviderQueue(
     requestedModel: string,
+    preferredProvider?: string | null,
   ): Promise<{
     auth: { apiKey?: string; baseURL?: string; codexOAuth?: boolean } | null;
     provider: string;
@@ -153,6 +154,20 @@ export class AgentManager extends EventEmitter {
         if (!priorityOrder.includes(account.id)) {
           orderedQueue.push(account);
         }
+      }
+
+      // If a preferred provider is specified, reorder queue to try that provider first
+      if (preferredProvider) {
+        const preferred: ProviderAccount[] = [];
+        const rest: ProviderAccount[] = [];
+        for (const acct of orderedQueue) {
+          if (acct.provider === preferredProvider) {
+            preferred.push(acct);
+          } else {
+            rest.push(acct);
+          }
+        }
+        orderedQueue.splice(0, orderedQueue.length, ...preferred, ...rest);
       }
 
       const resolved = await resolveAuthFromQueue(requestedModel, orderedQueue);
@@ -340,7 +355,8 @@ export class AgentManager extends EventEmitter {
     const systemPrompt = this.loadPrompt('spec_orchestrator') ?? this.buildDefaultSpecPrompt(taskDescription, specDir);
 
     // Resolve auth from provider accounts priority queue (falls back to legacy profile)
-    const resolved = await this.resolveAuthFromProviderQueue(specModelId);
+    const preferredProvider = specDir ? this.resolveTaskPhaseProvider(specDir, 'spec') : null;
+    const resolved = await this.resolveAuthFromProviderQueue(specModelId, preferredProvider);
 
     // Build the serializable session config for the worker
     const resolvedSpecDir = specDir ?? path.join(projectPath, '.auto-claude', 'specs', taskId);
@@ -422,12 +438,13 @@ export class AgentManager extends EventEmitter {
 
     // Load model configuration from task_metadata.json if available
     const modelId = await this.resolveTaskModelId(specDir, 'planning');
+    const preferredProvider = this.resolveTaskPhaseProvider(specDir, 'planning');
 
     // Load system prompt (planner prompt for build orchestrator entry point)
     const systemPrompt = this.loadPrompt('planner') ?? this.buildDefaultPlannerPrompt(specId, projectPath);
 
     // Resolve auth from provider accounts priority queue (falls back to legacy profile)
-    const resolved = await this.resolveAuthFromProviderQueue(modelId);
+    const resolved = await this.resolveAuthFromProviderQueue(modelId, preferredProvider);
 
     // Create or get existing git worktree for task isolation
     // This matches the Python backend's WorktreeManager.create_worktree() behavior
@@ -533,12 +550,13 @@ export class AgentManager extends EventEmitter {
 
     // Load model configuration from task_metadata.json if available
     const modelId = await this.resolveTaskModelId(specDir, 'qa');
+    const preferredProvider = this.resolveTaskPhaseProvider(specDir, 'qa');
 
     // Load system prompt for QA reviewer
     const systemPrompt = this.loadPrompt('qa_reviewer') ?? this.buildDefaultQAPrompt(specId, projectPath);
 
     // Resolve auth from provider accounts priority queue (falls back to legacy profile)
-    const resolved = await this.resolveAuthFromProviderQueue(modelId);
+    const resolved = await this.resolveAuthFromProviderQueue(modelId, preferredProvider);
 
     // Find existing worktree for QA (created during task execution)
     const worktreePath = findTaskWorktree(projectPath, specId);

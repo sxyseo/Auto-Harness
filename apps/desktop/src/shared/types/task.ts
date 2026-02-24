@@ -164,7 +164,8 @@ export type TaskImpact = 'low' | 'medium' | 'high' | 'critical';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 // Re-export ThinkingLevel (defined in settings.ts) for convenience
 export type { ThinkingLevel };
-export type ModelType = 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
+/** Model identifier — Claude shorthands or concrete model IDs from any provider */
+export type ModelType = string;
 export type TaskCategory =
   | 'feature'
   | 'bug_fix'
@@ -233,6 +234,7 @@ export interface TaskMetadata {
   isAutoProfile?: boolean;  // True when using Auto (Optimized) profile
   phaseModels?: PhaseModelConfig;  // Per-phase model configuration
   phaseThinking?: PhaseThinkingConfig;  // Per-phase thinking configuration
+  phaseProviders?: Record<string, string>;  // Per-phase provider preference (cross-provider mode)
   fastMode?: boolean;  // Fast Mode — faster Opus 4.6 output, higher cost per token
 
   // Git/Worktree configuration

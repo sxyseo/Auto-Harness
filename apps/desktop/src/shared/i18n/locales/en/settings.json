@@ -104,9 +104,9 @@
       "haikuLabel": "Haiku Model (Optional)",
       "sonnetLabel": "Sonnet Model (Optional)",
       "opusLabel": "Opus Model (Optional)",
-      "defaultPlaceholder": "e.g., claude-sonnet-4-5-20250929",
+      "defaultPlaceholder": "e.g., claude-sonnet-4-6",
       "haikuPlaceholder": "e.g., claude-haiku-4-5-20251001",
-      "sonnetPlaceholder": "e.g., claude-sonnet-4-5-20250929",
+      "sonnetPlaceholder": "e.g., claude-sonnet-4-6",
       "opusPlaceholder": "e.g., claude-opus-4-6",
       "opus1mPlaceholder": "e.g., claude-opus-4-6 (1M context)"
     },
@@ -168,7 +168,7 @@
   },
   "modelSelect": {
     "placeholder": "Select a model or type manually",
-    "placeholderManual": "Enter model name (e.g., claude-sonnet-4-5-20250929)",
+    "placeholderManual": "Enter model name (e.g., claude-sonnet-4-6)",
     "searchPlaceholder": "Search models...",
     "noResults": "No models match your search",
     "discoveryNotAvailable": "Model discovery not available. Enter model name manually."
@@ -462,7 +462,15 @@
     "providerTabs": {
       "moreProviders": "More",
       "noProviders": "No providers connected. Add accounts in the Accounts settings to configure provider-specific agent settings.",
-      "configureFor": "Configure agent settings for {{provider}}"
+      "configureFor": "Configure agent settings for {{provider}}",
+      "crossProvider": "Cross-Provider"
+    },
+    "crossProviderTab": {
+      "title": "Cross-Provider Configuration",
+      "description": "Assign a different provider and model to each pipeline phase for maximum flexibility.",
+      "activateInfo": "Tasks created while this configuration is active will use the cross-provider setup.",
+      "featureModelsTitle": "Feature Models",
+      "featureModelsDescription": "Configure models for non-pipeline features (Insights, Ideation, etc.)"
     },
     "customProfile": {
       "name": "Custom (Cross-Provider)",

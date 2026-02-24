@@ -14,8 +14,11 @@ const MAX_VISIBLE_TABS = 3;
 
 interface ProviderTabBarProps {
   providers: BuiltinProvider[];
-  activeProvider: BuiltinProvider;
+  activeProvider: BuiltinProvider | null;
   onProviderChange: (provider: BuiltinProvider) => void;
+  showCrossProvider?: boolean;
+  isCrossProviderActive?: boolean;
+  onCrossProviderClick?: () => void;
 }
 
 function getProviderDisplayName(provider: BuiltinProvider): string {
@@ -27,6 +30,9 @@ export function ProviderTabBar({
   providers,
   activeProvider,
   onProviderChange,
+  showCrossProvider,
+  isCrossProviderActive,
+  onCrossProviderClick,
 }: ProviderTabBarProps) {
   const { t } = useTranslation('settings');
 
@@ -41,7 +47,8 @@ export function ProviderTabBar({
   const visibleProviders = providers.slice(0, MAX_VISIBLE_TABS);
   const overflowProviders = providers.slice(MAX_VISIBLE_TABS);
   const hasOverflow = overflowProviders.length > 0;
-  const isActiveInOverflow = hasOverflow && overflowProviders.includes(activeProvider);
+  const isActiveInOverflow =
+    hasOverflow && activeProvider !== null && overflowProviders.includes(activeProvider);
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
@@ -76,7 +83,7 @@ export function ProviderTabBar({
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               )}
             >
-              {isActiveInOverflow
+              {isActiveInOverflow && activeProvider !== null
                 ? getProviderDisplayName(activeProvider)
                 : t('agentProfile.providerTabs.moreProviders')}
               <ChevronDown className="h-3.5 w-3.5" />
@@ -96,6 +103,21 @@ export function ProviderTabBar({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+      )}
+
+      {showCrossProvider && (
+        <button
+          type="button"
+          onClick={onCrossProviderClick}
+          className={cn(
+            'px-3 py-1.5 text-sm font-medium rounded-full transition-colors',
+            isCrossProviderActive
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          )}
+        >
+          {t('agentProfile.providerTabs.crossProvider')}
+        </button>
       )}
     </div>
   );

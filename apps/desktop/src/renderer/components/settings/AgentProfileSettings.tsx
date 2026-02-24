@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useActiveProvider } from '../../hooks/useActiveProvider';
 import { getProviderModelLabel } from '../../../shared/utils/model-display';
-import { Brain, Scale, Zap, Check, Sparkles, ChevronDown, ChevronUp, RotateCcw, Settings2 } from 'lucide-react';
+import { Brain, Scale, Zap, Check, Sparkles, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
   DEFAULT_AGENT_PROFILES,
@@ -10,23 +10,15 @@ import {
   THINKING_LEVELS,
   DEFAULT_PHASE_MODELS,
   DEFAULT_PHASE_THINKING,
-  ADAPTIVE_THINKING_MODELS,
-  PHASE_KEYS
+  PHASE_KEYS,
+  getProviderPreset
 } from '../../../shared/constants';
 import { useSettingsStore, saveSettings, saveProviderAgentConfig } from '../../stores/settings-store';
 import { MultiProviderModelSelect } from './MultiProviderModelSelect';
-import { MixedPhaseEditor } from './MixedPhaseEditor';
+import { ThinkingLevelSelect } from './ThinkingLevelSelect';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '../ui/select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import type { AgentProfile, PhaseModelConfig, PhaseThinkingConfig, ModelTypeShort, ThinkingLevel } from '../../../shared/types/settings';
+import type { AgentProfile, PhaseModelConfig, PhaseThinkingConfig, ThinkingLevel } from '../../../shared/types/settings';
 import type { BuiltinProvider } from '../../../shared/types/provider-account';
 
 /**
@@ -37,7 +29,6 @@ const iconMap: Record<string, React.ElementType> = {
   Scale,
   Zap,
   Sparkles,
-  Settings2
 };
 
 /**
@@ -64,9 +55,12 @@ export function AgentProfileSettings({ provider }: AgentProfileSettingsProps) {
     [selectedProfileId]
   );
 
-  // Get profile's default phase config
-  const profilePhaseModels = selectedProfile.phaseModels || DEFAULT_PHASE_MODELS;
-  const profilePhaseThinking = selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING;
+  // Get profile's default phase config - provider-aware
+  const providerPreset = provider
+    ? getProviderPreset(provider, selectedProfileId)
+    : null;
+  const profilePhaseModels = providerPreset?.phaseModels ?? selectedProfile.phaseModels ?? DEFAULT_PHASE_MODELS;
+  const profilePhaseThinking = providerPreset?.phaseThinking ?? selectedProfile.phaseThinking ?? DEFAULT_PHASE_THINKING;
 
   // Get current phase config from settings (custom) or fall back to profile defaults
   const currentPhaseModels: PhaseModelConfig = providerConfig?.customPhaseModels ?? settings.customPhaseModels ?? profilePhaseModels;
@@ -92,31 +86,17 @@ export function AgentProfileSettings({ provider }: AgentProfileSettingsProps) {
     const profile = DEFAULT_AGENT_PROFILES.find(p => p.id === profileId);
     if (!profile) return;
 
-    if (profileId === 'custom') {
-      // Custom profile uses mixed phase config
-      if (provider) {
-        await saveProviderAgentConfig(provider, {
-          selectedAgentProfile: profileId,
-          customPhaseModels: undefined,
-          customPhaseThinking: undefined,
-        });
-      } else {
-        await saveSettings({
-          selectedAgentProfile: profileId,
-          customMixedProfileActive: true,
-          customPhaseModels: undefined,
-          customPhaseThinking: undefined,
-        });
-      }
-      return;
-    }
-
     if (provider) {
+      // When selecting on a provider tab, deactivate cross-provider mode
       await saveProviderAgentConfig(provider, {
         selectedAgentProfile: profileId,
         customPhaseModels: undefined,
         customPhaseThinking: undefined,
       });
+      // Deactivate cross-provider mode when a provider profile is selected
+      if (settings.customMixedProfileActive) {
+        await saveSettings({ customMixedProfileActive: false });
+      }
     } else {
       await saveSettings({
         selectedAgentProfile: profileId,
@@ -127,7 +107,7 @@ export function AgentProfileSettings({ provider }: AgentProfileSettingsProps) {
     }
   };
 
-  const handlePhaseModelChange = async (phase: keyof PhaseModelConfig, value: ModelTypeShort) => {
+  const handlePhaseModelChange = async (phase: keyof PhaseModelConfig, value: string) => {
     // Save as custom config (deviating from preset)
     const newPhaseModels = { ...currentPhaseModels, [phase]: value };
     if (provider) {
@@ -166,8 +146,9 @@ export function AgentProfileSettings({ provider }: AgentProfileSettingsProps) {
    * Get human-readable model label
    */
   const getModelLabel = (modelValue: string): string => {
-    if (activeProvider) {
-      return getProviderModelLabel(modelValue, activeProvider);
+    const resolvedProvider = provider ?? activeProvider;
+    if (resolvedProvider) {
+      return getProviderModelLabel(modelValue, resolvedProvider);
     }
     const model = AVAILABLE_MODELS.find((m) => m.value === modelValue);
     return model?.label || modelValue;
@@ -188,6 +169,11 @@ export function AgentProfileSettings({ provider }: AgentProfileSettingsProps) {
     const isSelected = selectedProfileId === profile.id;
     const isCustomized = isSelected && hasCustomConfig;
     const Icon = iconMap[profile.icon || 'Brain'] || Brain;
+
+    // Get provider-specific preset for badge display
+    const cardProviderPreset = provider ? getProviderPreset(provider, profile.id) : null;
+    const displayModel = cardProviderPreset?.primaryModel ?? profile.model;
+    const displayThinking = cardProviderPreset?.primaryThinking ?? profile.thinkingLevel;
 
     return (
       <button
@@ -240,10 +226,10 @@ export function AgentProfileSettings({ provider }: AgentProfileSettingsProps) {
             {/* Model and thinking level badges */}
             <div className="mt-2 flex flex-wrap gap-1.5">
               <span className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {getModelLabel(profile.model)}
+                {getModelLabel(displayModel)}
               </span>
               <span className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {getThinkingLabel(profile.thinkingLevel)} {t('agentProfile.thinking')}
+                {getThinkingLabel(displayThinking)} {t('agentProfile.thinking')}
               </span>
             </div>
           </div>
@@ -290,8 +276,8 @@ export function AgentProfileSettings({ provider }: AgentProfileSettingsProps) {
           {/* Phase Configuration Content */}
           {showPhaseConfig && (
             <div className="border-t border-border p-4 space-y-4">
-              {/* Reset button - shown when customized (non-Custom profiles only) */}
-              {selectedProfileId !== 'custom' && hasCustomConfig && (
+              {/* Reset button - shown when customized */}
+              {hasCustomConfig && (
                 <div className="flex justify-end">
                   <Button
                     variant="ghost"
@@ -305,70 +291,39 @@ export function AgentProfileSettings({ provider }: AgentProfileSettingsProps) {
                 </div>
               )}
 
-              {/* Custom (Cross-Provider) phase editor */}
-              {selectedProfileId === 'custom' ? (
-                <MixedPhaseEditor />
-              ) : (
-                /* Standard per-provider phase config */
-                <div className="space-y-4">
-                  {PHASE_KEYS.map((phase) => (
-                    <div key={phase} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium text-foreground">
-                          {t(`agentProfile.phases.${phase}.label`)}
-                        </Label>
-                        <span className="text-xs text-muted-foreground">
-                          {t(`agentProfile.phases.${phase}.description`)}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {/* Model Select */}
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">{t('agentProfile.model')}</Label>
-                          <MultiProviderModelSelect
-                            value={currentPhaseModels[phase]}
-                            onChange={(value) => handlePhaseModelChange(phase, value as ModelTypeShort)}
-                            filterProvider={provider}
-                          />
-                        </div>
-                        {/* Thinking Level Select */}
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <Label className="text-xs text-muted-foreground">{t('agentProfile.thinkingLevel')}</Label>
-                            {ADAPTIVE_THINKING_MODELS.includes(currentPhaseModels[phase]) && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary cursor-help">
-                                    {t('agentProfile.adaptiveThinking.badge')}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                  <p className="text-xs">{t('agentProfile.adaptiveThinking.tooltip')}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                          <Select
-                            value={currentPhaseThinking[phase]}
-                            onValueChange={(value) => handlePhaseThinkingChange(phase, value as ThinkingLevel)}
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {THINKING_LEVELS.map((level) => (
-                                <SelectItem key={level.value} value={level.value}>
-                                  {level.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
+              {/* Standard per-provider phase config */}
+              <div className="space-y-4">
+                {PHASE_KEYS.map((phase) => (
+                  <div key={phase} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-foreground">
+                        {t(`agentProfile.phases.${phase}.label`)}
+                      </Label>
+                      <span className="text-xs text-muted-foreground">
+                        {t(`agentProfile.phases.${phase}.description`)}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Model Select */}
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">{t('agentProfile.model')}</Label>
+                        <MultiProviderModelSelect
+                          value={currentPhaseModels[phase]}
+                          onChange={(value) => handlePhaseModelChange(phase, value)}
+                          filterProvider={provider}
+                        />
+                      </div>
+                      {/* Thinking Level Select (provider-aware) */}
+                      <ThinkingLevelSelect
+                        value={currentPhaseThinking[phase]}
+                        onChange={(value) => handlePhaseThinkingChange(phase, value as ThinkingLevel)}
+                        modelValue={currentPhaseModels[phase]}
+                        provider={provider ?? 'anthropic'}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               {/* Info note */}
               <p className="text-[10px] text-muted-foreground mt-4 pt-3 border-t border-border">
