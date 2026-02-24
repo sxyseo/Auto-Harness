@@ -30,15 +30,17 @@ describe('MODEL_ID_MAP', () => {
 });
 
 describe('THINKING_BUDGET_MAP', () => {
-  it('should define budgets for all three tiers', () => {
+  it('should define budgets for all four tiers', () => {
     expect(THINKING_BUDGET_MAP.low).toBe(1024);
     expect(THINKING_BUDGET_MAP.medium).toBe(4096);
     expect(THINKING_BUDGET_MAP.high).toBe(16384);
+    expect(THINKING_BUDGET_MAP.xhigh).toBe(32768);
   });
 
   it('should have increasing budgets', () => {
     expect(THINKING_BUDGET_MAP.low).toBeLessThan(THINKING_BUDGET_MAP.medium);
     expect(THINKING_BUDGET_MAP.medium).toBeLessThan(THINKING_BUDGET_MAP.high);
+    expect(THINKING_BUDGET_MAP.high).toBeLessThan(THINKING_BUDGET_MAP.xhigh);
   });
 });
 
@@ -65,6 +67,7 @@ describe('sanitizeThinkingLevel', () => {
     expect(sanitizeThinkingLevel('low')).toBe('low');
     expect(sanitizeThinkingLevel('medium')).toBe('medium');
     expect(sanitizeThinkingLevel('high')).toBe('high');
+    expect(sanitizeThinkingLevel('xhigh')).toBe('xhigh');
   });
 
   it('should map legacy "ultrathink" to "high"', () => {
@@ -144,6 +147,7 @@ describe('getThinkingBudget', () => {
     expect(getThinkingBudget('low')).toBe(1024);
     expect(getThinkingBudget('medium')).toBe(4096);
     expect(getThinkingBudget('high')).toBe(16384);
+    expect(getThinkingBudget('xhigh')).toBe(32768);
   });
 
   it('should fall back to medium for unknown levels', () => {

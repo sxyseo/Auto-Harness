@@ -8,6 +8,7 @@ import { AgentProfileSettings } from './AgentProfileSettings';
 import { FeatureModelSettings } from './FeatureModelSettings';
 import { CrossProviderTabContent } from './CrossProviderTabContent';
 import { Separator } from '../ui/separator';
+import { saveSettings } from '../../stores/settings-store';
 
 /**
  * ProviderAgentTabs
@@ -72,7 +73,12 @@ export function ProviderAgentTabs() {
       <ProviderTabBar
         providers={orderedProviders}
         activeProvider={resolvedTab}
-        onProviderChange={(provider) => setActiveTab(provider)}
+        onProviderChange={(provider) => {
+          if (isCrossProviderActive) {
+            saveSettings({ customMixedProfileActive: false });
+          }
+          setActiveTab(provider);
+        }}
         showCrossProvider={connectedProviders.length >= 2}
         isCrossProviderActive={isCrossProviderActive}
         onCrossProviderClick={() => setActiveTab('cross-provider')}

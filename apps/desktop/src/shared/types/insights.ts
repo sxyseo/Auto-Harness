@@ -162,7 +162,7 @@ import type { ModelType } from './task';
 // Model configuration for insights sessions
 export interface InsightsModelConfig {
   profileId: string;           // 'complex' | 'balanced' | 'quick' | 'custom'
-  model: ModelType;            // 'haiku' | 'sonnet' | 'opus'
+  model: ModelType;            // any model ID (e.g. 'sonnet', 'opus', or provider-specific model string)
   thinkingLevel: ThinkingLevel;
 }
 

@@ -101,18 +101,18 @@ export function AgentProfileSelector({
     if (selectedId === 'custom') {
       // Keep current model/thinking level, just mark as custom
       onProfileChange('custom', model as ModelType || 'sonnet', thinkingLevel as ThinkingLevel || 'medium');
-    } else {
-      // Select preset profile - all profiles now have phase configs
-      const profile = DEFAULT_AGENT_PROFILES.find(p => p.id === selectedId);
-      if (profile) {
-        onProfileChange(profile.id, profile.model, profile.thinkingLevel);
-        // Initialize phase configs with profile defaults if callbacks provided
-        if (onPhaseModelsChange && profile.phaseModels) {
-          onPhaseModelsChange(profile.phaseModels);
-        }
-        if (onPhaseThinkingChange && profile.phaseThinking) {
-          onPhaseThinkingChange(profile.phaseThinking);
-        }
+      return;
+    }
+    // Select preset profile - all profiles now have phase configs
+    const profile = DEFAULT_AGENT_PROFILES.find(p => p.id === selectedId);
+    if (profile) {
+      onProfileChange(profile.id, profile.model, profile.thinkingLevel);
+      // Initialize phase configs with profile defaults if callbacks provided
+      if (onPhaseModelsChange && profile.phaseModels) {
+        onPhaseModelsChange(profile.phaseModels);
+      }
+      if (onPhaseThinkingChange && profile.phaseThinking) {
+        onPhaseThinkingChange(profile.phaseThinking);
       }
     }
   };
