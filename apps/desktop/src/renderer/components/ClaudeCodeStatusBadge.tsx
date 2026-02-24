@@ -46,7 +46,7 @@ const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const VERSION_RECHECK_DELAY_MS = 5000;
 
 /**
- * Claude Code CLI status badge for the sidebar.
+ * Claude Code CLI status badge for the terminal toolbar.
  * Shows installation status and provides quick access to install/update.
  */
 export function ClaudeCodeStatusBadge({ className }: ClaudeCodeStatusBadgeProps) {
@@ -366,10 +366,10 @@ export function ClaudeCodeStatusBadge({ className }: ClaudeCodeStatusBadgeProps)
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               className={cn(
-                "w-full justify-start gap-2 text-xs",
+                "h-7 text-xs gap-1.5",
                 status === "not-found" || status === "error" ? "text-destructive" : "",
                 status === "outdated" ? "text-yellow-600 dark:text-yellow-500" : "",
                 className
@@ -398,10 +398,10 @@ export function ClaudeCodeStatusBadge({ className }: ClaudeCodeStatusBadgeProps)
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent side="right">{getTooltipText()}</TooltipContent>
+        <TooltipContent side="bottom">{getTooltipText()}</TooltipContent>
       </Tooltip>
 
-      <PopoverContent side="right" align="end" className="w-72">
+      <PopoverContent side="bottom" align="end" className="w-72">
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center gap-2">

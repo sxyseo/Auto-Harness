@@ -27,6 +27,7 @@ import {
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 import { FileExplorerPanel } from './FileExplorerPanel';
+import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
 import { cn } from '../lib/utils';
 import { useTerminalStore } from '../stores/terminal-store';
 import { useTaskStore } from '../stores/task-store';
@@ -476,6 +477,8 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Claude Code CLI status */}
+            <ClaudeCodeStatusBadge />
             {/* Session history dropdown */}
             {projectPath && sessionDates.length > 0 && (
               <DropdownMenu>
