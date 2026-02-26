@@ -93,9 +93,8 @@ export function mergePythonEnvPath(
  * no API profile is active, ensuring OAuth tokens are used correctly.
  *
  * **Why empty strings?** Setting environment variables to empty strings (rather than
- * undefined) ensures they override any stale values from process.env. Python's SDK
- * treats empty strings as falsy in conditional checks like `if token:`, so empty
- * strings effectively disable these authentication parameters without leaving
+ * undefined) ensures they override any stale values from process.env.
+ * Empty strings effectively disable these authentication parameters without leaving
  * undefined values that might be ignored during object spreading.
  *
  * @param apiProfileEnv - Environment variables from getAPIProfileEnv()
@@ -109,7 +108,6 @@ export function getOAuthModeClearVars(apiProfileEnv: Record<string, string>): Re
 
   // In OAuth mode (no API profile), clear all ANTHROPIC_* vars
   // Setting to empty string ensures they override any values from process.env
-  // Python's `if token:` checks treat empty strings as falsy
   //
   // IMPORTANT: ANTHROPIC_API_KEY is included to prevent Claude Code from using
   // API keys that may be present in the shell environment instead of OAuth tokens.

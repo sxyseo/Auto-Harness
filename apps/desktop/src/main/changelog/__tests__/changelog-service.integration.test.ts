@@ -26,14 +26,6 @@ vi.mock('../../cli-tool-manager', () => ({
   getToolInfo: vi.fn(() => ({ found: true, path: '/usr/bin/claude', source: 'mock' }))
 }));
 
-vi.mock('../../python-detector', () => ({
-  getValidatedPythonPath: vi.fn((p: string) => p)
-}));
-
-vi.mock('../../python-env-manager', () => ({
-  getConfiguredPythonPath: vi.fn(() => '/usr/bin/python3')
-}));
-
 describe('ChangelogService - Task Filtering Integration', () => {
   let testDir: string;
   let projectPath: string;

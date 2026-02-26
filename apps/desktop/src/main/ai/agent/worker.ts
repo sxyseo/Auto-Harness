@@ -266,7 +266,7 @@ async function runSingleSession(
     logWriter.setSubtask(subtaskId);
   }
 
-  let sessionResult: SessionResult | undefined;
+  let sessionResult: SessionResult;
   try {
     sessionResult = await runAgentSession(sessionConfig, {
       tools,
@@ -293,18 +293,23 @@ async function runSingleSession(
           })
         : undefined,
     });
-  } finally {
-    // End phase logging — mark as completed or failed based on outcome (skip when orchestrator manages phases)
-    if (logWriter && !skipPhaseLogging) {
-      const success = sessionResult?.outcome === 'completed' || sessionResult?.outcome === 'max_steps';
-      logWriter.endPhase(phase, success ?? false);
-    }
-    if (logWriter) {
-      logWriter.setSubtask(undefined);
-    }
+  } catch (error) {
+    // Ensure log cleanup happens on failure
+    if (logWriter && !skipPhaseLogging) logWriter.endPhase(phase, false);
+    if (logWriter) logWriter.setSubtask(undefined);
+    throw error;
   }
 
-  return sessionResult as SessionResult;
+  // End phase logging — mark as completed or failed based on outcome (skip when orchestrator manages phases)
+  if (logWriter && !skipPhaseLogging) {
+    const success = sessionResult.outcome === 'completed' || sessionResult.outcome === 'max_steps';
+    logWriter.endPhase(phase, success);
+  }
+  if (logWriter) {
+    logWriter.setSubtask(undefined);
+  }
+
+  return sessionResult;
 }
 
 // =============================================================================

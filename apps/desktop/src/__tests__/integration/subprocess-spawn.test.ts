@@ -151,21 +151,6 @@ vi.mock('../../main/services/profile', () => ({
   getAPIProfileEnv: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock('../../main/python-env-manager', () => ({
-  pythonEnvManager: {
-    isEnvReady: vi.fn(() => true),
-    initialize: vi.fn(() => Promise.resolve({ ready: true })),
-    getPythonEnv: vi.fn(() => ({})),
-  },
-  getConfiguredPythonPath: vi.fn(() => 'python3'),
-}));
-
-vi.mock('../../main/python-detector', () => ({
-  findPythonCommand: vi.fn(() => 'python3'),
-  parsePythonCommand: vi.fn((cmd: string) => [cmd, []]),
-  validatePythonPath: vi.fn((p: string) => ({ valid: true, sanitizedPath: p })),
-}));
-
 vi.mock('../../main/env-utils', () => ({
   getAugmentedEnv: vi.fn(() => ({})),
 }));

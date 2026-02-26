@@ -85,7 +85,7 @@ export function isAuthenticationError(error: unknown): boolean {
 export function isToolConcurrencyError(error: unknown): boolean {
   const errorStr = errorToString(error);
   return (
-    errorStr.includes('400') &&
+    /\b400\b/.test(errorStr) &&
     ((errorStr.includes('tool') && errorStr.includes('concurrency')) ||
       errorStr.includes('too many tools') ||
       errorStr.includes('concurrent tool'))
@@ -220,6 +220,6 @@ function errorToString(error: unknown): string {
 function sanitizeErrorMessage(message: string): string {
   return message
     .replace(/sk-[a-zA-Z0-9-_]{20,}/g, 'sk-***')
-    .replace(/Bearer [a-zA-Z0-9-_.]+/gi, 'Bearer ***')
-    .replace(/token[=:]\s*[a-zA-Z0-9-_.]+/gi, 'token=***');
+    .replace(/Bearer [a-zA-Z0-9\-_.+/=]+/gi, 'Bearer ***')
+    .replace(/token[=:]\s*[a-zA-Z0-9\-_.+/=]+/gi, 'token=***');
 }

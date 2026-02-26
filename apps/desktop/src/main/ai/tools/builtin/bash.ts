@@ -10,6 +10,7 @@
 import { execFile } from 'node:child_process';
 import { z } from 'zod/v3';
 
+import { findExecutable, isWindows, killProcessGracefully } from '../../../platform/index';
 import { bashSecurityHook } from '../../security/bash-validator';
 import { Tool } from '../define';
 import { ToolPermission } from '../types';
@@ -53,16 +54,29 @@ function truncateOutput(output: string): string {
   return `${output.slice(0, MAX_OUTPUT_LENGTH)}\n\n[Output truncated — ${output.length} characters total]`;
 }
 
+function resolveShell(): string {
+  if (isWindows()) {
+    // Prefer Git Bash on Windows; fall back to cmd.exe
+    return findExecutable('bash') ?? (process.env.ComSpec || 'cmd.exe');
+  }
+  return '/bin/bash';
+}
+
 function executeCommand(
   command: string,
   cwd: string,
   timeoutMs: number,
   abortSignal?: AbortSignal,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const shell = resolveShell();
+  const args = isWindows() && shell.toLowerCase().endsWith('cmd.exe')
+    ? ['/c', command]
+    : ['-c', command];
+
   return new Promise((resolve) => {
     const child = execFile(
-      '/bin/bash',
-      ['-c', command],
+      shell,
+      args,
       {
         cwd,
         timeout: timeoutMs,
@@ -86,7 +100,7 @@ function executeCommand(
     // Ensure the child process is killed on abort
     if (abortSignal) {
       abortSignal.addEventListener('abort', () => {
-        child.kill('SIGTERM');
+        killProcessGracefully(child);
       });
     }
   });

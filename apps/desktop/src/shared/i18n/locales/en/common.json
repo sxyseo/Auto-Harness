@@ -868,6 +868,12 @@
       "avgConfidence": "Avg Confidence",
       "verified": "Verified"
     },
+    "info": {
+      "database": "Database",
+      "path": "Path",
+      "embedding": "Embedding",
+      "memories": "Memories"
+    },
     "status": {
       "title": "Memory Status",
       "connected": "Connected",

@@ -241,19 +241,19 @@ export interface InitializationResult {
  * This indicates it's the development project itself
  */
 export function hasLocalSource(projectPath: string): boolean {
-  const localSourcePath = path.join(projectPath, 'apps', 'backend');
-  // Use runners/spec_runner.py as marker - ensures valid backend
-  const markerFile = path.join(localSourcePath, 'runners', 'spec_runner.py');
-  return existsSync(localSourcePath) && existsSync(markerFile);
+  const desktopPath = path.join(projectPath, 'apps', 'desktop');
+  // Use session/runner.ts as marker — ensures valid TypeScript AI layer
+  const markerFile = path.join(desktopPath, 'src', 'main', 'ai', 'session', 'runner.ts');
+  return existsSync(desktopPath) && existsSync(markerFile);
 }
 
 /**
  * Get the local source path for a project (if it exists)
  */
 export function getLocalSourcePath(projectPath: string): string | null {
-  const localSourcePath = path.join(projectPath, 'apps', 'backend');
+  const desktopPath = path.join(projectPath, 'apps', 'desktop');
   if (hasLocalSource(projectPath)) {
-    return localSourcePath;
+    return desktopPath;
   }
   return null;
 }

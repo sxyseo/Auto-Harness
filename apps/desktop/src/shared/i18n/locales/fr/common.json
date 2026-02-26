@@ -868,6 +868,12 @@
       "avgConfidence": "Confiance moyenne",
       "verified": "Vérifié"
     },
+    "info": {
+      "database": "Base de données",
+      "path": "Chemin",
+      "embedding": "Embedding",
+      "memories": "Mémoires"
+    },
     "status": {
       "title": "Statut de la mémoire",
       "connected": "Connecté",

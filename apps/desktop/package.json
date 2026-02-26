@@ -28,14 +28,11 @@
     "start:mcp": "electron . --remote-debugging-port=9222",
     "preview": "electron-vite preview",
     "rebuild": "electron-rebuild",
-    "python:download": "node scripts/download-python.cjs",
-    "python:download:all": "node scripts/download-python.cjs --all",
-    "python:verify": "node scripts/verify-python-bundling.cjs",
-    "package": "node scripts/package-with-python.cjs",
-    "package:mac": "node scripts/package-with-python.cjs --mac",
-    "package:win": "node scripts/package-with-python.cjs --win",
-    "package:linux": "node scripts/package-with-python.cjs --linux",
-    "package:flatpak": "node scripts/package-with-python.cjs --linux flatpak",
+    "package": "electron-builder",
+    "package:mac": "electron-builder --mac",
+    "package:win": "electron-builder --win",
+    "package:linux": "electron-builder --linux",
+    "package:flatpak": "electron-builder --linux flatpak",
     "verify:linux": "node scripts/verify-linux-packages.cjs dist",
     "test:verify-linux": "node --test scripts/verify-linux-packages.test.mjs",
     "start:packaged:mac": "open dist/mac-arm64/Auto-Claude.app || open dist/mac/Auto-Claude.app",
@@ -186,16 +183,6 @@
       {
         "from": "prompts",
         "to": "prompts"
-      },
-      {
-        "from": "../backend/integrations/graphiti",
-        "to": "backend/integrations/graphiti",
-        "filter": [
-          "!**/__pycache__",
-          "!**/*.pyc",
-          "!**/tests",
-          "!**/.pytest_cache"
-        ]
       }
     ],
     "mac": {
@@ -208,16 +195,6 @@
       "target": [
         "dmg",
         "zip"
-      ],
-      "extraResources": [
-        {
-          "from": "python-runtime/${os}-${arch}/python",
-          "to": "python"
-        },
-        {
-          "from": "python-runtime/${os}-${arch}/site-packages",
-          "to": "python-site-packages"
-        }
       ]
     },
     "win": {
@@ -225,16 +202,6 @@
       "target": [
         "nsis",
         "zip"
-      ],
-      "extraResources": [
-        {
-          "from": "python-runtime/${os}-${arch}/python",
-          "to": "python"
-        },
-        {
-          "from": "python-runtime/${os}-${arch}/site-packages",
-          "to": "python-site-packages"
-        }
       ]
     },
     "linux": {
@@ -244,17 +211,7 @@
         "deb",
         "flatpak"
       ],
-      "category": "Development",
-      "extraResources": [
-        {
-          "from": "python-runtime/${os}-${arch}/python",
-          "to": "python"
-        },
-        {
-          "from": "python-runtime/${os}-${arch}/site-packages",
-          "to": "python-site-packages"
-        }
-      ]
+      "category": "Development"
     },
     "flatpak": {
       "runtime": "org.freedesktop.Platform",

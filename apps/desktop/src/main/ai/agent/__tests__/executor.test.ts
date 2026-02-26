@@ -133,30 +133,6 @@ describe('AgentExecutor', () => {
   // ---------------------------------------------------------------------------
 
   describe('event forwarding', () => {
-    it('forwards log events from bridge', () => {
-      const executor = new AgentExecutor(createConfig());
-      const handler = vi.fn();
-      executor.on('log', handler);
-      executor.start();
-
-      // Get the bridge (it's the internal WorkerBridge mock)
-      // Access via the spawn call - the bridge is created in start()
-      // We need to emit on the bridge. Since we mocked WorkerBridge as EventEmitter,
-      // the forwardEvents call hooks into it. We can trigger by finding the bridge.
-      // The executor creates a new WorkerBridge inside start(). We can't directly access it,
-      // but the mock's spawn is called, so we know the bridge was created.
-      // The bridge emits are forwarded, so we need to get the bridge instance.
-
-      // Since WorkerBridge is mocked as an EventEmitter in the module scope,
-      // we can't easily get the instance. Let's test via a different approach:
-      // Verify that the executor registered listeners by checking listenerCount
-      // on the executor itself after events propagate.
-
-      // Actually, the mock WorkerBridge extends EventEmitter, so when the executor
-      // calls bridge.on() in forwardEvents, it registers on the mock instance.
-      // We need a reference to that instance. Let's capture it via the mock.
-    });
-
     it('cleans up bridge reference on exit event from bridge', async () => {
       const executor = new AgentExecutor(createConfig());
       executor.start();

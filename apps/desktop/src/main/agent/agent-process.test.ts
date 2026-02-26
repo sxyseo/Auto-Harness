@@ -351,7 +351,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
 
       const envArg = spawnCalls[0].options.env as Record<string, unknown>;
 
-      // Should clear the base URL (so Python uses default api.anthropic.com)
+      // Should clear the base URL (so subprocess uses default api.anthropic.com)
       expect(envArg.ANTHROPIC_BASE_URL).toBe('');
       expect(envArg.CLAUDE_CODE_OAUTH_TOKEN).toBe('oauth-token-789');
     });
@@ -399,7 +399,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       // Get the env object passed to spawn
       const envArg = spawnCalls[0].options.env as Record<string, unknown>;
 
-      // Verify the full API key is in the env (for Python subprocess)
+      // Verify the full API key is in the env (for subprocess)
       expect(envArg.ANTHROPIC_AUTH_TOKEN).toBe('sk-sensitive-api-key-12345678');
 
       // Collect ALL console output from all methods
@@ -515,7 +515,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       expect(envArg.CLAUDE_CONFIG_DIR).toBe('/custom/config'); // From profileEnv
       expect(envArg.ANTHROPIC_AUTH_TOKEN).toBe('sk-api-profile'); // From apiProfileEnv (highest for ANTHROPIC_*)
 
-      // Verify standard Python env vars
+      // Verify standard env vars are set
       expect(envArg.PYTHONUNBUFFERED).toBe('1');
       expect(envArg.PYTHONIOENCODING).toBe('utf-8');
       expect(envArg.PYTHONUTF8).toBe('1');

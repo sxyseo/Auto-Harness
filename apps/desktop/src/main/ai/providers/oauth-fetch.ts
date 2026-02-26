@@ -261,7 +261,7 @@ export function createOAuthProviderFetch(
     }
 
     if (DEBUG && url !== originalUrl) {
-      debugLog(`${originalUrl} -> ${url} (token: ${token.slice(0, 10)}...)`);
+      debugLog(`${originalUrl} -> ${url} (token: [redacted])`);
     }
 
     return globalThis.fetch(url, {

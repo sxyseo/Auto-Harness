@@ -165,13 +165,13 @@ export function MemoriesTab({
             {memoryStatus?.available ? (
               <>
                 <div className="grid gap-3 sm:grid-cols-2 text-sm">
-                  <InfoItem label="Database" value={memoryStatus.database || 'auto_claude_memory'} />
-                  <InfoItem label="Path" value={memoryStatus.dbPath || '~/.auto-claude/memories'} />
+                  <InfoItem label={t('memory.info.database')} value={memoryStatus.database || 'auto_claude_memory'} />
+                  <InfoItem label={t('memory.info.path')} value={memoryStatus.dbPath || '~/.auto-claude/memories'} />
                   {memoryStatus.embeddingProvider && (
-                    <InfoItem label="Embedding" value={memoryStatus.embeddingProvider} />
+                    <InfoItem label={t('memory.info.embedding')} value={memoryStatus.embeddingProvider} />
                   )}
                   {memoryState && (
-                    <InfoItem label="Memories" value={String(memoryState.episodeCount)} />
+                    <InfoItem label={t('memory.info.memories')} value={String(memoryState.episodeCount)} />
                   )}
                 </div>
 

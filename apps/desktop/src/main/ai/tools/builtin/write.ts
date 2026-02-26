@@ -54,7 +54,7 @@ export const writeTool = Tool.define({
     // Write the file
     fs.writeFileSync(resolvedPath, content, 'utf-8');
 
-    const lineCount = content.split('\n').length;
+    const lineCount = content.split(/\r?\n/).length;
     return `Successfully wrote ${lineCount} lines to ${file_path}`;
   },
 });

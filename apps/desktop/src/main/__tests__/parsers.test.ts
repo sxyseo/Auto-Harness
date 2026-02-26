@@ -110,7 +110,7 @@ describe('ExecutionPhaseParser', () => {
     });
   });
 
-  describe('run.py mode', () => {
+  describe('agent log parsing', () => {
     it('should detect planner agent', () => {
       const log = 'Starting planner agent...';
       const result = parser.parse(log, makeContext('idle'));

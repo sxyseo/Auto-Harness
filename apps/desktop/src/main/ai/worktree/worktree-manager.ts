@@ -15,7 +15,7 @@
  * returns the existing worktree without error.
  */
 
-import { execFile } from 'child_process';
+import { execFile } from 'node:child_process';
 import { existsSync, mkdirSync } from 'fs';
 import { cp, rm } from 'fs/promises';
 import { join, resolve } from 'path';
@@ -260,7 +260,7 @@ async function isWorktreeRegistered(
   // Each entry starts with "worktree <absolute-path>"
   const normalizedTarget = resolve(worktreePath);
   return output
-    .split('\n')
+    .split(/\r?\n/)
     .some((line) => {
       if (!line.startsWith('worktree ')) return false;
       const listed = line.slice('worktree '.length).trim();

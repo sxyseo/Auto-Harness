@@ -181,6 +181,9 @@ export function validateRmCommand(commandString: string): ValidationResult {
   for (const token of tokens.slice(1)) {
     if (token.startsWith('-')) {
       // Allow flags: -r, -f, -rf, -fr, -v, -i
+      if (token === '--no-preserve-root') {
+        return [false, '--no-preserve-root is not allowed for safety'];
+      }
       continue;
     }
     for (const pattern of DANGEROUS_RM_PATTERNS) {

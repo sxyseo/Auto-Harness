@@ -11,6 +11,7 @@ import { execFile } from 'node:child_process';
 import * as path from 'node:path';
 import { z } from 'zod/v3';
 
+import { findExecutable } from '../../../platform/index';
 import { assertPathContained } from '../../security/path-containment';
 import { Tool } from '../define';
 import { DEFAULT_EXECUTION_OPTIONS, ToolPermission } from '../types';
@@ -102,9 +103,18 @@ function runRipgrep(
   cwd: string,
   abortSignal?: AbortSignal,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const rgPath = findExecutable('rg');
+  if (!rgPath) {
+    return Promise.resolve({
+      stdout: '',
+      stderr: 'ripgrep (rg) not found. Please install ripgrep: https://github.com/BurntSushi/ripgrep',
+      exitCode: 127,
+    });
+  }
+
   return new Promise((resolve) => {
     execFile(
-      'rg',
+      rgPath,
       args,
       {
         cwd,

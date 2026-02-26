@@ -89,9 +89,15 @@ function shellSplit(input: string): string[] | null {
  *
  * Returns null if not a -c invocation.
  */
-function extractCArgument(commandString: string): string | null {
+/** Sentinel to distinguish "shellSplit parse failure" from "no -c flag found" */
+const PARSE_FAILURE = Symbol('PARSE_FAILURE');
+
+function extractCArgument(commandString: string): string | null | typeof PARSE_FAILURE {
   const tokens = shellSplit(commandString);
-  if (tokens === null || tokens.length < 3) {
+  if (tokens === null) {
+    return PARSE_FAILURE;
+  }
+  if (tokens.length < 3) {
     return null;
   }
 
@@ -126,6 +132,11 @@ function extractCArgument(commandString: string): string | null {
  */
 export function validateShellCCommand(commandString: string): ValidationResult {
   const innerCommand = extractCArgument(commandString);
+
+  if (innerCommand === PARSE_FAILURE) {
+    // shellSplit failed — deny to avoid permissive fallback on malformed input
+    return [false, 'Could not parse shell command'];
+  }
 
   if (innerCommand === null) {
     // Not a -c invocation — block dangerous shell constructs

@@ -75,7 +75,7 @@ function findImportSectionEnd(lines: string[], ext: string): number {
 }
 
 function findFunctionInsertPosition(content: string): number | null {
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i].trim();
     if (line.startsWith('module.exports') || line.startsWith('export default')) {
@@ -221,7 +221,7 @@ function escapeRegex(str: string): string {
 // =============================================================================
 
 function executeImportStrategy(context: MergeContext): MergeResult {
-  const lines = context.baselineContent.split('\n');
+  const lines = context.baselineContent.split(/\r?\n/);
   const ext = getExtension(context.filePath);
 
   const importsToAdd: string[] = [];
@@ -366,7 +366,7 @@ function executeAppendFunctionsStrategy(context: MergeContext): MergeResult {
   const insertPos = findFunctionInsertPosition(content);
 
   if (insertPos !== null) {
-    const lines = content.split('\n');
+    const lines = content.split(/\r?\n/);
     let offset = insertPos;
     for (const func of newFunctions) {
       lines.splice(offset, 0, '');

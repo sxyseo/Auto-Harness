@@ -68,7 +68,7 @@ function formatWithLineNumbers(
   content: string,
   offset: number,
 ): string {
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   const maxLineNum = offset + lines.length;
   const padWidth = String(maxLineNum).length;
 
@@ -147,7 +147,7 @@ export const readTool = Tool.define({
       return `[File exists but is empty: ${file_path}]`;
     }
 
-    const lines = content.split('\n');
+    const lines = content.split(/\r?\n/);
     const startLine = offset ?? 0;
     const lineLimit = limit ?? DEFAULT_LINE_LIMIT;
 
