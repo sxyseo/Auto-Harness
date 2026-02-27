@@ -159,6 +159,29 @@ export async function loadClaudeMd(projectDir: string): Promise<string | null> {
   }
 }
 
+/**
+ * Load and return the content of agents.md from the project directory.
+ * agents.md is a provider-agnostic agent instruction file that applies
+ * to ALL AI providers (Anthropic, OpenAI, Google, etc.).
+ *
+ * @param projectDir - Project root directory
+ * @returns Content of agents.md or null if not found
+ */
+export async function loadAgentsMd(projectDir: string): Promise<string | null> {
+  const agentsMdPath = join(projectDir, 'agents.md');
+  try {
+    const content = await new Promise<string>((resolve, reject) => {
+      readFileAsync(agentsMdPath, 'utf-8', (err, data) => {
+        if (err) reject(err);
+        else resolve(data);
+      });
+    });
+    return content.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 // =============================================================================
 // Context Injection
 // =============================================================================
@@ -201,7 +224,7 @@ export function injectContext(promptTemplate: string, context: PromptContext): s
     );
   }
 
-  // 4. CLAUDE.md injection
+  // 4. CLAUDE.md injection (provider-agnostic project instructions)
   if (context.claudeMd) {
     sections.push(
       `## PROJECT INSTRUCTIONS (CLAUDE.md)\n\n` +
@@ -211,7 +234,17 @@ export function injectContext(promptTemplate: string, context: PromptContext): s
     );
   }
 
-  // 5. Base prompt
+  // 5. agents.md injection (provider-agnostic agent framework instructions)
+  if (context.agentsMd) {
+    sections.push(
+      `## AGENT INSTRUCTIONS (agents.md)\n\n` +
+      `The following are agent-specific instructions from agents.md:\n\n` +
+      `${context.agentsMd}\n\n` +
+      `---\n\n`
+    );
+  }
+
+  // 6. Base prompt
   sections.push(promptTemplate);
 
   return sections.join('');

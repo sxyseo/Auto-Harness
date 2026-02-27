@@ -240,7 +240,8 @@ export function buildValidationRetryPrompt(
     `3. Rewrite the file with the corrected JSON using the Write tool`,
     ``,
     `Common field name issues:`,
-    `- Use "description" (not "title" or "name") for subtask descriptions`,
+    `- Use "title" for short 3-10 word subtask summary`,
+    `- Use "description" for detailed implementation instructions`,
     `- Use "id" (not "subtask_id" or "task_id") for subtask identifiers`,
     `- Use "status" with value "pending" for new subtasks`,
     `- Use "name" for phase names, "subtasks" for the subtask array`,
@@ -261,7 +262,8 @@ export const IMPLEMENTATION_PLAN_SCHEMA_HINT = `\`\`\`
       "subtasks": [
         {
           "id": "string (unique subtask identifier)",
-          "description": "string (what this subtask does)",
+          "title": "string (short 3-10 word summary)",
+          "description": "string (detailed implementation instructions)",
           "status": "pending",
           "files_to_modify": ["string (optional)"],
           "files_to_create": ["string (optional)"],

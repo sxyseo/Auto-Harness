@@ -6,7 +6,7 @@
  */
 
 import { ipcMain, app } from 'electron';
-import { spawn, execFileSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
@@ -29,14 +29,6 @@ import {
   isKuzuAvailable,
 } from '../memory-service';
 import { validateOpenAIApiKey } from '../api-validation-service';
-// Python utility helpers (inlined after python-detector/python-env-manager removal)
-function getSystemPythonPath(): string {
-  return process.platform === 'win32' ? 'python' : 'python3';
-}
-function parsePythonCmd(cmd: string): [string, string[]] {
-  const parts = cmd.trim().split(/\s+/);
-  return [parts[0], parts.slice(1)];
-}
 import { openTerminalWithCommand } from './claude-code-handlers';
 
 /**
@@ -202,155 +194,116 @@ function getOllamaInstallCommand(): string {
   return getPlatformOllamaInstallCommand();
 }
 
-/**
- * Execute the ollama_model_detector.py Python script.
- * Spawns a subprocess to run Ollama detection/management commands with a 10-second timeout.
- * Used to check Ollama status, list models, and manage downloads.
- *
- * Includes deduplication: identical command+baseUrl requests within 2s return the cached
- * result/promise instead of spawning a new subprocess. This prevents runaway subprocess
- * spawning from React re-render loops.
- *
- * Supported commands:
- * - 'check-status': Verify Ollama service is running
- * - 'list-models': Get all available models
- * - 'list-embedding-models': Get only embedding models
- * - 'pull-model': Download a specific model (see OLLAMA_PULL_MODEL handler for full implementation)
- *
- * @async
- * @param {string} command - The command to execute (check-status, list-models, list-embedding-models, pull-model)
- * @param {string} [baseUrl] - Optional Ollama API base URL (defaults to http://localhost:11434)
- * @returns {Promise<{success, data?, error?}>} Result object with success flag and data/error
- */
-// Deduplication cache to prevent rapid-fire subprocess spawning (e.g., from React re-render loops)
-const ollamaDetectorCache = new Map<string, { promise: Promise<{ success: boolean; data?: unknown; error?: string }>; timestamp: number }>();
-const OLLAMA_CACHE_TTL_MS = 2000; // Cache results for 2 seconds
+// ============================================
+// Native Ollama HTTP API client (replaces Python subprocess)
+// ============================================
 
-async function executeOllamaDetector(
-  command: string,
-  baseUrl?: string
+const OLLAMA_DEFAULT_URL = 'http://localhost:11434';
+const OLLAMA_TIMEOUT_MS = 10000;
+
+// Known embedding model name patterns
+const EMBEDDING_MODEL_PATTERNS = [
+  'embed', 'embedding', 'bge-', 'gte-', 'e5-', 'nomic-embed',
+  'mxbai-embed', 'snowflake-arctic-embed', 'all-minilm',
+];
+
+function isEmbeddingModel(name: string): boolean {
+  const lower = name.toLowerCase();
+  return EMBEDDING_MODEL_PATTERNS.some(p => lower.includes(p));
+}
+
+// Deduplication cache to prevent rapid-fire HTTP requests (e.g., from React re-render loops)
+const ollamaApiCache = new Map<string, { promise: Promise<{ success: boolean; data?: unknown; error?: string }>; timestamp: number }>();
+const OLLAMA_CACHE_TTL_MS = 2000;
+
+function cachedOllamaRequest(
+  key: string,
+  fn: () => Promise<{ success: boolean; data?: unknown; error?: string }>
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
-  // Deduplication: return cached promise for identical requests within TTL
-  const cacheKey = `${command}:${baseUrl || 'default'}`;
-  const cached = ollamaDetectorCache.get(cacheKey);
+  const cached = ollamaApiCache.get(key);
   if (cached && Date.now() - cached.timestamp < OLLAMA_CACHE_TTL_MS) {
-    if (process.env.DEBUG) {
-      console.log('[OllamaDetector] Returning cached result for:', command);
-    }
     return cached.promise;
   }
-
-  const promise = executeOllamaDetectorImpl(command, baseUrl);
-  ollamaDetectorCache.set(cacheKey, { promise, timestamp: Date.now() });
-
-  // Clean up cache entry after TTL
+  const promise = fn();
+  ollamaApiCache.set(key, { promise, timestamp: Date.now() });
   promise.finally(() => {
     setTimeout(() => {
-      const entry = ollamaDetectorCache.get(cacheKey);
+      const entry = ollamaApiCache.get(key);
       if (entry && entry.promise === promise) {
-        ollamaDetectorCache.delete(cacheKey);
+        ollamaApiCache.delete(key);
       }
     }, OLLAMA_CACHE_TTL_MS);
   });
-
   return promise;
 }
 
-async function executeOllamaDetectorImpl(
-  command: string,
-  baseUrl?: string
-): Promise<{ success: boolean; data?: unknown; error?: string }> {
-  // Use system Python path for ollama_model_detector.py script
-  const pythonCmd = getSystemPythonPath();
+/**
+ * Make an HTTP request to the Ollama API.
+ */
+async function ollamaFetch(
+  urlPath: string,
+  baseUrl?: string,
+  options?: { method?: string; body?: string; timeout?: number }
+): Promise<Response> {
+  const base = (baseUrl || OLLAMA_DEFAULT_URL).replace(/\/+$/, '');
+  const controller = new AbortController();
+  const timeout = options?.timeout ?? OLLAMA_TIMEOUT_MS;
+  const timer = setTimeout(() => controller.abort(), timeout);
 
-  // Find the ollama_model_detector.py script
-  const possiblePaths = [
-    // Packaged app paths (check FIRST for packaged builds)
-    ...(app.isPackaged
-      ? [path.join(process.resourcesPath, 'backend', 'ollama_model_detector.py')]
-      : []),
-    // Development paths
-    path.resolve(__dirname, '..', '..', '..', 'backend', 'ollama_model_detector.py'),
-    path.resolve(process.cwd(), 'apps', 'backend', 'ollama_model_detector.py')
-  ];
+  try {
+    return await fetch(`${base}${urlPath}`, {
+      method: options?.method ?? 'GET',
+      body: options?.body,
+      headers: options?.body ? { 'Content-Type': 'application/json' } : undefined,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
-  let scriptPath: string | null = null;
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
-      scriptPath = p;
-      break;
+/**
+ * Check if Ollama service is running via its API.
+ */
+async function checkOllamaRunning(baseUrl?: string): Promise<OllamaStatus> {
+  const url = (baseUrl || OLLAMA_DEFAULT_URL).replace(/\/+$/, '');
+  try {
+    const res = await ollamaFetch('/api/version', baseUrl);
+    if (res.ok) {
+      const data = await res.json();
+      return { running: true, url, version: data.version };
     }
+    return { running: false, url, message: `HTTP ${res.status}` };
+  } catch {
+    return { running: false, url, message: 'Cannot connect to Ollama' };
   }
+}
 
-  if (!scriptPath) {
-    if (process.env.DEBUG) {
-      console.error(
-        '[OllamaDetector] Python script not found. Searched paths:',
-        possiblePaths
-      );
-    }
-    return { success: false, error: 'ollama_model_detector.py script not found' };
-  }
-
-  if (process.env.DEBUG) {
-    console.log('[OllamaDetector] Using script at:', scriptPath);
-  }
-
-  const [pythonExe, baseArgs] = parsePythonCmd(pythonCmd);
-  const args = [...baseArgs, scriptPath, command];
-  if (baseUrl) {
-    args.push('--base-url', baseUrl);
-  }
-
-  return new Promise((resolve) => {
-    let resolved = false;
-    const proc = spawn(pythonExe, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: process.env as Record<string, string>,
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString('utf-8');
-    });
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString('utf-8');
-    });
-
-    // Single timeout mechanism to avoid race condition
-    const timeoutId = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        proc.kill();
-        resolve({ success: false, error: 'Timeout' });
-      }
-    }, 10000);
-
-    proc.on('close', (code) => {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timeoutId);
-      if (code === 0 && stdout) {
-        try {
-          resolve(JSON.parse(stdout));
-        } catch {
-          resolve({ success: false, error: `Invalid JSON: ${stdout}` });
-        }
-      } else {
-        resolve({ success: false, error: stderr || `Exit code ${code}` });
-      }
-    });
-
-    proc.on('error', (err) => {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timeoutId);
-      resolve({ success: false, error: err.message });
-    });
+/**
+ * List all models from Ollama API and classify as embedding or LLM.
+ */
+async function listOllamaModelsNative(baseUrl?: string): Promise<OllamaModel[]> {
+  const res = await ollamaFetch('/api/tags', baseUrl);
+  if (!res.ok) throw new Error(`Ollama API returned ${res.status}`);
+  const data = await res.json();
+  const models: OllamaModel[] = (data.models ?? []).map((m: {
+    name: string;
+    size: number;
+    modified_at: string;
+    details?: { family?: string };
+  }) => {
+    const sizeBytes = m.size ?? 0;
+    return {
+      name: m.name,
+      size_bytes: sizeBytes,
+      size_gb: Number((sizeBytes / 1e9).toFixed(2)),
+      modified_at: m.modified_at ?? '',
+      is_embedding: isEmbeddingModel(m.name),
+      embedding_dim: null,
+      description: m.details?.family ?? '',
+    };
   });
+  return models;
 }
 
 /**
@@ -557,24 +510,20 @@ export function registerMemoryHandlers(): void {
   // Ollama Model Detection Handlers
   // ============================================
 
-  // Check if Ollama is running
+  // Check if Ollama is running (native HTTP)
   ipcMain.handle(
     IPC_CHANNELS.OLLAMA_CHECK_STATUS,
     async (_, baseUrl?: string): Promise<IPCResult<OllamaStatus>> => {
       try {
-        const result = await executeOllamaDetector('check-status', baseUrl);
-
-        if (!result.success) {
-          return {
-            success: false,
-            error: result.error || 'Failed to check Ollama status',
-          };
-        }
-
-        return {
-          success: true,
-          data: result.data as OllamaStatus,
-        };
+        const status = await cachedOllamaRequest(
+          `check-status:${baseUrl || 'default'}`,
+          async () => {
+            const s = await checkOllamaRunning(baseUrl);
+            return { success: true, data: s };
+          }
+        );
+        const data = status.data as OllamaStatus;
+        return { success: true, data };
       } catch (error) {
         return {
           success: false,
@@ -649,23 +598,18 @@ export function registerMemoryHandlers(): void {
      IPC_CHANNELS.OLLAMA_LIST_MODELS,
      async (_, baseUrl?: string): Promise<IPCResult<{ models: OllamaModel[]; count: number }>> => {
       try {
-        const result = await executeOllamaDetector('list-models', baseUrl);
-
+        const result = await cachedOllamaRequest(
+          `list-models:${baseUrl || 'default'}`,
+          async () => {
+            const models = await listOllamaModelsNative(baseUrl);
+            return { success: true, data: { models, count: models.length } };
+          }
+        );
         if (!result.success) {
-          return {
-            success: false,
-            error: result.error || 'Failed to list Ollama models',
-          };
+          return { success: false, error: result.error || 'Failed to list Ollama models' };
         }
-
-        const data = result.data as { models: OllamaModel[]; count: number; url: string };
-        return {
-          success: true,
-          data: {
-            models: data.models,
-            count: data.count,
-          },
-        };
+        const data = result.data as { models: OllamaModel[]; count: number };
+        return { success: true, data };
       } catch (error) {
         return {
           success: false,
@@ -691,27 +635,27 @@ export function registerMemoryHandlers(): void {
        baseUrl?: string
      ): Promise<IPCResult<{ embedding_models: OllamaEmbeddingModel[]; count: number }>> => {
       try {
-        const result = await executeOllamaDetector('list-embedding-models', baseUrl);
-
+        const result = await cachedOllamaRequest(
+          `list-embedding-models:${baseUrl || 'default'}`,
+          async () => {
+            const allModels = await listOllamaModelsNative(baseUrl);
+            const embeddingModels: OllamaEmbeddingModel[] = allModels
+              .filter(m => m.is_embedding)
+              .map(m => ({
+                name: m.name,
+                embedding_dim: m.embedding_dim ?? null,
+                description: m.description ?? '',
+                size_bytes: m.size_bytes,
+                size_gb: m.size_gb,
+              }));
+            return { success: true, data: { embedding_models: embeddingModels, count: embeddingModels.length } };
+          }
+        );
         if (!result.success) {
-          return {
-            success: false,
-            error: result.error || 'Failed to list Ollama embedding models',
-          };
+          return { success: false, error: result.error || 'Failed to list embedding models' };
         }
-
-        const data = result.data as {
-          embedding_models: OllamaEmbeddingModel[];
-          count: number;
-          url: string;
-        };
-        return {
-          success: true,
-          data: {
-            embedding_models: data.embedding_models,
-            count: data.count,
-          },
-        };
+        const data = result.data as { embedding_models: OllamaEmbeddingModel[]; count: number };
+        return { success: true, data };
       } catch (error) {
         return {
           success: false,
@@ -744,118 +688,65 @@ export function registerMemoryHandlers(): void {
      async (
        event,
        modelName: string,
-       _baseUrl?: string
+       baseUrl?: string
      ): Promise<IPCResult<OllamaPullResult>> => {
       try {
-        // Use system Python path for ollama_model_detector.py script
-        const pythonCmd = getSystemPythonPath();
+        const base = (baseUrl || OLLAMA_DEFAULT_URL).replace(/\/+$/, '');
+        const res = await fetch(`${base}/api/pull`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: modelName, stream: true }),
+        });
 
-        // Find the ollama_model_detector.py script
-        const possiblePaths = [
-          // Packaged app paths (check FIRST for packaged builds)
-          ...(app.isPackaged
-            ? [path.join(process.resourcesPath, 'backend', 'ollama_model_detector.py')]
-            : []),
-          // Development paths
-          path.resolve(__dirname, '..', '..', '..', 'backend', 'ollama_model_detector.py'),
-          path.resolve(process.cwd(), 'apps', 'backend', 'ollama_model_detector.py')
-        ];
+        if (!res.ok) {
+          return { success: false, error: `Ollama API returned ${res.status}` };
+        }
 
-        let scriptPath: string | null = null;
-        for (const p of possiblePaths) {
-          if (fs.existsSync(p)) {
-            scriptPath = p;
-            break;
+        const reader = res.body?.getReader();
+        if (!reader) {
+          return { success: false, error: 'No response body from Ollama' };
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+        const output: string[] = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const progress = JSON.parse(line);
+              output.push(progress.status || '');
+
+              if (progress.completed !== undefined && progress.total !== undefined) {
+                const percentage = progress.total > 0
+                  ? Math.round((progress.completed / progress.total) * 100)
+                  : 0;
+                event.sender.send(IPC_CHANNELS.OLLAMA_PULL_PROGRESS, {
+                  modelName,
+                  status: progress.status || 'downloading',
+                  completed: progress.completed,
+                  total: progress.total,
+                  percentage,
+                });
+              }
+            } catch {
+              // Skip non-JSON lines
+            }
           }
         }
 
-        if (!scriptPath) {
-          return { success: false, error: 'ollama_model_detector.py script not found' };
-        }
-
-        const [pythonExe, baseArgs] = parsePythonCmd(pythonCmd);
-        const args = [...baseArgs, scriptPath, 'pull-model', modelName];
-
-        return new Promise((resolve) => {
-          const proc = spawn(pythonExe, args, {
-            stdio: ['ignore', 'pipe', 'pipe'],
-            timeout: 600000, // 10 minute timeout for large models
-            env: process.env as Record<string, string>,
-          });
-
-          let stdout = '';
-          let stderr = '';
-          let stderrBuffer = ''; // Buffer for NDJSON parsing
-
-          proc.stdout.on('data', (data) => {
-            stdout += data.toString('utf-8');
-          });
-
-          proc.stderr.on('data', (data) => {
-            const chunk = data.toString('utf-8');
-            stderr += chunk;
-            stderrBuffer += chunk;
-
-            // Parse NDJSON (newline-delimited JSON) from stderr
-            // Ollama sends progress data as: {"status":"downloading","completed":X,"total":Y}
-            const lines = stderrBuffer.split('\n');
-            // Keep the last incomplete line in the buffer
-            stderrBuffer = lines.pop() || '';
-
-            lines.forEach((line) => {
-              if (line.trim()) {
-                try {
-                  const progressData = JSON.parse(line);
-
-                  // Extract progress information
-                  if (progressData.completed !== undefined && progressData.total !== undefined) {
-                    const percentage = progressData.total > 0
-                      ? Math.round((progressData.completed / progressData.total) * 100)
-                      : 0;
-
-                    // Emit progress event to renderer
-                    event.sender.send(IPC_CHANNELS.OLLAMA_PULL_PROGRESS, {
-                      modelName,
-                      status: progressData.status || 'downloading',
-                      completed: progressData.completed,
-                      total: progressData.total,
-                      percentage,
-                    });
-                  }
-                } catch {
-                  // Skip lines that aren't valid JSON
-                }
-              }
-            });
-          });
-
-          proc.on('close', (code) => {
-            if (code === 0 && stdout) {
-              try {
-                const result = JSON.parse(stdout);
-                if (result.success) {
-                  resolve({
-                    success: true,
-                    data: result.data as OllamaPullResult,
-                  });
-                } else {
-                  resolve({
-                    success: false,
-                    error: result.error || 'Failed to pull model',
-                  });
-                }
-              } catch {
-                resolve({ success: false, error: `Invalid JSON: ${stdout}` });
-              }
-            } else {
-              resolve({ success: false, error: stderr || `Exit code ${code}` });
-            }
-          });
-
-          proc.on('error', (err) => {
-            resolve({ success: false, error: err.message });
-          });
-        });
+        return {
+          success: true,
+          data: { model: modelName, status: 'completed', output },
+        };
       } catch (error) {
         return {
           success: false,

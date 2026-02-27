@@ -23,6 +23,18 @@ import { findTaskWorktree } from '../../worktree-paths';
 import { projectStore } from '../../project-store';
 import { getIsolatedGitEnv, detectWorktreeBranch } from '../../utils/git-isolation';
 import { cancelFallbackTimer } from '../agent-events-handlers';
+import { readSettingsFile } from '../../settings-utils';
+import type { ProviderAccount } from '../../../shared/types/provider-account';
+
+/**
+ * Check if any provider account is configured (API key or OAuth).
+ * Used to bypass the legacy hasValidAuth() check for non-Anthropic providers.
+ */
+function hasAnyProviderAccount(): boolean {
+  const settings = readSettingsFile();
+  const accounts = (settings?.providerAccounts as ProviderAccount[] | undefined) ?? [];
+  return accounts.length > 0;
+}
 
 /**
  * Safe file read that handles missing files without TOCTOU issues.
@@ -179,13 +191,13 @@ export function registerTaskExecutionHandlers(
         return;
       }
 
-      // Check authentication - Claude requires valid auth to run tasks
-      if (!profileManager.hasValidAuth()) {
-        console.warn('[TASK_START] No valid authentication for active profile');
+      // Check authentication - requires valid legacy profile OR provider account
+      if (!profileManager.hasValidAuth() && !hasAnyProviderAccount()) {
+        console.warn('[TASK_START] No valid authentication for active profile or provider accounts');
         mainWindow.webContents.send(
           IPC_CHANNELS.TASK_ERROR,
           taskId,
-          'Claude authentication required. Please go to Settings > Claude Profiles and authenticate your account, or set an OAuth token.'
+          'Authentication required. Please add an account in Settings > Accounts before starting tasks.'
         );
         return;
       }
@@ -755,16 +767,16 @@ export function registerTaskExecutionHandlers(
             return { success: false, error: initResult.error };
           }
           const profileManager = initResult.profileManager;
-          if (!profileManager.hasValidAuth()) {
-            console.warn('[TASK_UPDATE_STATUS] No valid authentication for active profile');
+          if (!profileManager.hasValidAuth() && !hasAnyProviderAccount()) {
+            console.warn('[TASK_UPDATE_STATUS] No valid authentication for active profile or provider accounts');
             if (mainWindow) {
               mainWindow.webContents.send(
                 IPC_CHANNELS.TASK_ERROR,
                 taskId,
-                'Claude authentication required. Please go to Settings > Claude Profiles and authenticate your account, or set an OAuth token.'
+                'Authentication required. Please add an account in Settings > Accounts before starting tasks.'
               );
             }
-            return { success: false, error: 'Claude authentication required' };
+            return { success: false, error: 'Authentication required' };
           }
 
           console.warn('[TASK_UPDATE_STATUS] Auto-starting task:', taskId);
@@ -1063,6 +1075,19 @@ export function registerTaskExecutionHandlers(
             : 'pending';
           plan.updated_at = new Date().toISOString();
 
+          // Sync executionPhase and xstateState with the recovery status.
+          // Without this, project-store.ts uses the stale executionPhase (which has
+          // priority over xstateState) when loading tasks, causing the Kanban spinner
+          // to persist even though the task status has been corrected.
+          plan.xstateState = newStatus;
+          if (newStatus === 'human_review' || newStatus === 'done') {
+            plan.executionPhase = 'complete';
+          } else if (newStatus === 'backlog') {
+            plan.executionPhase = 'idle';
+          } else if (newStatus === 'in_progress') {
+            plan.executionPhase = 'coding';
+          }
+
           // Add recovery note
           plan.recoveryNote = `Task recovered from stuck state at ${new Date().toISOString()}`;
 
@@ -1075,6 +1100,8 @@ export function registerTaskExecutionHandlers(
             // Just update status in plan file (project store reads from file, no separate update needed)
             plan.status = 'human_review';
             plan.planStatus = 'review';
+            plan.executionPhase = 'complete';
+            plan.xstateState = 'human_review';
 
             // Write to ALL plan file locations to ensure consistency
             const planContent = JSON.stringify(plan, null, 2);
@@ -1241,7 +1268,7 @@ export function registerTaskExecutionHandlers(
             };
           }
           const profileManager = initResult.profileManager;
-          if (!profileManager.hasValidAuth()) {
+          if (!profileManager.hasValidAuth() && !hasAnyProviderAccount()) {
             console.warn('[Recovery] Auth check failed, cannot auto-restart task');
             // Recovery succeeded but we can't restart without auth
             return {
@@ -1250,7 +1277,7 @@ export function registerTaskExecutionHandlers(
                 taskId,
                 recovered: true,
                 newStatus,
-                message: 'Task recovered but cannot restart: Claude authentication required. Please go to Settings > Claude Profiles and authenticate your account.',
+                message: 'Task recovered but cannot restart: authentication required. Please add an account in Settings > Accounts.',
                 autoRestarted: false
               }
             };

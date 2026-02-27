@@ -29,6 +29,9 @@ const BASE_WRITE_TOOLS = ['Write', 'Edit', 'Bash'] as const;
 /** Web tools for documentation lookup and research */
 const WEB_TOOLS = ['WebFetch', 'WebSearch'] as const;
 
+/** All builtin tools — given to most agents since security is enforced at the tool execution layer */
+const ALL_BUILTIN_TOOLS = [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS, ...WEB_TOOLS] as const;
+
 // =============================================================================
 // Auto-Claude MCP Tools (Custom build management)
 // =============================================================================
@@ -166,50 +169,50 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
   // SPEC CREATION PHASES (Minimal tools, fast startup)
   // ═══════════════════════════════════════════════════════════════════════
   spec_gatherer: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
-    mcpServers: [],
+    tools: [...ALL_BUILTIN_TOOLS],
+    mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
   spec_researcher: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
   spec_writer: {
-    tools: [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS],
-    mcpServers: [],
+    tools: [...ALL_BUILTIN_TOOLS],
+    mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   spec_critic: {
-    tools: [...BASE_READ_TOOLS],
-    mcpServers: [],
+    tools: [...ALL_BUILTIN_TOOLS],
+    mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   spec_discovery: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
-    mcpServers: [],
+    tools: [...ALL_BUILTIN_TOOLS],
+    mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
   spec_context: {
-    tools: [...BASE_READ_TOOLS],
-    mcpServers: [],
+    tools: [...ALL_BUILTIN_TOOLS],
+    mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
   spec_validation: {
-    tools: [...BASE_READ_TOOLS],
-    mcpServers: [],
+    tools: [...ALL_BUILTIN_TOOLS],
+    mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   spec_compaction: {
-    tools: [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS],
-    mcpServers: [],
+    tools: [...ALL_BUILTIN_TOOLS],
+    mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
@@ -220,7 +223,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
    * Needs full tool access to read/write spec files and research documentation.
    */
   spec_orchestrator: {
-    tools: [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
@@ -232,7 +235,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
    * Needs full tool access with MCP integrations.
    */
   build_orchestrator: {
-    tools: [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7', 'graphiti', 'auto-claude'],
     mcpServersOptional: ['linear'],
     autoClaudeTools: [
@@ -249,7 +252,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
   // Note: "linear" is conditional on project setting "update_linear_with_tasks"
   // ═══════════════════════════════════════════════════════════════════════
   planner: {
-    tools: [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7', 'graphiti', 'auto-claude'],
     mcpServersOptional: ['linear'],
     autoClaudeTools: [
@@ -260,7 +263,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     thinkingDefault: 'high',
   },
   coder: {
-    tools: [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7', 'graphiti', 'auto-claude'],
     mcpServersOptional: ['linear'],
     autoClaudeTools: [
@@ -277,7 +280,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
   // QA PHASES (Read + test + browser + Graphiti memory)
   // ═══════════════════════════════════════════════════════════════════════
   qa_reviewer: {
-    tools: [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7', 'graphiti', 'auto-claude', 'browser'],
     mcpServersOptional: ['linear'],
     autoClaudeTools: [
@@ -288,7 +291,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     thinkingDefault: 'high',
   },
   qa_fixer: {
-    tools: [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7', 'graphiti', 'auto-claude', 'browser'],
     mcpServersOptional: ['linear'],
     autoClaudeTools: [
@@ -304,7 +307,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
   // UTILITY PHASES (Minimal, no MCP)
   // ═══════════════════════════════════════════════════════════════════════
   insights: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: [],
     autoClaudeTools: [],
     thinkingDefault: 'low',
@@ -322,25 +325,25 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     thinkingDefault: 'low',
   },
   pr_template_filler: {
-    tools: [...BASE_READ_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: [],
     autoClaudeTools: [],
     thinkingDefault: 'low',
   },
   pr_reviewer: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   pr_orchestrator_parallel: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   pr_followup_parallel: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
@@ -352,7 +355,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     thinkingDefault: 'low',
   },
   pr_finding_validator: {
-    tools: [...BASE_READ_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: [],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
@@ -362,19 +365,19 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
   // ANALYSIS PHASES
   // ═══════════════════════════════════════════════════════════════════════
   analysis: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
   batch_analysis: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: [],
     autoClaudeTools: [],
     thinkingDefault: 'low',
   },
   batch_validation: {
-    tools: [...BASE_READ_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: [],
     autoClaudeTools: [],
     thinkingDefault: 'low',
@@ -384,19 +387,19 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
   // ROADMAP & IDEATION
   // ═══════════════════════════════════════════════════════════════════════
   roadmap_discovery: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   competitor_analysis: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   ideation: {
-    tools: [...BASE_READ_TOOLS, ...WEB_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS],
     mcpServers: [],
     autoClaudeTools: [],
     thinkingDefault: 'high',

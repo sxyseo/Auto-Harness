@@ -21,6 +21,7 @@ import { AccountPriorityList, type UnifiedAccount } from './AccountPriorityList'
 import { ProviderAccountsList } from './ProviderAccountsList';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useToast } from '../../hooks/use-toast';
+import { PROVIDER_REGISTRY } from '@shared/constants/providers';
 import type { AppSettings, ClaudeAutoSwitchSettings, ProfileUsageSummary } from '../../../shared/types';
 
 interface AccountSettingsProps {
@@ -70,15 +71,15 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
   const buildUnifiedAccounts = useCallback((): UnifiedAccount[] => {
     const allAccounts = getProviderAccounts();
     return allAccounts.map(account => {
-      const usageData = account.claudeProfileId
+      const usageData = (account.claudeProfileId
         ? profileUsageData.get(account.claudeProfileId)
-        : undefined;
+        : undefined) ?? profileUsageData.get(account.id);
       return {
         id: account.id,
         name: account.name,
         type: account.authType === 'oauth' ? 'oauth' : 'api',
         displayName: account.name,
-        identifier: account.baseUrl ?? account.provider,
+        identifier: account.baseUrl ?? (PROVIDER_REGISTRY.find(p => p.id === account.provider)?.name ?? account.provider),
         isActive: priorityOrder.length > 0 ? priorityOrder[0] === account.id : false,
         isNext: false,
         isAvailable: true,

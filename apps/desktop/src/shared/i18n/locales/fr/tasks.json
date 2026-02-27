@@ -306,7 +306,9 @@
     }
   },
   "subtasks": {
-    "untitled": "Sous-tâche sans titre"
+    "untitled": "Sous-tâche sans titre",
+    "expandAll": "Tout déplier",
+    "collapseAll": "Tout replier"
   },
   "bulkPR": {
     "selectAllInColumn": "Sélectionner toutes les tâches de la colonne",

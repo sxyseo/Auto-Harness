@@ -18,6 +18,8 @@ export interface PromptContext {
   projectDir: string;
   /** Content of CLAUDE.md (if loaded) */
   claudeMd?: string | null;
+  /** Content of agents.md (provider-agnostic agent instruction file) */
+  agentsMd?: string | null;
   /** Base branch name for git comparisons (e.g., "main", "develop") */
   baseBranch?: string;
   /** Human input from HUMAN_INPUT.md (for coder prompts) */

@@ -98,12 +98,13 @@ export interface SessionMessage {
 
 /** Possible outcomes of a session */
 export type SessionOutcome =
-  | 'completed'      // Session finished normally (all steps used or model stopped)
-  | 'error'          // Session ended with an unrecoverable error
-  | 'rate_limited'   // Hit provider rate limit (429)
-  | 'auth_failure'   // Authentication error (401)
-  | 'cancelled'      // Aborted via AbortSignal
-  | 'max_steps';     // Reached maxSteps limit
+  | 'completed'        // Session finished normally (all steps used or model stopped)
+  | 'error'            // Session ended with an unrecoverable error
+  | 'rate_limited'     // Hit provider rate limit (429)
+  | 'auth_failure'     // Authentication error (401)
+  | 'cancelled'        // Aborted via AbortSignal
+  | 'max_steps'        // Reached maxSteps limit
+  | 'context_window';  // Approaching context window limit (90%), eligible for continuation
 
 /**
  * Result returned when a session finishes (success or failure).

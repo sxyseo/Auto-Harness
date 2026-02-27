@@ -52,6 +52,8 @@ const PROVIDER_BADGE_COLORS: Record<string, string> = {
   'azure': 'bg-sky-500/10 text-sky-500 border-sky-500/20',
   'ollama': 'bg-purple-500/10 text-purple-500 border-purple-500/20',
   'openai-compatible': 'bg-gray-500/10 text-gray-500 border-gray-500/20',
+  'zai': 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+  'openrouter': 'bg-violet-500/10 text-violet-500 border-violet-500/20',
 };
 
 /**
@@ -98,6 +100,16 @@ const getProviderName = (providerId: string): string => {
   return PROVIDER_REGISTRY.find(p => p.id === providerId)?.name ?? providerId;
 };
 
+/**
+ * Check whether a provider account supports real-time usage monitoring.
+ * Currently: Anthropic OAuth, OpenAI OAuth, and Z.AI API key accounts.
+ */
+const accountHasUsageMonitoring = (account: { provider: string; authType?: string; apiKey?: string }): boolean => {
+  if ((account.provider === 'anthropic' || account.provider === 'openai') && account.authType === 'oauth') return true;
+  if (account.provider === 'zai' && account.apiKey) return true;
+  return false;
+};
+
 export function UsageIndicator() {
   const { t, i18n } = useTranslation(['common']);
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
@@ -114,8 +126,8 @@ export function UsageIndicator() {
   const { account: activeAccount, orderedAccounts } = useActiveProvider();
   const otherAccounts = orderedAccounts.slice(1);
 
-  // Usage monitoring is available for Anthropic and OpenAI (Codex) OAuth accounts
-  const hasUsageMonitoring = (activeAccount?.provider === 'anthropic' || activeAccount?.provider === 'openai') && activeAccount?.authType === 'oauth';
+  // Usage monitoring is available for Anthropic/OpenAI OAuth accounts and Z.AI API key accounts
+  const hasUsageMonitoring = activeAccount ? accountHasUsageMonitoring(activeAccount) : false;
   // Subscription accounts (any provider) have rate limits even though we can't monitor them
   const hasSubscriptionLimits = activeAccount?.billingModel === 'subscription';
   const isPayPerUse = activeAccount?.billingModel === 'pay-per-use';
@@ -182,12 +194,57 @@ export function UsageIndicator() {
 
     const currentOrder = settings.globalPriorityOrder ?? providerAccounts.map(a => a.id);
     const newOrder = [accountId, ...currentOrder.filter(id => id !== accountId)];
+
+    // Find usage data for the target account from otherProfiles
+    const targetAccount = providerAccounts.find(a => a.id === accountId);
+    const targetProfileData = otherProfiles.find(p => p.profileId === (targetAccount?.claudeProfileId ?? accountId))
+      ?? otherProfiles.find(p => p.profileId === accountId);
+
+    // Optimistic update: swap usage data immediately
+    const previousUsage = usage;
+    if (targetProfileData) {
+      setUsage({
+        profileId: targetProfileData.profileId,
+        profileName: targetProfileData.profileName,
+        profileEmail: targetProfileData.profileEmail,
+        sessionPercent: targetProfileData.sessionPercent,
+        weeklyPercent: targetProfileData.weeklyPercent,
+        sessionResetTimestamp: targetProfileData.sessionResetTimestamp,
+        weeklyResetTimestamp: targetProfileData.weeklyResetTimestamp,
+        fetchedAt: new Date(),
+        needsReauthentication: targetProfileData.needsReauthentication,
+      });
+      // Move previous active to other profiles list
+      if (previousUsage) {
+        const previousAsSummary: ProfileUsageSummary = {
+          profileId: previousUsage.profileId || '',
+          profileName: previousUsage.profileName || '',
+          profileEmail: previousUsage.profileEmail,
+          sessionPercent: previousUsage.sessionPercent || 0,
+          weeklyPercent: previousUsage.weeklyPercent || 0,
+          sessionResetTimestamp: previousUsage.sessionResetTimestamp,
+          weeklyResetTimestamp: previousUsage.weeklyResetTimestamp,
+          isAuthenticated: true,
+          isRateLimited: false,
+          availabilityScore: 100 - Math.max(previousUsage.sessionPercent || 0, previousUsage.weeklyPercent || 0),
+          isActive: false,
+          needsReauthentication: previousUsage.needsReauthentication,
+        };
+        setOtherProfiles(prev =>
+          prev.filter(p => p.profileId !== targetProfileData.profileId).concat([previousAsSummary])
+        );
+      }
+    } else {
+      // No cached data for target — clear stale usage so it shows loading
+      setUsage(null);
+    }
+
     await setQueueOrder(newOrder);
 
-    // Refresh usage if we switched to an Anthropic account
+    // Fetch fresh data from backend
     window.electronAPI.requestUsageUpdate();
     window.electronAPI.requestAllProfilesUsage?.();
-  }, [settings.globalPriorityOrder, providerAccounts, setQueueOrder]);
+  }, [settings.globalPriorityOrder, providerAccounts, setQueueOrder, otherProfiles, usage]);
 
   /**
    * Handle swapping to a different profile (legacy Anthropic-only path)
@@ -499,10 +556,11 @@ export function UsageIndicator() {
                   {t('common:usage.otherAccounts')}
                 </div>
                 {otherAccounts.map((account) => {
-                  const isAnthropicOAuth = account.provider === 'anthropic' && account.authType === 'oauth';
+                  const hasOAuthMonitoring = accountHasUsageMonitoring(account);
                   const isAccountSubscription = account.billingModel === 'subscription';
                   const profileData = otherProfiles.find(p => p.profileId === account.claudeProfileId)
-                    ?? (isAnthropicOAuth
+                    ?? otherProfiles.find(p => p.profileId === account.id)
+                    ?? (hasOAuthMonitoring
                       ? otherProfiles.find(p => p.profileName === account.name || p.profileEmail === account.name)
                       : undefined);
 
@@ -531,7 +589,7 @@ export function UsageIndicator() {
                             {t('common:usage.swap')}
                           </button>
                         </div>
-                        {isAnthropicOAuth && profileData ? (
+                        {hasOAuthMonitoring && profileData ? (
                           <div className="flex items-center gap-2 mt-0.5">
                             <div className="flex items-center gap-1">
                               <Clock className="h-2.5 w-2.5 text-muted-foreground/70" />
@@ -654,9 +712,10 @@ export function UsageIndicator() {
                   {t('common:usage.otherAccounts')}
                 </div>
                 {otherAccounts.map((account) => {
-                  const isAnthropicOAuth = account.provider === 'anthropic' && account.authType === 'oauth';
+                  const hasOAuthMonitoring = accountHasUsageMonitoring(account);
                   const profileData = otherProfiles.find(p => p.profileId === account.claudeProfileId)
-                    ?? (isAnthropicOAuth
+                    ?? otherProfiles.find(p => p.profileId === account.id)
+                    ?? (hasOAuthMonitoring
                       ? otherProfiles.find(p => p.profileName === account.name || p.profileEmail === account.name)
                       : undefined);
 
@@ -685,7 +744,7 @@ export function UsageIndicator() {
                             {t('common:usage.swap')}
                           </button>
                         </div>
-                        {isAnthropicOAuth && profileData ? (
+                        {hasOAuthMonitoring && profileData ? (
                           <div className="flex items-center gap-2 mt-0.5">
                             <div className="flex items-center gap-1">
                               <Clock className="h-2.5 w-2.5 text-muted-foreground/70" />
@@ -729,63 +788,218 @@ export function UsageIndicator() {
     );
   }
 
-  // Show unavailable state for Anthropic OAuth accounts - with better messaging based on cause
+  // Show unavailable state — but still allow account swapping via popover
   if (!isAvailable || !usage) {
-    // Check if it's a re-auth issue (better UX than generic "not supported")
     const needsReauth = activeProfileNeedsReauth;
 
     return (
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border cursor-help ${
-                needsReauth
-                  ? 'bg-red-500/10 border-red-500/20 text-red-500'
-                  : 'bg-muted/50 text-muted-foreground'
-              }`}
-              aria-label={needsReauth ? t('common:usage.reauthRequired') : t('common:usage.dataUnavailable')}
-            >
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
+          <button
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${
+              needsReauth
+                ? 'bg-red-500/10 border-red-500/20 text-red-500'
+                : 'bg-muted/50 text-muted-foreground'
+            }`}
+            aria-label={needsReauth ? t('common:usage.reauthRequired') : t('common:usage.dataUnavailable')}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onClick={handleTriggerClick}
+          >
+            {needsReauth ? (
+              <>
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span className="text-xs font-semibold">!</span>
+              </>
+            ) : (
+              <>
+                <Activity className="h-3.5 w-3.5" />
+                <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
+              </>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="end"
+          className="text-xs w-72 p-0"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="p-3 space-y-3">
+            <div className="flex items-center gap-1.5 pb-2 border-b">
+              <Activity className="h-3.5 w-3.5" />
+              <span className="font-semibold text-xs">{t('common:usage.usageBreakdown')}</span>
+            </div>
+
+            {/* Status message */}
+            <div className="flex items-start gap-2.5 py-2">
               {needsReauth ? (
                 <>
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span className="text-xs font-semibold">!</span>
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-red-500">{t('common:usage.reauthRequired')}</p>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      {t('common:usage.reauthRequiredDescription')}
+                    </p>
+                  </div>
                 </>
               ) : (
                 <>
-                  <Activity className="h-3.5 w-3.5" />
-                  <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
-                </>
-              )}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs w-64">
-            <div className="space-y-1">
-              {needsReauth ? (
-                <>
-                  <p className="font-medium text-red-500">{t('common:usage.reauthRequired')}</p>
-                  <p className="text-muted-foreground text-[10px]">
-                    {t('common:usage.reauthRequiredDescription')}
-                  </p>
-                  <button
-                    onClick={handleOpenAccounts}
-                    className="text-[10px] text-primary mt-1 font-medium underline hover:text-primary/80 cursor-pointer"
-                  >
-                    {t('common:usage.clickToOpenSettings')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="font-medium">{t('common:usage.dataUnavailable')}</p>
-                  <p className="text-muted-foreground text-[10px]">
-                    {t('common:usage.dataUnavailableDescription')}
-                  </p>
+                  <Info className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium">{t('common:usage.dataUnavailable')}</p>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      {t('common:usage.dataUnavailableDescription')}
+                    </p>
+                  </div>
                 </>
               )}
             </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+
+            {/* Active account footer */}
+            {activeAccount && (
+              <button
+                type="button"
+                onClick={handleOpenAccounts}
+                className={`w-full pt-3 border-t flex items-center gap-2.5 hover:bg-muted/50 -mx-3 px-3 ${otherAccounts.length === 0 ? '-mb-3 pb-3 rounded-b-md' : 'pb-2'} transition-colors cursor-pointer group`}
+              >
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/10">
+                  <span className="text-xs font-semibold text-primary">
+                    {getInitials(activeAccount.name)}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {t('common:usage.activeAccount')}
+                    </span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border ${
+                      PROVIDER_BADGE_COLORS[activeAccount.provider] ?? PROVIDER_BADGE_COLORS['openai-compatible']
+                    }`}>
+                      {getProviderName(activeAccount.provider)}
+                    </span>
+                  </div>
+                  <div className={`font-medium text-xs truncate ${
+                    needsReauth ? 'text-destructive' : 'text-primary'
+                  }`}>
+                    {activeAccount.name}
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+              </button>
+            )}
+
+            {/* Other accounts with swap buttons */}
+            {otherAccounts.length > 0 && (
+              <div className="pt-2 -mx-3 px-3 -mb-3 pb-3 space-y-1">
+                <div className="text-[10px] text-muted-foreground font-medium mb-1.5">
+                  {t('common:usage.otherAccounts')}
+                </div>
+                {otherAccounts.map((account) => {
+                  const hasOAuthMonitoring = accountHasUsageMonitoring(account);
+                  const isAccountSubscription = account.billingModel === 'subscription';
+                  const profileData = otherProfiles.find(p => p.profileId === account.claudeProfileId)
+                    ?? otherProfiles.find(p => p.profileId === account.id)
+                    ?? (hasOAuthMonitoring
+                      ? otherProfiles.find(p => p.profileName === account.name || p.profileEmail === account.name)
+                      : undefined);
+
+                  return (
+                    <div
+                      key={account.id}
+                      className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-muted/30 transition-colors"
+                    >
+                      <div className={`relative`}>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          profileData?.isRateLimited || profileData?.needsReauthentication
+                            ? 'bg-red-500/10'
+                            : 'bg-muted/80'
+                        }`}>
+                          <span className={`text-[10px] font-semibold ${
+                            profileData?.isRateLimited || profileData?.needsReauthentication
+                              ? 'text-red-500'
+                              : 'text-foreground/70'
+                          }`}>
+                            {getInitials(account.name)}
+                          </span>
+                        </div>
+                        {(profileData?.isRateLimited || profileData?.needsReauthentication) && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-medium truncate">{account.name}</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border ${
+                            PROVIDER_BADGE_COLORS[account.provider] ?? PROVIDER_BADGE_COLORS['openai-compatible']
+                          }`}>
+                            {getProviderName(account.provider)}
+                          </span>
+                          <button
+                            onClick={(e) => handleSwapAccount(e, account.id)}
+                            className="text-[9px] px-1.5 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded transition-colors ml-auto"
+                          >
+                            {t('common:usage.swap')}
+                          </button>
+                        </div>
+                        {hasOAuthMonitoring && profileData ? (
+                          profileData.isRateLimited ? (
+                            <span className="text-[9px] text-red-500">
+                              {profileData.rateLimitType === 'weekly'
+                                ? t('common:usage.weeklyLimitReached')
+                                : t('common:usage.sessionLimitReached')}
+                            </span>
+                          ) : profileData.needsReauthentication ? (
+                            <span className="text-[9px] text-destructive">
+                              {t('common:usage.needsReauth')}
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-2.5 w-2.5 text-muted-foreground/70" />
+                                <div className="w-10 h-1 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${getBarColorClass(profileData.sessionPercent)}`}
+                                    style={{ width: `${Math.min(profileData.sessionPercent, 100)}%` }}
+                                  />
+                                </div>
+                                <span className={`text-[9px] tabular-nums w-6 ${getColorClass(profileData.sessionPercent).replace('text-green-500', 'text-muted-foreground').replace('500', '600')}`}>
+                                  {Math.round(profileData.sessionPercent)}%
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <TrendingUp className="h-2.5 w-2.5 text-muted-foreground/70" />
+                                <div className="w-10 h-1 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${getBarColorClass(profileData.weeklyPercent)}`}
+                                    style={{ width: `${Math.min(profileData.weeklyPercent, 100)}%` }}
+                                  />
+                                </div>
+                                <span className={`text-[9px] tabular-nums w-6 ${getColorClass(profileData.weeklyPercent).replace('text-green-500', 'text-muted-foreground').replace('500', '600')}`}>
+                                  {Math.round(profileData.weeklyPercent)}%
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        ) : isAccountSubscription ? (
+                          <span className="text-[9px] text-muted-foreground">
+                            {t('common:usage.subscriptionBadge')}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] text-green-500">
+                            {t('common:usage.unlimited')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
     );
   }
 
@@ -1022,12 +1236,13 @@ export function UsageIndicator() {
                 {t('common:usage.otherAccounts')}
               </div>
               {otherAccounts.map((account) => {
-                // Check if this account has Anthropic usage data from otherProfiles
-                const isAnthropicOAuth = account.provider === 'anthropic' && account.authType === 'oauth';
+                // Check if this account has usage data from otherProfiles
+                const hasOAuthMonitoring = accountHasUsageMonitoring(account);
                 const isAccountSubscription = account.billingModel === 'subscription';
-                // Match by claudeProfileId first, fallback to name/email for unlinked accounts
+                // Match by claudeProfileId, then account.id, then name/email for unlinked accounts
                 const profileData = otherProfiles.find(p => p.profileId === account.claudeProfileId)
-                  ?? (isAnthropicOAuth
+                  ?? otherProfiles.find(p => p.profileId === account.id)
+                  ?? (hasOAuthMonitoring
                     ? otherProfiles.find(p => p.profileName === account.name || p.profileEmail === account.name)
                     : undefined);
 
@@ -1070,8 +1285,8 @@ export function UsageIndicator() {
                           {t('common:usage.swap')}
                         </button>
                       </div>
-                      {/* Show usage bars for Anthropic OAuth accounts with data, Subscription badge for subscription accounts, otherwise Unlimited */}
-                      {isAnthropicOAuth && profileData ? (
+                      {/* Show usage bars for OAuth accounts with monitoring data, Subscription badge for subscription accounts, otherwise Unlimited */}
+                      {hasOAuthMonitoring && profileData ? (
                         profileData.isRateLimited ? (
                           <span className="text-[9px] text-red-500">
                             {profileData.rateLimitType === 'weekly'

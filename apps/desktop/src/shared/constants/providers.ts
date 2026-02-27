@@ -20,16 +20,28 @@ export const PROVIDER_REGISTRY: ProviderInfo[] = [
     configFields: [], website: 'https://aistudio.google.com/apikey',
   },
   {
-    id: 'mistral', name: 'Mistral', description: 'Mistral and Codestral models',
+    id: 'openrouter', name: 'OpenRouter', description: 'Access 300+ models from all providers',
     category: 'popular',
-    authMethods: ['api-key'], envVars: ['MISTRAL_API_KEY'],
-    configFields: [], website: 'https://console.mistral.ai/api-keys',
+    authMethods: ['api-key'], envVars: ['OPENROUTER_API_KEY'],
+    configFields: [], website: 'https://openrouter.ai/settings/keys',
+  },
+  {
+    id: 'zai', name: 'Z.AI', description: 'GLM models',
+    category: 'popular',
+    authMethods: ['api-key'], envVars: ['ZHIPU_API_KEY'],
+    configFields: ['baseUrl'], website: 'https://z.ai/model-api',
   },
   {
     id: 'xai', name: 'xAI', description: 'Grok models',
     category: 'popular',
     authMethods: ['api-key'], envVars: ['XAI_API_KEY'],
     configFields: [], website: 'https://console.x.ai',
+  },
+  {
+    id: 'mistral', name: 'Mistral', description: 'Mistral and Codestral models',
+    category: 'infrastructure',
+    authMethods: ['api-key'], envVars: ['MISTRAL_API_KEY'],
+    configFields: [], website: 'https://console.mistral.ai/api-keys',
   },
   {
     id: 'groq', name: 'Groq', description: 'Ultra-fast LLaMA inference',

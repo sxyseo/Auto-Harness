@@ -171,7 +171,10 @@
     "placeholderManual": "Enter model name (e.g., claude-sonnet-4-6)",
     "searchPlaceholder": "Search models...",
     "noResults": "No models match your search",
-    "discoveryNotAvailable": "Model discovery not available. Enter model name manually."
+    "discoveryNotAvailable": "Model discovery not available. Enter model name manually.",
+    "ollamaLoading": "Loading Ollama models...",
+    "ollamaNoModels": "No Ollama models installed",
+    "ollamaNoModelsHint": "Install models in Agent Settings → Ollama tab"
   },
   "language": {
     "label": "Interface Language",
@@ -477,6 +480,20 @@
       "name": "Custom (Cross-Provider)",
       "description": "Mix different providers and models for each phase",
       "phaseAssignment": "Assign a provider and model for each phase"
+    },
+    "ollamaModels": {
+      "title": "Ollama Models",
+      "description": "Manage locally installed models for AI agent tasks",
+      "installed": "Installed Models",
+      "installedCount": "{{count}} model(s)",
+      "noModels": "No LLM models installed",
+      "recommended": "Recommended for Coding",
+      "recommendedDescription": "Popular models optimized for code generation and reasoning",
+      "download": "Download",
+      "downloading": "Downloading...",
+      "refresh": "Refresh",
+      "loading": "Loading models...",
+      "ollamaNotAvailable": "Connect Ollama in Account Settings to manage models"
     }
   },
   "workspace": {
@@ -703,7 +720,8 @@
       "hideKey": "Hide API key",
       "oauthAccount": "OAuth account",
       "oauthLinked": "Linked account",
-      "noEndpoint": "No endpoint"
+      "noEndpoint": "No endpoint",
+      "customModels": "{{count}} model(s) configured"
     },
     "section": {
       "envDetected": "From env",
@@ -744,16 +762,20 @@
       "oauthFallback": "Use Terminal (Fallback)",
       "oauthFallbackDescription": "If browser login doesn't work, use the embedded terminal",
       "oauthNameRequired": "Enter an account name before authenticating",
+      "modelsDescription": "Add the model IDs available at this endpoint. These will appear in the model selector.",
       "fields": {
         "name": "Account Name",
         "apiKey": "API Key",
         "baseUrl": "Base URL",
-        "region": "AWS Region"
+        "region": "AWS Region",
+        "models": "Models"
       },
       "placeholders": {
         "name": "My Account",
         "apiKey": "sk-...",
-        "baseUrl": "https://..."
+        "baseUrl": "https://...",
+        "modelId": "Model ID (e.g. llama-3.1-70b)",
+        "modelLabel": "Display name"
       },
       "toast": {
         "added": "Account added",
@@ -772,6 +794,26 @@
       "popular": "Popular",
       "infrastructure": "Infrastructure",
       "local": "Local & Custom"
+    },
+    "ollama": {
+      "connection": {
+        "checking": "Checking Ollama connection...",
+        "connected": "Connected",
+        "connectedDescription": "Ollama is running and ready to use",
+        "modelsAvailable": "{{count}} LLM model(s) installed",
+        "noModels": "No LLM models installed yet",
+        "customUrl": "Custom URL",
+        "customUrlPlaceholder": "http://localhost:11434",
+        "notInstalled": "Ollama Not Installed",
+        "notInstalledDescription": "Install Ollama to run open-source AI models locally",
+        "notRunning": "Ollama Not Running",
+        "notRunningDescription": "Start the Ollama service to connect",
+        "install": "Install Ollama",
+        "retry": "Retry",
+        "learnMore": "Learn More",
+        "autoConnected": "Auto-connected as local provider",
+        "startCommand": "Run 'ollama serve' in your terminal"
+      }
     }
   },
   "debug": {

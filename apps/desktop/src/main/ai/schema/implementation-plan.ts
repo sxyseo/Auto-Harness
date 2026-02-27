@@ -55,7 +55,8 @@ function normalizeStatus(value: unknown): string {
 
 /**
  * Preprocessor that normalizes LLM field name variations before Zod validation.
- * Handles: title→description, subtask_id→id, name→description, file_paths→files_to_modify
+ * Handles: subtask_id→id, name→description (fallback), file_paths→files_to_modify.
+ * Title and description are kept as separate fields.
  */
 function coerceSubtask(input: unknown): unknown {
   if (!input || typeof input !== 'object') return input;
@@ -65,7 +66,10 @@ function coerceSubtask(input: unknown): unknown {
     ...raw,
     // Coerce id: accept subtask_id, task_id as aliases
     id: raw.id ?? raw.subtask_id ?? raw.task_id ?? undefined,
-    // Coerce description: accept title, name, summary as aliases
+    // Keep title as-is (short summary). Preserved separately from description.
+    title: raw.title ?? undefined,
+    // Coerce description: falls back to title/name/summary for backward compatibility
+    // (old plans may only have "title" and no "description")
     description: raw.description ?? raw.title ?? raw.name ?? raw.summary ?? undefined,
     // Normalize status
     status: normalizeStatus(raw.status),
@@ -78,7 +82,8 @@ function coerceSubtask(input: unknown): unknown {
 
 export const PlanSubtaskSchema = z.preprocess(coerceSubtask, z.object({
   id: z.string({ message: 'Subtask must have an "id" field' }),
-  description: z.string({ message: 'Subtask must have a "description" (or "title") field' }),
+  title: z.string().optional(),
+  description: z.string({ message: 'Subtask must have a "description" field' }),
   status: z.enum(SUBTASK_STATUS_VALUES).default('pending'),
   files_to_create: z.array(z.string()).optional(),
   files_to_modify: z.array(z.string()).optional(),

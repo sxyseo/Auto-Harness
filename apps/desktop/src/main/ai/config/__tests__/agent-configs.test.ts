@@ -102,12 +102,13 @@ describe('AGENT_CONFIGS', () => {
     expect(config.thinkingDefault).toBe('high');
   });
 
-  it('should configure spec_critic with read-only tools', () => {
+  it('should configure spec_critic with all builtin tools and context7', () => {
     const config = AGENT_CONFIGS.spec_critic;
     expect(config.tools).toContain('Read');
-    expect(config.tools).not.toContain('Write');
-    expect(config.tools).not.toContain('Bash');
-    expect(config.mcpServers).toHaveLength(0);
+    expect(config.tools).toContain('Write');
+    expect(config.tools).toContain('Bash');
+    expect(config.tools).toContain('WebFetch');
+    expect(config.mcpServers).toContain('context7');
   });
 
   it('should configure merge_resolver with no tools', () => {

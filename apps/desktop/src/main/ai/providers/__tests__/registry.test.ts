@@ -36,6 +36,12 @@ vi.mock('@ai-sdk/xai', () => ({
 vi.mock('@ai-sdk/openai-compatible', () => ({
   createOpenAICompatible: vi.fn(() => mockLanguageModel),
 }));
+vi.mock('@openrouter/ai-sdk-provider', () => ({
+  createOpenRouter: vi.fn(() => mockLanguageModel),
+}));
+vi.mock('zhipu-ai-provider', () => ({
+  createZhipu: vi.fn(() => mockLanguageModel),
+}));
 
 vi.mock('ai', () => ({
   createProviderRegistry: vi.fn((providers: Record<string, any>) => ({

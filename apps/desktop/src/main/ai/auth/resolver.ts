@@ -314,6 +314,8 @@ const BUILTIN_TO_SUPPORTED: Record<string, SupportedProvider> = {
   mistral: 'mistral',
   groq: 'groq',
   xai: 'xai',
+  openrouter: 'openrouter',
+  zai: 'zai',
   ollama: 'ollama',
 };
 

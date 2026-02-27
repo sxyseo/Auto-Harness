@@ -77,6 +77,8 @@ export const PROVIDER_ENV_VARS: Record<SupportedProvider, string | undefined> = 
   mistral: 'MISTRAL_API_KEY',
   groq: 'GROQ_API_KEY',
   xai: 'XAI_API_KEY',
+  openrouter: 'OPENROUTER_API_KEY',
+  zai: 'ZHIPU_API_KEY',
   ollama: undefined,   // No auth required for local Ollama
 } as const;
 
@@ -92,6 +94,8 @@ export const PROVIDER_SETTINGS_KEY: Partial<Record<SupportedProvider, string>> =
   mistral: 'globalMistralApiKey',
   xai: 'globalXAIApiKey',
   azure: 'globalAzureApiKey',
+  openrouter: 'globalOpenRouterApiKey',
+  zai: 'globalZAIApiKey',
 } as const;
 
 /**

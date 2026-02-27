@@ -7,6 +7,7 @@ import { ProviderTabBar } from './ProviderTabBar';
 import { AgentProfileSettings } from './AgentProfileSettings';
 import { FeatureModelSettings } from './FeatureModelSettings';
 import { CrossProviderTabContent } from './CrossProviderTabContent';
+import { OllamaModelManager } from './OllamaModelManager';
 import { Separator } from '../ui/separator';
 import { saveSettings } from '../../stores/settings-store';
 
@@ -101,6 +102,9 @@ export function ProviderAgentTabs() {
 
           {/* Provider-scoped feature model settings */}
           {resolvedTab && <FeatureModelSettings provider={resolvedTab} />}
+
+          {/* Ollama model management */}
+          {resolvedTab === 'ollama' && <OllamaModelManager />}
         </>
       )}
     </div>

@@ -45,11 +45,37 @@ import type { QueueResolvedAuth } from '../auth/types';
 /** Maximum number of auth refresh retries before giving up */
 const MAX_AUTH_RETRIES = 1;
 
-/** Default max steps if not specified in config */
-const DEFAULT_MAX_STEPS = 200;
+/** Default max steps if not specified in config — safety backstop for spinning agents */
+const DEFAULT_MAX_STEPS = 500;
 
 /** Context window usage threshold (85%) for reactive compaction warning */
 const CONTEXT_WINDOW_THRESHOLD = 0.85;
+
+/** Context window usage threshold (90%) for hard abort — triggers continuation */
+const CONTEXT_WINDOW_ABORT_THRESHOLD = 0.90;
+
+/** Unique reason string for context-window aborts (used in catch to distinguish from user cancel) */
+const CONTEXT_WINDOW_ABORT_REASON = '__context_window_exhausted__';
+
+/** Agent types that should receive a convergence nudge when 75% of steps are used.
+ *  These are agents that must write file-based output (verdict/report) to be useful. */
+const CONVERGENCE_NUDGE_AGENT_TYPES = new Set<string>([
+  'qa_reviewer', 'qa_fixer',
+  'spec_critic', 'spec_validation',
+  'pr_reviewer', 'pr_finding_validator',
+]);
+
+/** Timeout for post-stream result promises (result.text, result.totalUsage).
+ *  Some providers (e.g., OpenAI Codex) may not properly resolve these promises
+ *  after the stream closes. 10 seconds is generous — these should resolve instantly
+ *  since the stream has already been fully consumed. */
+const POST_STREAM_TIMEOUT_MS = 10_000;
+
+/** Inactivity timeout for the stream consumption loop.
+ *  If no stream parts arrive within this period, the stream is aborted.
+ *  Protects against providers that accept the request but never send data
+ *  (observed with OpenAI Codex via chatgpt.com/backend-api/codex/responses). */
+const STREAM_INACTIVITY_TIMEOUT_MS = 60_000;
 
 // =============================================================================
 // Runner Options
@@ -253,8 +279,28 @@ async function executeStream(
   let lastPromptTokens = 0;
   let contextWindowWarningInjected = false;
 
+  // Dedicated abort controller for context window exhaustion.
+  // Merged with user's abort signal so either can stop the stream.
+  const contextWindowAbortController = new AbortController();
+
+  // Stream inactivity abort: fires if the stream produces no data for too long.
+  // Protects against providers (e.g., OpenAI Codex) that accept the request but
+  // never send stream chunks, which would hang the worker thread indefinitely.
+  const streamInactivityController = new AbortController();
+  const STREAM_INACTIVITY_REASON = '__stream_inactivity_timeout__';
+
+  const signals: AbortSignal[] = [
+    contextWindowAbortController.signal,
+    streamInactivityController.signal,
+  ];
+  if (config.abortSignal) signals.push(config.abortSignal);
+  const mergedAbortSignal = AbortSignal.any(signals);
+
   // Per-step state for memory injection (only allocated when memory is active)
   const stepMemoryState = memoryContext ? new StepMemoryState() : null;
+
+  // Convergence nudge: track whether we've already nudged the agent to wrap up
+  let convergenceNudgeInjected = false;
 
   // Build the event callback that also feeds the progress tracker
   const emitEvent: SessionEventCallback = (event) => {
@@ -301,7 +347,7 @@ async function executeStream(
     tools: tools ?? {},
     ...(config.outputSchema ? { output: Output.object({ schema: config.outputSchema }) } : {}),
     stopWhen: stopCondition,
-    abortSignal: config.abortSignal,
+    abortSignal: mergedAbortSignal,
     ...(isCodex ? {
       providerOptions: {
         openai: {
@@ -311,8 +357,21 @@ async function executeStream(
       },
     } : {}),
     prepareStep: async ({ stepNumber }) => {
+      // Hard abort: if we're at 90%+ of context window, stop the session
+      // so the continuation wrapper can checkpoint and resume.
+      if (
+        contextWindowLimit > 0 &&
+        lastPromptTokens > 0 &&
+        lastPromptTokens > contextWindowLimit * CONTEXT_WINDOW_ABORT_THRESHOLD
+      ) {
+        contextWindowAbortController.abort(CONTEXT_WINDOW_ABORT_REASON);
+        return {};
+      }
+
+      // Collect system messages to inject between steps
+      const systemParts: string[] = [];
+
       // Context window guard: inject compaction warning when approaching limit
-      let contextWarningSystem: string | undefined;
       if (
         contextWindowLimit > 0 &&
         lastPromptTokens > 0 &&
@@ -321,16 +380,37 @@ async function executeStream(
       ) {
         contextWindowWarningInjected = true;
         const usagePct = Math.round((lastPromptTokens / contextWindowLimit) * 100);
-        contextWarningSystem =
+        systemParts.push(
           `WARNING: You are approaching the context window limit (${usagePct}% used, ${lastPromptTokens.toLocaleString()} of ${contextWindowLimit.toLocaleString()} tokens). ` +
-          `Complete your current task and commit progress immediately. Do not start new subtasks.`;
+          `Complete your current task and commit progress immediately. Do not start new subtasks.`,
+        );
       }
+
+      // Convergence nudge: when 75%+ of step budget is used, remind agents
+      // that produce file-based output (like QA reviewers) to write their verdict.
+      // This doesn't cap the agent — it redirects spinning agents back on task.
+      if (
+        !convergenceNudgeInjected &&
+        maxSteps > 0 &&
+        stepNumber >= maxSteps * 0.75 &&
+        CONVERGENCE_NUDGE_AGENT_TYPES.has(config.agentType)
+      ) {
+        convergenceNudgeInjected = true;
+        const remaining = maxSteps - stepNumber;
+        systemParts.push(
+          `IMPORTANT: You have used ${stepNumber} of ${maxSteps} steps (${remaining} remaining). ` +
+          `You must finalize your output now. Write your verdict/result to the appropriate file immediately. ` +
+          `Do not start new investigations — wrap up with the evidence you have.`,
+        );
+      }
+
+      const systemMessage = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
 
       // Memory injection (only when memory context is active)
       if (memoryContext && stepMemoryState) {
         if (stepNumber < MEMORY_INJECTION_WARMUP_STEPS) {
           memoryContext.proxy.onStepComplete(stepNumber);
-          return contextWarningSystem ? { system: contextWarningSystem } : {};
+          return systemMessage ? { system: systemMessage } : {};
         }
 
         const recentContext = stepMemoryState.getRecentContext(5);
@@ -342,20 +422,20 @@ async function executeStream(
         memoryContext.proxy.onStepComplete(stepNumber);
 
         if (!injection) {
-          return contextWarningSystem ? { system: contextWarningSystem } : {};
+          return systemMessage ? { system: systemMessage } : {};
         }
 
         stepMemoryState.markInjected(injection.memoryIds);
 
-        const combinedSystem = contextWarningSystem
-          ? `${contextWarningSystem}\n\n${injection.content}`
+        const combinedSystem = systemMessage
+          ? `${systemMessage}\n\n${injection.content}`
           : injection.content;
 
         return { system: combinedSystem };
       }
 
-      // No memory context — just return context warning if applicable
-      return contextWarningSystem ? { system: contextWarningSystem } : {};
+      // No memory context — just return system message if applicable
+      return systemMessage ? { system: systemMessage } : {};
     },
     onStepFinish: (_stepResult) => {
       // onStepFinish is called after each agentic step.
@@ -363,30 +443,79 @@ async function executeStream(
     },
   });
 
-  // Consume the full stream
+  // Consume the full stream with inactivity timeout protection.
+  // The timer fires if no stream parts arrive within STREAM_INACTIVITY_TIMEOUT_MS,
+  // aborting the stream and preventing indefinite worker hangs.
+  let streamInactivityTimer: ReturnType<typeof setTimeout> | null = null;
+  const resetStreamInactivityTimer = () => {
+    if (streamInactivityTimer) clearTimeout(streamInactivityTimer);
+    streamInactivityTimer = setTimeout(() => {
+      streamInactivityController.abort(STREAM_INACTIVITY_REASON);
+    }, STREAM_INACTIVITY_TIMEOUT_MS);
+  };
+
+  resetStreamInactivityTimer(); // Arm for initial response
   try {
     for await (const part of result.fullStream) {
+      resetStreamInactivityTimer(); // Reset on each part
       streamHandler.processPart(part as FullStreamPart);
     }
   } catch (error: unknown) {
     // Stream-level errors (network, abort, etc.)
-    // Check if it's an abort
+    const summary = streamHandler.getSummary();
+
+    // Check if this was a stream inactivity timeout
+    if (
+      streamInactivityController.signal.aborted &&
+      streamInactivityController.signal.reason === STREAM_INACTIVITY_REASON
+    ) {
+      return {
+        outcome: 'error',
+        stepsExecuted: summary.stepsExecuted,
+        usage: summary.usage,
+        error: {
+          code: 'stream_timeout',
+          message: `Stream inactivity timeout — no data received from provider for ${STREAM_INACTIVITY_TIMEOUT_MS / 1000}s`,
+          retryable: true,
+        },
+        messages,
+        toolCallCount: summary.toolCallCount,
+      };
+    }
+
+    // Check if this was a context-window abort (eligible for continuation)
+    if (
+      contextWindowAbortController.signal.aborted &&
+      contextWindowAbortController.signal.reason === CONTEXT_WINDOW_ABORT_REASON
+    ) {
+      return {
+        outcome: 'context_window',
+        stepsExecuted: summary.stepsExecuted,
+        usage: summary.usage,
+        messages,
+        toolCallCount: summary.toolCallCount,
+      };
+    }
+
+    // Check if it's a user-initiated abort
     if (config.abortSignal?.aborted) {
       return {
         outcome: 'cancelled',
-        stepsExecuted: streamHandler.getSummary().stepsExecuted,
-        usage: streamHandler.getSummary().usage,
+        stepsExecuted: summary.stepsExecuted,
+        usage: summary.usage,
         error: {
           code: 'aborted',
           message: 'Session was cancelled',
           retryable: false,
         },
         messages,
-        toolCallCount: streamHandler.getSummary().toolCallCount,
+        toolCallCount: summary.toolCallCount,
       };
     }
     // Re-throw for classification in the outer try/catch
     throw error;
+  } finally {
+    if (streamInactivityTimer) clearTimeout(streamInactivityTimer);
   }
 
   // Gather final summary from stream handler
@@ -398,15 +527,24 @@ async function executeStream(
     outcome = 'max_steps';
   }
 
-  // Collect response text from the stream result
-  const responseText = await result.text;
+  // Collect response text from the stream result.
+  // These AI SDK result promises can hang if the provider's stream closed
+  // without properly signaling completion (observed with OpenAI Codex).
+  // Use a timeout to prevent the worker from hanging indefinitely.
+  let responseText = '';
+  try {
+    responseText = await withTimeout(result.text, POST_STREAM_TIMEOUT_MS, 'result.text');
+  } catch {
+    // Fall through — use empty text. The stream handler already captured
+    // all text deltas, so this is just the final concatenated text.
+  }
 
   // Extract structured output if schema was provided
   let structuredOutput: Record<string, unknown> | undefined;
   if (config.outputSchema) {
     try {
       // AI SDK validates the output against the schema and returns typed data
-      const output = await result.output;
+      const output = await withTimeout(result.output, POST_STREAM_TIMEOUT_MS, 'result.output');
       if (output) {
         structuredOutput = output as Record<string, unknown>;
       }
@@ -423,7 +561,12 @@ async function executeStream(
 
   // Get total usage from AI SDK result
   // AI SDK v6 uses inputTokens/outputTokens naming
-  const totalUsage = await result.totalUsage;
+  let totalUsage: { inputTokens?: number; outputTokens?: number } | undefined;
+  try {
+    totalUsage = await withTimeout(result.totalUsage, POST_STREAM_TIMEOUT_MS, 'result.totalUsage');
+  } catch {
+    // Fall through — use summary usage collected during stream iteration.
+  }
   const usage: TokenUsage = {
     promptTokens: totalUsage?.inputTokens ?? summary.usage.promptTokens,
     completionTokens: totalUsage?.outputTokens ?? summary.usage.completionTokens,
@@ -467,4 +610,23 @@ function buildErrorResult(
     toolCallCount: 0,
     durationMs: Date.now() - startTime,
   };
+}
+
+/**
+ * Race a promise against a timeout. Rejects with a descriptive error if the
+ * promise doesn't settle within `ms` milliseconds.
+ *
+ * Used for AI SDK result promises (result.text, result.totalUsage) which can
+ * hang indefinitely if the provider stream closes without signaling completion.
+ */
+function withTimeout<T>(thenable: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Timeout waiting for ${label} (${ms}ms)`));
+    }, ms);
+    thenable.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error as Error); },
+    );
+  });
 }

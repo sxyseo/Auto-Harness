@@ -16,7 +16,9 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
 import { runAgentSession } from '../session/runner';
+import { runContinuableSession } from '../session/continuation';
 import { createProviderFromModelId } from '../providers/factory';
+import { getModelContextWindow } from '../../../shared/constants/models';
 import { refreshOAuthTokenReactive } from '../auth/resolver';
 import { ToolRegistry } from '../tools/registry';
 import type { DefinedTool } from '../tools/define';
@@ -37,14 +39,20 @@ import type {
   SerializableSessionConfig,
   WorkerTaskEventMessage,
 } from './types';
+import type { Tool as AITool } from 'ai';
 import type { SessionConfig, StreamEvent, SessionResult } from '../session/types';
 import { BuildOrchestrator } from '../orchestration/build-orchestrator';
 import { QALoop } from '../orchestration/qa-loop';
+import { SpecOrchestrator } from '../orchestration/spec-orchestrator';
+import type { SpecPhase } from '../orchestration/spec-orchestrator';
 import type { AgentType } from '../config/agent-configs';
 import type { Phase } from '../config/types';
 import type { ExecutionPhase } from '../../../shared/constants/phase-protocol';
 import { getPhaseThinking } from '../config/phase-config';
 import { TaskLogWriter } from '../logging/task-log-writer';
+import { loadClaudeMd, loadAgentsMd, injectContext } from '../prompts/prompt-loader';
+import { createMcpClientsForAgent, mergeMcpTools, closeAllMcpClients } from '../mcp/client';
+import type { McpClientResult } from '../mcp/types';
 
 // =============================================================================
 // Validation
@@ -203,6 +211,51 @@ function loadPrompt(promptName: string): string | null {
   return null;
 }
 
+// =============================================================================
+// MCP Clients (module-scope for worker lifetime)
+// =============================================================================
+
+let mcpClients: McpClientResult[] = [];
+
+// =============================================================================
+// Prompt Assembly (provider-agnostic context injection)
+// =============================================================================
+
+let cachedClaudeMd: string | null | undefined;
+let cachedAgentsMd: string | null | undefined;
+
+/**
+ * Assemble a full system prompt by loading the base prompt and injecting
+ * CLAUDE.md + agents.md project instruction files. Provider-agnostic —
+ * injected for ALL AI providers, not just Anthropic.
+ */
+async function assemblePrompt(
+  promptName: string,
+  session: SerializableSessionConfig,
+): Promise<string> {
+  const basePrompt = loadPrompt(promptName)
+    ?? buildFallbackPrompt(promptName as AgentType, session.specDir, session.projectDir);
+
+  // Load project instruction files once per worker lifetime
+  if (cachedClaudeMd === undefined) {
+    cachedClaudeMd = await loadClaudeMd(session.projectDir);
+  }
+  if (cachedAgentsMd === undefined) {
+    cachedAgentsMd = await loadAgentsMd(session.projectDir);
+  }
+
+  return injectContext(basePrompt, {
+    specDir: session.specDir,
+    projectDir: session.projectDir,
+    claudeMd: cachedClaudeMd,
+    agentsMd: cachedAgentsMd,
+  });
+}
+
+// =============================================================================
+// Single Session Runner
+// =============================================================================
+
 /**
  * Run a single agent session and return the result.
  * Used as the runSession callback for BuildOrchestrator and QALoop.
@@ -234,12 +287,18 @@ async function runSingleSession(
     oauthTokenFilePath: baseSession.oauthTokenFilePath,
   });
 
-  const tools = registry.getToolsForAgent(agentType, toolContext);
+  const tools: Record<string, AITool> = {
+    ...registry.getToolsForAgent(agentType, toolContext),
+    ...(mergeMcpTools(mcpClients) as Record<string, AITool>),
+  };
 
   // Build initial messages: use provided kickoff message, or fall back to session messages
   const initialMessages = initialUserMessage
     ? [{ role: 'user' as const, content: initialUserMessage }]
     : baseSession.initialMessages;
+
+  // Resolve context window limit from model metadata
+  const contextWindowLimit = getModelContextWindow(phaseModelId);
 
   const sessionConfig: SessionConfig = {
     agentType,
@@ -256,6 +315,7 @@ async function runSingleSession(
     modelShorthand: undefined,
     sessionNumber,
     subtaskId,
+    contextWindowLimit,
   };
 
   // Start phase logging for this session (skip when orchestrator manages phases)
@@ -266,32 +326,39 @@ async function runSingleSession(
     logWriter.setSubtask(subtaskId);
   }
 
+  const runnerOptions = {
+    tools,
+    onEvent: (event: StreamEvent) => {
+      // Write stream events to task_logs.json for UI log display
+      if (logWriter) {
+        logWriter.processEvent(event, phase);
+      }
+      // Also relay to main thread for real-time progress updates
+      postMessage({
+        type: 'stream-event',
+        taskId: config.taskId,
+        data: event,
+        projectId: config.projectId,
+      });
+    },
+    onAuthRefresh: baseSession.configDir
+      ? () => refreshOAuthTokenReactive(baseSession.configDir as string)
+      : undefined,
+    onModelRefresh: baseSession.configDir
+      ? (newToken: string) => createProviderFromModelId(phaseModelId, {
+          apiKey: newToken,
+          baseURL: baseSession.baseURL,
+        })
+      : undefined,
+  };
+
   let sessionResult: SessionResult;
   try {
-    sessionResult = await runAgentSession(sessionConfig, {
-      tools,
-      onEvent: (event: StreamEvent) => {
-        // Write stream events to task_logs.json for UI log display
-        if (logWriter) {
-          logWriter.processEvent(event, phase);
-        }
-        // Also relay to main thread for real-time progress updates
-        postMessage({
-          type: 'stream-event',
-          taskId: config.taskId,
-          data: event,
-          projectId: config.projectId,
-        });
-      },
-      onAuthRefresh: baseSession.configDir
-        ? () => refreshOAuthTokenReactive(baseSession.configDir as string)
-        : undefined,
-      onModelRefresh: baseSession.configDir
-        ? (newToken: string) => createProviderFromModelId(phaseModelId, {
-            apiKey: newToken,
-            baseURL: baseSession.baseURL,
-          })
-        : undefined,
+    sessionResult = await runContinuableSession(sessionConfig, runnerOptions, {
+      contextWindowLimit,
+      apiKey: baseSession.apiKey,
+      baseURL: baseSession.baseURL,
+      oauthTokenFilePath: baseSession.oauthTokenFilePath,
     });
   } catch (error) {
     // Ensure log cleanup happens on failure
@@ -302,7 +369,7 @@ async function runSingleSession(
 
   // End phase logging — mark as completed or failed based on outcome (skip when orchestrator manages phases)
   if (logWriter && !skipPhaseLogging) {
-    const success = sessionResult.outcome === 'completed' || sessionResult.outcome === 'max_steps';
+    const success = sessionResult.outcome === 'completed' || sessionResult.outcome === 'max_steps' || sessionResult.outcome === 'context_window';
     logWriter.endPhase(phase, success);
   }
   if (logWriter) {
@@ -326,6 +393,25 @@ async function run(): Promise<void> {
     const toolContext = buildToolContext(session, securityProfile);
     const registry = buildToolRegistry();
 
+    // Initialize MCP clients from session config
+    try {
+      mcpClients = await createMcpClientsForAgent(session.agentType, {
+        context7Enabled: session.mcpOptions?.context7Enabled ?? true,
+        graphitiEnabled: session.mcpOptions?.graphitiEnabled ?? false,
+        linearEnabled: session.mcpOptions?.linearEnabled ?? false,
+        electronMcpEnabled: session.mcpOptions?.electronMcpEnabled ?? false,
+        puppeteerMcpEnabled: session.mcpOptions?.puppeteerMcpEnabled ?? false,
+        projectCapabilities: session.mcpOptions?.projectCapabilities,
+        agentMcpAdd: session.mcpOptions?.agentMcpAdd,
+        agentMcpRemove: session.mcpOptions?.agentMcpRemove,
+      });
+      if (mcpClients.length > 0) {
+        postLog(`MCP initialized: ${mcpClients.map(c => c.serverId).join(', ')}`);
+      }
+    } catch (error) {
+      postLog(`MCP init failed (non-fatal): ${error instanceof Error ? error.message : String(error)}`);
+    }
+
     // Route to orchestrator for build_orchestrator agent type
     if (session.agentType === 'build_orchestrator') {
       await runBuildOrchestrator(session, toolContext, registry);
@@ -338,11 +424,22 @@ async function run(): Promise<void> {
       return;
     }
 
+    // Route to spec orchestrator for spec_orchestrator agent type
+    if (session.agentType === 'spec_orchestrator') {
+      await runSpecOrchestrator(session, toolContext, registry);
+      return;
+    }
+
     // Default: single session for all other agent types
     await runDefaultSession(session, toolContext, registry);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     postError(`Agent session failed: ${message}`);
+  } finally {
+    // Cleanup MCP clients
+    if (mcpClients.length > 0) {
+      await closeAllMcpClients(mcpClients);
+    }
   }
 }
 
@@ -360,7 +457,13 @@ async function runDefaultSession(
     oauthTokenFilePath: session.oauthTokenFilePath,
   });
 
-  const tools = registry.getToolsForAgent(session.agentType, toolContext);
+  const tools: Record<string, AITool> = {
+    ...registry.getToolsForAgent(session.agentType, toolContext),
+    ...(mergeMcpTools(mcpClients) as Record<string, AITool>),
+  };
+
+  // Resolve context window limit from model metadata
+  const contextWindowLimit = getModelContextWindow(session.modelId);
 
   const sessionConfig: SessionConfig = {
     agentType: session.agentType,
@@ -377,6 +480,7 @@ async function runDefaultSession(
     modelShorthand: session.modelShorthand,
     sessionNumber: session.sessionNumber,
     subtaskId: session.subtaskId,
+    contextWindowLimit,
   };
 
   // Start phase logging for default session
@@ -387,7 +491,7 @@ async function runDefaultSession(
 
   let result: SessionResult | undefined;
   try {
-    result = await runAgentSession(sessionConfig, {
+    result = await runContinuableSession(sessionConfig, {
       tools,
       onEvent: (event: StreamEvent) => {
         // Write stream events to task_logs.json for UI log display
@@ -410,10 +514,15 @@ async function runDefaultSession(
             baseURL: session.baseURL,
           })
         : undefined,
+    }, {
+      contextWindowLimit,
+      apiKey: session.apiKey,
+      baseURL: session.baseURL,
+      oauthTokenFilePath: session.oauthTokenFilePath,
     });
   } finally {
     if (logWriter) {
-      const success = result?.outcome === 'completed' || result?.outcome === 'max_steps';
+      const success = result?.outcome === 'completed' || result?.outcome === 'max_steps' || result?.outcome === 'context_window';
       logWriter.endPhase(defaultPhase, success ?? false);
     }
   }
@@ -455,9 +564,8 @@ async function runBuildOrchestrator(
     abortSignal: abortController.signal,
 
     generatePrompt: async (agentType, _phase, _context) => {
-      // Load prompt from prompts directory; fall back to a minimal default
       const promptName = agentType === 'coder' ? 'coder' : agentType;
-      return loadPrompt(promptName) ?? buildFallbackPrompt(agentType, session.specDir, session.projectDir);
+      return assemblePrompt(promptName, session);
     },
 
     runSession: async (runConfig) => {
@@ -614,7 +722,7 @@ async function runQALoop(
 
     generatePrompt: async (agentType, _context) => {
       const promptName = agentType === 'qa_fixer' ? 'qa_fixer' : 'qa_reviewer';
-      return loadPrompt(promptName) ?? buildFallbackPrompt(agentType, session.specDir, session.projectDir);
+      return assemblePrompt(promptName, session);
     },
 
     runSession: async (runConfig) => {
@@ -681,6 +789,176 @@ async function runQALoop(
     data: result,
     projectId: config.projectId,
   });
+}
+
+/**
+ * Run the spec creation orchestration pipeline with complexity-based phase routing.
+ */
+async function runSpecOrchestrator(
+  session: SerializableSessionConfig,
+  toolContext: ToolContext,
+  registry: ToolRegistry,
+): Promise<void> {
+  // Extract the task description from the first user message
+  const taskDescription = session.initialMessages?.[0]?.content
+    ? typeof session.initialMessages[0].content === 'string'
+      ? session.initialMessages[0].content
+      : 'Create the specification as described in your system prompt.'
+    : 'Create the specification as described in your system prompt.';
+
+  postLog(`Starting SpecOrchestrator pipeline (complexity-based phase routing)`);
+
+  const orchestrator = new SpecOrchestrator({
+    specDir: session.specDir,
+    projectDir: session.projectDir,
+    taskDescription,
+    abortSignal: abortController.signal,
+
+    generatePrompt: async (_agentType, phase, _context) => {
+      const promptName = specPhaseToPromptName(phase);
+      return assemblePrompt(promptName, session);
+    },
+
+    runSession: async (runConfig) => {
+      postLog(`Running ${runConfig.agentType} session (spec phase=${runConfig.phase}, session=${runConfig.sessionNumber})`);
+      const kickoffMessage = buildSpecKickoffMessage(
+        runConfig.agentType,
+        runConfig.specDir,
+        runConfig.projectDir,
+        taskDescription,
+      );
+      return runSingleSession(
+        runConfig.agentType,
+        runConfig.phase,
+        runConfig.systemPrompt,
+        runConfig.specDir,
+        runConfig.projectDir,
+        runConfig.sessionNumber,
+        undefined,
+        session,
+        toolContext,
+        registry,
+        kickoffMessage,
+        true, // skipPhaseLogging — orchestrator manages phase start/end
+      );
+    },
+  });
+
+  // Wire event listeners
+  orchestrator.on('phase-start', (phase: SpecPhase, phaseNumber: number, totalPhases: number) => {
+    postLog(`Spec phase ${phaseNumber}/${totalPhases}: ${phase}`);
+    if (logWriter) {
+      logWriter.startPhase('spec', `${phase} (${phaseNumber}/${totalPhases})`);
+    }
+    postMessage({
+      type: 'execution-progress',
+      taskId: config.taskId,
+      data: {
+        phase: 'planning', // spec creation maps to 'planning' in the UI execution phases
+        phaseProgress: phaseNumber / Math.max(totalPhases, 1),
+        overallProgress: phaseNumber / Math.max(totalPhases, 1),
+        message: `Spec creation: ${phase} (${phaseNumber}/${totalPhases})`,
+      },
+      projectId: config.projectId,
+    });
+  });
+
+  orchestrator.on('phase-complete', (_phase: SpecPhase, _result: unknown) => {
+    // End the current spec log phase so the next one can start fresh
+    if (logWriter) {
+      logWriter.endPhase('spec', true);
+    }
+  });
+
+  orchestrator.on('log', (message: string) => {
+    postLog(message);
+  });
+
+  orchestrator.on('error', (error: Error, phase: SpecPhase) => {
+    postLog(`Error in spec ${phase} phase: ${error.message}`);
+  });
+
+  const outcome = await orchestrator.run();
+
+  // Ensure any still-active log phase is closed and flushed
+  if (logWriter) {
+    const data = logWriter.getData();
+    // toLogPhase('spec') maps to 'planning' in the log writer
+    if (data.phases.planning?.status === 'active') {
+      logWriter.endPhase('spec', outcome.success);
+    }
+    logWriter.flush();
+  }
+
+  // Map outcome to SessionResult for the worker bridge
+  const result: SessionResult = {
+    outcome: outcome.success ? 'completed' : 'error',
+    stepsExecuted: outcome.phasesExecuted.length,
+    usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+    messages: [],
+    toolCallCount: 0,
+    durationMs: outcome.durationMs,
+    error: outcome.error
+      ? { code: 'error', message: outcome.error, retryable: false }
+      : undefined,
+  };
+
+  postMessage({
+    type: 'result',
+    taskId: config.taskId,
+    data: result,
+    projectId: config.projectId,
+  });
+}
+
+/**
+ * Map a SpecPhase to the prompt file name to load.
+ * Falls back to the closest available prompt when a phase-specific one doesn't exist.
+ */
+function specPhaseToPromptName(phase: SpecPhase): string {
+  switch (phase) {
+    case 'discovery': return 'spec_gatherer';
+    case 'requirements': return 'spec_gatherer';
+    case 'complexity_assessment': return 'complexity_assessor';
+    case 'research': return 'spec_researcher';
+    case 'context': return 'spec_writer';
+    case 'historical_context': return 'spec_writer';
+    case 'spec_writing': return 'spec_writer';
+    case 'self_critique': return 'spec_critic';
+    case 'planning': return 'spec_writer';
+    case 'quick_spec': return 'spec_quick';
+    case 'validation': return 'spec_writer';
+    default: return 'spec_writer';
+  }
+}
+
+/**
+ * Build a kickoff user message for a spec phase session.
+ */
+function buildSpecKickoffMessage(
+  agentType: AgentType,
+  specDir: string,
+  projectDir: string,
+  taskDescription: string,
+): string {
+  switch (agentType) {
+    case 'spec_discovery':
+      return `Analyze the project structure at ${projectDir} to understand the codebase architecture, tech stack, and conventions. Write your findings to ${specDir}/context.json. Task context: ${taskDescription}`;
+    case 'spec_gatherer':
+      return `Gather and validate requirements for the following task: ${taskDescription}. Project root: ${projectDir}. Write requirements to ${specDir}/requirements.json.`;
+    case 'spec_researcher':
+      return `Research implementation approaches for: ${taskDescription}. Review relevant code in ${projectDir} and document your findings in ${specDir}/research.json.`;
+    case 'spec_writer':
+      return `Write the specification for: ${taskDescription}. Use the gathered requirements in ${specDir}/requirements.json and context in ${specDir}/context.json. Write spec.md and implementation_plan.json to ${specDir}. Project root: ${projectDir}.`;
+    case 'spec_critic':
+      return `Review and critique the specification at ${specDir}/spec.md for completeness, clarity, and technical feasibility. Write your critique findings back to ${specDir}/spec.md with improvements.`;
+    case 'spec_context':
+      return `Gather project context relevant to: ${taskDescription}. Analyze the codebase at ${projectDir} and write context to ${specDir}/context.json.`;
+    case 'spec_validation':
+      return `Validate that ${specDir}/spec.md and ${specDir}/implementation_plan.json are complete, consistent, and ready for implementation. Fix any issues found.`;
+    default:
+      return `Complete the spec creation task described in your system prompt. Task: ${taskDescription}. Spec directory: ${specDir}. Project directory: ${projectDir}`;
+  }
 }
 
 /**

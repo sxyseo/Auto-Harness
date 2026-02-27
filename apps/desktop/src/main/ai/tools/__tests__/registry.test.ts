@@ -124,13 +124,15 @@ describe('ToolRegistry', () => {
 
     const context = createMockContext();
 
-    // spec_critic only gets read tools
+    // spec_critic gets all builtin tools (security enforced at tool execution layer)
     const criticTools = registry.getToolsForAgent('spec_critic', context);
     expect(Object.keys(criticTools)).toEqual(
-      expect.arrayContaining([...BASE_READ_TOOLS]),
+      expect.arrayContaining([
+        ...BASE_READ_TOOLS,
+        ...BASE_WRITE_TOOLS,
+        ...WEB_TOOLS,
+      ]),
     );
-    expect(Object.keys(criticTools)).not.toContain('Write');
-    expect(Object.keys(criticTools)).not.toContain('Bash');
 
     // coder gets everything
     const coderTools = registry.getToolsForAgent('coder', context);

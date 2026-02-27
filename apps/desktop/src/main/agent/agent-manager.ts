@@ -379,6 +379,11 @@ export class AgentManager extends EventEmitter {
       baseURL: resolved.auth?.baseURL,
       configDir: resolved.configDir,
       oauthTokenFilePath: resolved.auth?.oauthTokenFilePath,
+      mcpOptions: {
+        context7Enabled: true,
+        graphitiEnabled: !!process.env.GRAPHITI_MCP_URL,
+        linearEnabled: !!process.env.LINEAR_API_KEY,
+      },
       toolContext: {
         cwd: projectPath,
         projectDir: projectPath,
@@ -497,6 +502,11 @@ export class AgentManager extends EventEmitter {
       baseURL: resolved.auth?.baseURL,
       configDir: resolved.configDir,
       oauthTokenFilePath: resolved.auth?.oauthTokenFilePath,
+      mcpOptions: {
+        context7Enabled: true,
+        graphitiEnabled: !!process.env.GRAPHITI_MCP_URL,
+        linearEnabled: !!process.env.LINEAR_API_KEY,
+      },
       toolContext: {
         cwd: effectiveCwd,
         projectDir: effectiveProjectDir,
@@ -595,6 +605,11 @@ export class AgentManager extends EventEmitter {
       baseURL: resolved.auth?.baseURL,
       configDir: resolved.configDir,
       oauthTokenFilePath: resolved.auth?.oauthTokenFilePath,
+      mcpOptions: {
+        context7Enabled: true,
+        graphitiEnabled: !!process.env.GRAPHITI_MCP_URL,
+        linearEnabled: !!process.env.LINEAR_API_KEY,
+      },
       toolContext: {
         cwd: effectiveCwd,
         projectDir: effectiveProjectDir,

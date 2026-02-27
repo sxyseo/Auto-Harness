@@ -16,7 +16,9 @@ import { createGroq } from '@ai-sdk/groq';
 import { createMistral } from '@ai-sdk/mistral';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createXai } from '@ai-sdk/xai';
+import { createZhipu } from 'zhipu-ai-provider';
 import type { LanguageModel } from 'ai';
 
 import { MODEL_PROVIDER_MAP } from '../config/types';
@@ -124,6 +126,18 @@ function createProviderInstance(config: ProviderConfig) {
       return createXai({
         apiKey,
         baseURL,
+        headers,
+      });
+
+    case SupportedProvider.OpenRouter:
+      return createOpenRouter({
+        apiKey,
+      });
+
+    case SupportedProvider.ZAI:
+      return createZhipu({
+        apiKey,
+        baseURL: baseURL ?? 'https://api.z.ai/api/paas/v4',
         headers,
       });
 

@@ -298,7 +298,7 @@ describe('runAgentSession', () => {
     expect(callArgs.tools).toBe(tools);
   });
 
-  it('should use default maxSteps of 200 when not specified', async () => {
+  it('should use default maxSteps of 500 when not specified', async () => {
     mockStreamText.mockReturnValue(
       createMockStreamResult([], { text: '', totalUsage: { inputTokens: 0, outputTokens: 0 } }),
     );
@@ -310,6 +310,6 @@ describe('runAgentSession', () => {
     await runAgentSession(config);
 
     const callArgs = mockStreamText.mock.calls[0][0];
-    expect(callArgs.stopWhen).toEqual({ type: 'stepCount', count: 200 });
+    expect(callArgs.stopWhen).toEqual({ type: 'stepCount', count: 500 });
   });
 });

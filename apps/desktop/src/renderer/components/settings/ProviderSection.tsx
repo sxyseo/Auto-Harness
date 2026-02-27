@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { ProviderAccountCard } from './ProviderAccountCard';
+import { OllamaConnectionPanel } from './OllamaConnectionPanel';
 import type { BuiltinProvider, ProviderAccount, ProviderInfo } from '@shared/types/provider-account';
 
 interface ProviderSectionProps {
@@ -81,73 +82,92 @@ export function ProviderSection({
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 space-y-2 border-t border-border/50 pt-3">
-              {/* Account cards */}
-              {accounts.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border p-3 text-center">
-                  {envDetected ? (
-                    <p className="text-xs text-muted-foreground">
-                      {t('providers.section.envCredentialDetected', { envVar: provider.envVars[0] })}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      {t('providers.section.noAccounts')}
-                    </p>
-                  )}
-                </div>
+              {provider.id === 'ollama' ? (
+                <>
+                  {/* Show existing account cards above the connection panel */}
+                  {accounts.map((account) => (
+                    <ProviderAccountCard
+                      key={account.id}
+                      account={account}
+                      onEdit={onEditAccount}
+                      onDelete={onDeleteAccount}
+                      onReauth={onReauthAccount}
+                    />
+                  ))}
+                  {/* Ollama connection panel handles its own empty state and auto-creation */}
+                  <OllamaConnectionPanel accounts={accounts} />
+                </>
               ) : (
-                accounts.map((account) => (
-                  <ProviderAccountCard
-                    key={account.id}
-                    account={account}
-                    onEdit={onEditAccount}
-                    onDelete={onDeleteAccount}
-                    onReauth={onReauthAccount}
-                  />
-                ))
-              )}
+                <>
+                  {/* Account cards */}
+                  {accounts.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border p-3 text-center">
+                      {envDetected ? (
+                        <p className="text-xs text-muted-foreground">
+                          {t('providers.section.envCredentialDetected', { envVar: provider.envVars[0] })}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          {t('providers.section.noAccounts')}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    accounts.map((account) => (
+                      <ProviderAccountCard
+                        key={account.id}
+                        account={account}
+                        onEdit={onEditAccount}
+                        onDelete={onDeleteAccount}
+                        onReauth={onReauthAccount}
+                      />
+                    ))
+                  )}
 
-              {/* Add buttons */}
-              {canAdd && (
-                <div className="flex items-center gap-2 pt-1">
-                  {hasOAuth && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onAddAccount(provider.id, 'oauth')}
-                      className="h-7 text-xs gap-1"
-                    >
-                      <Plus className="h-3 w-3" />
-                      {provider.id === 'openai'
-                        ? t('providers.section.addCodexSubscription')
-                        : provider.id === 'anthropic'
-                          ? t('providers.section.addClaudeCode')
-                          : t('providers.section.addOAuth')}
-                    </Button>
+                  {/* Add buttons */}
+                  {canAdd && (
+                    <div className="flex items-center gap-2 pt-1">
+                      {hasOAuth && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onAddAccount(provider.id, 'oauth')}
+                          className="h-7 text-xs gap-1"
+                        >
+                          <Plus className="h-3 w-3" />
+                          {provider.id === 'openai'
+                            ? t('providers.section.addCodexSubscription')
+                            : provider.id === 'anthropic'
+                              ? t('providers.section.addClaudeCode')
+                              : t('providers.section.addOAuth')}
+                        </Button>
+                      )}
+                      {hasApiKey && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onAddAccount(provider.id, 'api-key')}
+                          className="h-7 text-xs gap-1"
+                        >
+                          <Plus className="h-3 w-3" />
+                          {t('providers.section.addApiKey')}
+                        </Button>
+                      )}
+                      {/* No-key providers with baseUrl (non-Ollama) */}
+                      {!hasOAuth && !hasApiKey && provider.configFields.includes('baseUrl') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onAddAccount(provider.id, 'api-key')}
+                          className="h-7 text-xs gap-1"
+                        >
+                          <Plus className="h-3 w-3" />
+                          {t('providers.section.addEndpoint')}
+                        </Button>
+                      )}
+                    </div>
                   )}
-                  {hasApiKey && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onAddAccount(provider.id, 'api-key')}
-                      className="h-7 text-xs gap-1"
-                    >
-                      <Plus className="h-3 w-3" />
-                      {t('providers.section.addApiKey')}
-                    </Button>
-                  )}
-                  {/* Ollama / no-key providers */}
-                  {!hasOAuth && !hasApiKey && provider.configFields.includes('baseUrl') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onAddAccount(provider.id, 'api-key')}
-                      className="h-7 text-xs gap-1"
-                    >
-                      <Plus className="h-3 w-3" />
-                      {t('providers.section.addEndpoint')}
-                    </Button>
-                  )}
-                </div>
+                </>
               )}
             </div>
           </motion.div>

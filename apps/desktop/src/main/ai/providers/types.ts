@@ -18,6 +18,8 @@ export const SupportedProvider = {
   Mistral: 'mistral',
   Groq: 'groq',
   XAI: 'xai',
+  OpenRouter: 'openrouter',
+  ZAI: 'zai',
   Ollama: 'ollama',
 } as const;
 

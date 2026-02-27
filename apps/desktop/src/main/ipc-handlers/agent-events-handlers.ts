@@ -316,8 +316,7 @@ export function registerAgenteventsHandlers(
     // Example: When requireReviewBeforeCoding=true, the process exits with code 1 after
     // PLANNING_COMPLETE. The exit handler emits execution-progress with phase='failed',
     // which would incorrectly overwrite status='human_review' with status='error' via
-    // persistPlanPhaseSync, and send a 'failed' phase to the renderer overwriting the
-    // 'planning' phase that XState already emitted via emitPhaseFromState.
+    // persistPlanPhaseSync.
     const currentXState = taskStateManager.getCurrentState(taskId);
     const xstateInTerminalState = currentXState && XSTATE_SETTLED_STATES.has(currentXState);
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, CheckCircle2, AlertCircle, Terminal } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Terminal, Plus, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useToast } from '../../hooks/use-toast';
-import type { BuiltinProvider, ProviderAccount } from '@shared/types/provider-account';
+import type { BuiltinProvider, CustomModel, ProviderAccount } from '@shared/types/provider-account';
 
 const AWS_REGIONS = [
   'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
@@ -53,6 +53,11 @@ export function AddAccountDialog({
   const [region, setRegion] = useState('us-east-1');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Custom models for openai-compatible endpoints
+  const [customModels, setCustomModels] = useState<CustomModel[]>([]);
+  const [newModelId, setNewModelId] = useState('');
+  const [newModelLabel, setNewModelLabel] = useState('');
+
   // OAuth subprocess state
   const [oauthStatus, setOauthStatus] = useState<OAuthStatus>('idle');
   const [oauthEmail, setOauthEmail] = useState<string | null>(null);
@@ -75,12 +80,16 @@ export function AddAccountDialog({
         setApiKey(editAccount.apiKey ?? '');
         setBaseUrl(editAccount.baseUrl ?? '');
         setRegion(editAccount.region ?? 'us-east-1');
+        setCustomModels(editAccount.customModels ?? []);
       } else {
         setName('');
         setApiKey('');
-        setBaseUrl(provider === 'ollama' ? 'http://localhost:11434' : '');
+        setBaseUrl(provider === 'ollama' ? 'http://localhost:11434' : provider === 'zai' ? 'https://api.z.ai/api/paas/v4' : '');
         setRegion('us-east-1');
+        setCustomModels([]);
       }
+      setNewModelId('');
+      setNewModelLabel('');
       // Reset OAuth state
       setOauthStatus('idle');
       setOauthEmail(null);
@@ -121,7 +130,7 @@ export function AddAccountDialog({
   }, [open, oauthStatus]);
 
   const needsApiKey = provider !== 'ollama' && authType === 'api-key';
-  const needsBaseUrl = provider === 'ollama' || provider === 'azure' || provider === 'openai-compatible' || (provider === 'anthropic' && authType === 'api-key');
+  const needsBaseUrl = provider === 'ollama' || provider === 'azure' || provider === 'openai-compatible' || provider === 'zai' || (provider === 'anthropic' && authType === 'api-key');
   const needsRegion = provider === 'amazon-bedrock';
   const isOAuthOnly = (provider === 'anthropic' || provider === 'openai') && authType === 'oauth';
   const isCodexOAuth = provider === 'openai' && authType === 'oauth';
@@ -337,6 +346,7 @@ export function AddAccountDialog({
         baseUrl: needsBaseUrl && baseUrl.trim() ? baseUrl.trim() : undefined,
         region: needsRegion ? region : undefined,
         claudeProfileId: isOAuthOnly && !isCodexOAuth ? oauthProfileId ?? undefined : undefined,
+        customModels: provider === 'openai-compatible' && customModels.length > 0 ? customModels : undefined,
       };
 
       let result;
@@ -346,6 +356,7 @@ export function AddAccountDialog({
           apiKey: payload.apiKey,
           baseUrl: payload.baseUrl,
           region: payload.region,
+          customModels: payload.customModels,
         });
       } else {
         result = await addProviderAccount(payload);
@@ -532,7 +543,9 @@ export function AddAccountDialog({
                       ? 'http://localhost:11434'
                       : provider === 'anthropic'
                         ? 'https://api.anthropic.com'
-                        : t('providers.dialog.placeholders.baseUrl')
+                        : provider === 'zai'
+                          ? 'https://api.z.ai/api/paas/v4'
+                          : t('providers.dialog.placeholders.baseUrl')
                   }
                 />
               </div>
@@ -552,6 +565,96 @@ export function AddAccountDialog({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {/* Custom Models (openai-compatible) */}
+            {provider === 'openai-compatible' && (
+              <div className="space-y-2">
+                <Label>{t('providers.dialog.fields.models')}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {t('providers.dialog.modelsDescription')}
+                </p>
+
+                {/* Existing models */}
+                {customModels.length > 0 && (
+                  <div className="space-y-1">
+                    {customModels.map((model) => (
+                      <div
+                        key={model.id}
+                        className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-sm"
+                      >
+                        <span className="font-medium truncate">{model.label}</span>
+                        <span className="text-xs text-muted-foreground truncate">{model.id}</span>
+                        <button
+                          type="button"
+                          onClick={() => setCustomModels(prev => prev.filter(m => m.id !== model.id))}
+                          className="ml-auto shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add new model */}
+                <div className="flex gap-1.5">
+                  <Input
+                    value={newModelId}
+                    onChange={(e) => setNewModelId(e.target.value)}
+                    placeholder={t('providers.dialog.placeholders.modelId')}
+                    className="flex-1 h-8 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newModelId.trim()) {
+                        e.preventDefault();
+                        const id = newModelId.trim();
+                        const label = newModelLabel.trim() || id;
+                        if (!customModels.some(m => m.id === id)) {
+                          setCustomModels(prev => [...prev, { id, label }]);
+                        }
+                        setNewModelId('');
+                        setNewModelLabel('');
+                      }
+                    }}
+                  />
+                  <Input
+                    value={newModelLabel}
+                    onChange={(e) => setNewModelLabel(e.target.value)}
+                    placeholder={t('providers.dialog.placeholders.modelLabel')}
+                    className="w-28 h-8 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newModelId.trim()) {
+                        e.preventDefault();
+                        const id = newModelId.trim();
+                        const label = newModelLabel.trim() || id;
+                        if (!customModels.some(m => m.id === id)) {
+                          setCustomModels(prev => [...prev, { id, label }]);
+                        }
+                        setNewModelId('');
+                        setNewModelLabel('');
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    disabled={!newModelId.trim()}
+                    onClick={() => {
+                      const id = newModelId.trim();
+                      const label = newModelLabel.trim() || id;
+                      if (id && !customModels.some(m => m.id === id)) {
+                        setCustomModels(prev => [...prev, { id, label }]);
+                      }
+                      setNewModelId('');
+                      setNewModelLabel('');
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>

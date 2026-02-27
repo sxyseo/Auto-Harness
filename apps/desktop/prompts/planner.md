@@ -232,7 +232,8 @@ Based on the workflow type and services involved, create the implementation plan
       "subtasks": [
         {
           "id": "subtask-1-1",
-          "description": "Create data models for [feature]",
+          "title": "Create analytics data models",
+          "description": "Create data models for [feature] in src/models/analytics.py following the pattern in existing_model.py. Include fields for event type, timestamp, user ID, and metadata. Add database migration.",
           "service": "backend",
           "files_to_modify": ["src/models/user.py"],
           "files_to_create": ["src/models/analytics.py"],
@@ -246,7 +247,8 @@ Based on the workflow type and services involved, create the implementation plan
         },
         {
           "id": "subtask-1-2",
-          "description": "Create API endpoints for [feature]",
+          "title": "Create analytics API endpoints",
+          "description": "Create API endpoints for [feature] including POST /api/analytics/events for event ingestion and GET /api/analytics/summary for dashboard data. Follow patterns from src/routes/users.py.",
           "service": "backend",
           "files_to_modify": ["src/routes/api.py"],
           "files_to_create": ["src/routes/analytics.py"],
@@ -272,7 +274,8 @@ Based on the workflow type and services involved, create the implementation plan
       "subtasks": [
         {
           "id": "subtask-2-1",
-          "description": "Create aggregation Celery task",
+          "title": "Create aggregation Celery task",
+          "description": "Create a Celery task in worker/tasks.py that aggregates raw analytics events into hourly/daily summaries. Follow the pattern in worker/existing_task.py.",
           "service": "worker",
           "files_to_modify": ["worker/tasks.py"],
           "files_to_create": [],
@@ -296,7 +299,8 @@ Based on the workflow type and services involved, create the implementation plan
       "subtasks": [
         {
           "id": "subtask-3-1",
-          "description": "Create dashboard component",
+          "title": "Create dashboard component",
+          "description": "Create a React dashboard component at src/components/Dashboard.tsx that displays analytics data with charts. Follow the layout pattern from src/components/ExistingPage.tsx.",
           "service": "frontend",
           "files_to_modify": [],
           "files_to_create": ["src/components/Dashboard.tsx"],
@@ -320,7 +324,8 @@ Based on the workflow type and services involved, create the implementation plan
       "subtasks": [
         {
           "id": "subtask-4-1",
-          "description": "End-to-end verification of analytics flow",
+          "title": "End-to-end analytics verification",
+          "description": "End-to-end verification of analytics flow: trigger event via frontend, verify backend receives it, verify worker processes it, verify dashboard updates.",
           "all_services": true,
           "files_to_modify": [],
           "files_to_create": [],
@@ -358,10 +363,11 @@ Use ONLY these values for the `type` field in phases:
 
 ### Subtask Guidelines
 
-1. **One service per subtask** - Never mix backend and frontend in one subtask
-2. **Small scope** - Each subtask should take 1-3 files max
-3. **Clear verification** - Every subtask must have a way to verify it works
-4. **Explicit dependencies** - Phases block until dependencies complete
+1. **Short titles** - Every subtask MUST have a `"title"` field: a 3-10 word summary (e.g., "Create analytics data models"). Put implementation details in `"description"`.
+2. **One service per subtask** - Never mix backend and frontend in one subtask
+3. **Small scope** - Each subtask should take 1-3 files max
+4. **Clear verification** - Every subtask must have a way to verify it works
+5. **Explicit dependencies** - Phases block until dependencies complete
 
 ### Verification Types
 
@@ -385,7 +391,8 @@ Use ONLY these values for the `type` field in phases:
 ```json
 {
   "id": "subtask-investigate-1",
-  "description": "Identify root cause of memory leak",
+  "title": "Identify memory leak root cause",
+  "description": "Identify root cause of memory leak by profiling heap allocations and analyzing retention paths.",
   "expected_output": "Document with: (1) Root cause, (2) Evidence, (3) Proposed fix",
   "files_to_modify": [],
   "verification": {
@@ -400,7 +407,8 @@ Use ONLY these values for the `type` field in phases:
 ```json
 {
   "id": "subtask-refactor-1",
-  "description": "Add new auth system alongside old",
+  "title": "Add new auth system",
+  "description": "Add new auth system alongside old in src/auth/new_auth.ts. Old auth must continue working - this adds, doesn't replace.",
   "files_to_modify": ["src/auth/index.ts"],
   "files_to_create": ["src/auth/new_auth.ts"],
   "verification": {

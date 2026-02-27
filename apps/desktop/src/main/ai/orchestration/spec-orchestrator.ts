@@ -363,7 +363,7 @@ export class SpecOrchestrator extends EventEmitter {
         return { phase, success: false, errors: ['Cancelled'], retries: attempt };
       }
 
-      if (result.outcome === 'completed' || result.outcome === 'max_steps') {
+      if (result.outcome === 'completed' || result.outcome === 'max_steps' || result.outcome === 'context_window') {
         const phaseResult: SpecPhaseResult = { phase, success: true, errors: [], retries: attempt };
         this.emitTyped('phase-complete', phase, phaseResult);
         return phaseResult;

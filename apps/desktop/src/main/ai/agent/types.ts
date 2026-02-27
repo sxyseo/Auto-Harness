@@ -61,6 +61,20 @@ export interface SerializableSessionConfig {
   configDir?: string;
   /** Pre-resolved path to OAuth token file for file-based OAuth providers (e.g., Codex). Worker-safe. */
   oauthTokenFilePath?: string;
+  /** MCP options resolved from project settings (serialized for worker) */
+  mcpOptions?: {
+    context7Enabled?: boolean;
+    graphitiEnabled?: boolean;
+    linearEnabled?: boolean;
+    electronMcpEnabled?: boolean;
+    puppeteerMcpEnabled?: boolean;
+    projectCapabilities?: {
+      is_electron?: boolean;
+      is_web_frontend?: boolean;
+    };
+    agentMcpAdd?: string;
+    agentMcpRemove?: string;
+  };
   /** Tool context serialized fields */
   toolContext: {
     cwd: string;

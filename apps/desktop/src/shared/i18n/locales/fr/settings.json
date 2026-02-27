@@ -171,7 +171,10 @@
     "placeholderManual": "Saisir le nom du modèle (ex. : claude-sonnet-4-6)",
     "searchPlaceholder": "Rechercher des modèles...",
     "noResults": "Aucun modèle ne correspond à votre recherche",
-    "discoveryNotAvailable": "Découverte de modèles indisponible. Saisissez le nom du modèle manuellement."
+    "discoveryNotAvailable": "Découverte de modèles indisponible. Saisissez le nom du modèle manuellement.",
+    "ollamaLoading": "Chargement des modèles Ollama...",
+    "ollamaNoModels": "Aucun modèle Ollama installé",
+    "ollamaNoModelsHint": "Installez des modèles dans Paramètres agent → onglet Ollama"
   },
   "language": {
     "label": "Langue de l'interface",
@@ -477,6 +480,20 @@
       "name": "Personnalisé (Multi-fournisseur)",
       "description": "Mélanger différents fournisseurs et modèles pour chaque phase",
       "phaseAssignment": "Assigner un fournisseur et un modèle pour chaque phase"
+    },
+    "ollamaModels": {
+      "title": "Modèles Ollama",
+      "description": "Gérez les modèles installés localement pour les tâches d'agent IA",
+      "installed": "Modèles installés",
+      "installedCount": "{{count}} modèle(s)",
+      "noModels": "Aucun modèle LLM installé",
+      "recommended": "Recommandés pour le code",
+      "recommendedDescription": "Modèles populaires optimisés pour la génération de code et le raisonnement",
+      "download": "Télécharger",
+      "downloading": "Téléchargement...",
+      "refresh": "Actualiser",
+      "loading": "Chargement des modèles...",
+      "ollamaNotAvailable": "Connectez Ollama dans les paramètres de compte pour gérer les modèles"
     }
   },
   "workspace": {
@@ -703,7 +720,8 @@
       "hideKey": "Masquer la clé API",
       "oauthAccount": "Compte OAuth",
       "oauthLinked": "Compte lié",
-      "noEndpoint": "Pas de point de terminaison"
+      "noEndpoint": "Pas de point de terminaison",
+      "customModels": "{{count}} modèle(s) configuré(s)"
     },
     "section": {
       "envDetected": "Depuis env",
@@ -744,16 +762,20 @@
       "oauthFallback": "Utiliser le terminal (secours)",
       "oauthFallbackDescription": "Si la connexion par navigateur ne fonctionne pas, utilisez le terminal intégré",
       "oauthNameRequired": "Entrez un nom de compte avant de vous authentifier",
+      "modelsDescription": "Ajoutez les identifiants de modèles disponibles sur cet endpoint. Ils apparaîtront dans le sélecteur de modèles.",
       "fields": {
         "name": "Nom du compte",
         "apiKey": "Clé API",
         "baseUrl": "URL de base",
-        "region": "Région AWS"
+        "region": "Région AWS",
+        "models": "Modèles"
       },
       "placeholders": {
         "name": "Mon compte",
         "apiKey": "sk-...",
-        "baseUrl": "https://..."
+        "baseUrl": "https://...",
+        "modelId": "ID du modèle (ex. llama-3.1-70b)",
+        "modelLabel": "Nom d'affichage"
       },
       "toast": {
         "added": "Compte ajouté",
@@ -772,6 +794,26 @@
       "popular": "Populaires",
       "infrastructure": "Infrastructure",
       "local": "Local et personnalisé"
+    },
+    "ollama": {
+      "connection": {
+        "checking": "Vérification de la connexion Ollama...",
+        "connected": "Connecté",
+        "connectedDescription": "Ollama est en cours d'exécution et prêt à l'emploi",
+        "modelsAvailable": "{{count}} modèle(s) LLM installé(s)",
+        "noModels": "Aucun modèle LLM installé",
+        "customUrl": "URL personnalisée",
+        "customUrlPlaceholder": "http://localhost:11434",
+        "notInstalled": "Ollama non installé",
+        "notInstalledDescription": "Installez Ollama pour exécuter des modèles IA open source localement",
+        "notRunning": "Ollama n'est pas en cours d'exécution",
+        "notRunningDescription": "Démarrez le service Ollama pour vous connecter",
+        "install": "Installer Ollama",
+        "retry": "Réessayer",
+        "learnMore": "En savoir plus",
+        "autoConnected": "Connecté automatiquement en tant que fournisseur local",
+        "startCommand": "Exécutez 'ollama serve' dans votre terminal"
+      }
     }
   },
   "debug": {

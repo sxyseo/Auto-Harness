@@ -146,6 +146,7 @@ export const MODEL_PROVIDER_MAP: Record<string, SupportedProvider> = {
   'codestral-': 'mistral',
   'llama-': 'groq',
   'grok-': 'xai',
+  'glm-': 'zai',
 } as const;
 
 // ============================================

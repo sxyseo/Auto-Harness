@@ -7,7 +7,7 @@
  *
  * Used in TaskCreationWizard and TaskEditDialog.
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useActiveProvider } from '../hooks/useActiveProvider';
 import { getProviderModelLabel } from '../../shared/utils/model-display';
@@ -24,6 +24,7 @@ import {
 import {
   DEFAULT_AGENT_PROFILES,
   AVAILABLE_MODELS,
+  ALL_AVAILABLE_MODELS,
   THINKING_LEVELS,
   DEFAULT_PHASE_MODELS,
   DEFAULT_PHASE_THINKING,
@@ -96,6 +97,18 @@ export function AgentProfileSelector({
   // Use provided phase configs or defaults
   const currentPhaseModels = phaseModels || DEFAULT_PHASE_MODELS;
   const currentPhaseThinking = phaseThinking || DEFAULT_PHASE_THINKING;
+
+  // Build model options filtered to the active provider (falls back to Anthropic models)
+  const phaseModelOptions = useMemo(() => {
+    if (!activeProvider || activeProvider === 'anthropic') {
+      return AVAILABLE_MODELS.map(m => ({ value: m.value, label: m.label }));
+    }
+    const providerModels = ALL_AVAILABLE_MODELS.filter(m => m.provider === activeProvider);
+    if (providerModels.length === 0) {
+      return AVAILABLE_MODELS.map(m => ({ value: m.value, label: m.label }));
+    }
+    return providerModels.map(m => ({ value: m.value, label: m.label }));
+  }, [activeProvider]);
 
   const handleProfileSelect = (selectedId: string) => {
     if (selectedId === 'custom') {
@@ -294,7 +307,7 @@ export function AgentProfileSelector({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {AVAILABLE_MODELS.map((m) => (
+                          {phaseModelOptions.map((m) => (
                             <SelectItem key={m.value} value={m.value}>
                               {m.label}
                             </SelectItem>

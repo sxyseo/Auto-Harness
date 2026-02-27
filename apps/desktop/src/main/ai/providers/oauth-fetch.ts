@@ -264,9 +264,19 @@ export function createOAuthProviderFetch(
       debugLog(`${originalUrl} -> ${url} (token: [redacted])`);
     }
 
-    return globalThis.fetch(url, {
+    const response = await globalThis.fetch(url, {
       ...init,
       headers,
     });
+
+    if (DEBUG) {
+      debugLog(`Response: ${response.status} ${response.statusText}`, {
+        url,
+        contentType: response.headers.get('content-type'),
+        hasBody: response.body !== null,
+      });
+    }
+
+    return response;
   };
 }

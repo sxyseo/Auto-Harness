@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Search, Check, Brain, Eye, Wrench, ExternalLink } from 'lucide-react';
+import { ChevronDown, Search, Check, Brain, Eye, Wrench, ExternalLink, Loader2 } from 'lucide-react';
 import { ALL_AVAILABLE_MODELS, resolveModelEquivalent, type ModelOption } from '@shared/constants/models';
 import { PROVIDER_REGISTRY } from '@shared/constants/providers';
 import type { BuiltinProvider } from '@shared/types/provider-account';
@@ -31,7 +31,48 @@ export function MultiProviderModelSelect({ value, onChange, className, filterPro
   const settings = useSettingsStore(s => s.settings);
   const providerAccounts = settings.providerAccounts ?? [];
 
-  // Group models by provider
+  // Dynamic Ollama model fetching
+  const [ollamaModels, setOllamaModels] = useState<ModelOption[]>([]);
+  const [ollamaLoading, setOllamaLoading] = useState(false);
+
+  useEffect(() => {
+    if (filterProvider && filterProvider !== 'ollama') return;
+    // Only fetch if there's an Ollama account configured
+    const hasOllamaAccount = providerAccounts.some(a => a.provider === 'ollama');
+    if (!hasOllamaAccount) {
+      setOllamaModels([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    setOllamaLoading(true);
+
+    (async () => {
+      try {
+        const result = await window.electronAPI.listOllamaModels();
+        if (controller.signal.aborted) return;
+        if (result?.success && result.data?.models) {
+          const llmModels = result.data.models
+            .filter((m: { is_embedding: boolean }) => !m.is_embedding)
+            .map((m: { name: string; size_bytes: number; size_gb: number }): ModelOption => ({
+              value: m.name,
+              label: m.name,
+              provider: 'ollama' as BuiltinProvider,
+              description: m.size_gb >= 1 ? `${m.size_gb.toFixed(1)} GB` : `${Math.round(m.size_bytes / 1e6)} MB`,
+            }));
+          setOllamaModels(llmModels);
+        }
+      } catch {
+        // Non-fatal — leave models empty
+      } finally {
+        if (!controller.signal.aborted) setOllamaLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [filterProvider, providerAccounts]);
+
+  // Group models by provider, including custom models from openai-compatible accounts
   const groupedModels = useMemo(() => {
     const groups = new Map<BuiltinProvider, ModelOption[]>();
     for (const model of ALL_AVAILABLE_MODELS) {
@@ -40,13 +81,44 @@ export function MultiProviderModelSelect({ value, onChange, className, filterPro
       if (!groups.has(model.provider)) groups.set(model.provider, []);
       groups.get(model.provider)!.push(model);
     }
+
+    // Merge user-configured custom models from openai-compatible accounts
+    if (!filterProvider || filterProvider === 'openai-compatible') {
+      const customAccounts = providerAccounts.filter(
+        a => a.provider === 'openai-compatible' && a.customModels?.length
+      );
+      for (const account of customAccounts) {
+        for (const cm of account.customModels!) {
+          // Avoid duplicates — skip if already present
+          const existing = groups.get('openai-compatible');
+          if (existing?.some(m => m.value === cm.id)) continue;
+          if (!groups.has('openai-compatible')) groups.set('openai-compatible', []);
+          groups.get('openai-compatible')!.push({
+            value: cm.id,
+            label: cm.label,
+            provider: 'openai-compatible',
+            description: account.name,
+            capabilities: { thinking: false, tools: true, vision: false, contextWindow: 128000 },
+          });
+        }
+      }
+    }
+
+    // Inject dynamically fetched Ollama LLM models
+    if (ollamaModels.length > 0 && (!filterProvider || filterProvider === 'ollama')) {
+      // Replace any static catalog entries with dynamic ones
+      groups.set('ollama', ollamaModels);
+    }
+
     return groups;
-  }, [filterProvider]);
+  }, [filterProvider, providerAccounts, ollamaModels]);
 
   // Check if provider has credentials
   const hasCredentials = (provider: BuiltinProvider): boolean => {
     // Anthropic is always available (built-in OAuth support)
     if (provider === 'anthropic') return true;
+    // Ollama doesn't need API keys — just an account entry means it's connected
+    if (provider === 'ollama') return providerAccounts.some(a => a.provider === 'ollama');
     return providerAccounts.some(a => a.provider === provider && (a.apiKey || a.claudeProfileId));
   };
 
@@ -76,6 +148,8 @@ export function MultiProviderModelSelect({ value, onChange, className, filterPro
   // e.g., 'opus' → 'gpt-5.3' when filterProvider='openai'
   const resolvedValue = useMemo(() => {
     if (!filterProvider || !value) return value;
+    // Ollama uses raw model names — skip equivalence resolution
+    if (filterProvider === 'ollama') return value;
     // Check if the value already belongs to the target provider
     const directMatch = ALL_AVAILABLE_MODELS.find(m => m.value === value && m.provider === filterProvider);
     if (directMatch) return value;
@@ -91,8 +165,17 @@ export function MultiProviderModelSelect({ value, onChange, className, filterPro
     return value;
   }, [value, filterProvider]);
 
-  // Find current selection label
-  const selectedModel = ALL_AVAILABLE_MODELS.find(m => m.value === resolvedValue);
+  // Find current selection label (check grouped models which includes custom models)
+  const selectedModel = useMemo(() => {
+    const fromCatalog = ALL_AVAILABLE_MODELS.find(m => m.value === resolvedValue);
+    if (fromCatalog) return fromCatalog;
+    // Check custom models from grouped results
+    for (const models of groupedModels.values()) {
+      const found = models.find(m => m.value === resolvedValue);
+      if (found) return found;
+    }
+    return undefined;
+  }, [resolvedValue, groupedModels]);
   const displayLabel = selectedModel?.label ?? value;
 
   const handleOpen = () => {
@@ -180,7 +263,25 @@ export function MultiProviderModelSelect({ value, onChange, className, filterPro
 
           {/* Model groups */}
           <div className="flex-1 overflow-y-auto">
-            {filteredGroups.size === 0 ? (
+            {/* Ollama loading state */}
+            {ollamaLoading && filterProvider === 'ollama' && (
+              <div className="p-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('settings:modelSelect.ollamaLoading', { defaultValue: 'Loading Ollama models...' })}
+              </div>
+            )}
+            {/* Ollama no models state */}
+            {!ollamaLoading && filterProvider === 'ollama' && ollamaModels.length === 0 && providerAccounts.some(a => a.provider === 'ollama') && (
+              <div className="p-3 text-center space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  {t('settings:modelSelect.ollamaNoModels', { defaultValue: 'No Ollama models installed' })}
+                </p>
+                <p className="text-[10px] text-muted-foreground/70">
+                  {t('settings:modelSelect.ollamaNoModelsHint', { defaultValue: 'Install models in Agent Settings → Ollama tab' })}
+                </p>
+              </div>
+            )}
+            {filteredGroups.size === 0 && !ollamaLoading ? (
               <div className="p-3 text-center text-sm text-muted-foreground">
                 {t('settings:modelSelect.noResults', { defaultValue: 'No models match your search' })}
               </div>

@@ -66,6 +66,11 @@ export const ALL_AVAILABLE_MODELS: ModelOption[] = [
   { value: 'grok-4-0709', label: 'Grok 4', provider: 'xai', description: 'Flagship', capabilities: { thinking: true, tools: true, vision: true, contextWindow: 256000 } },
   { value: 'grok-3', label: 'Grok 3', provider: 'xai', description: 'Text', capabilities: { thinking: false, tools: true, vision: false, contextWindow: 131072 } },
   { value: 'grok-3-mini', label: 'Grok 3 Mini', provider: 'xai', description: 'Fast reasoning', capabilities: { thinking: true, tools: true, vision: false, contextWindow: 131072 } },
+  // Z.AI (Zhipu)
+  { value: 'glm-5', label: 'GLM-5', provider: 'zai', description: 'Flagship', capabilities: { thinking: false, tools: true, vision: false, contextWindow: 128000 } },
+  { value: 'glm-4.7', label: 'GLM-4.7', provider: 'zai', description: 'Previous flagship', capabilities: { thinking: false, tools: true, vision: false, contextWindow: 128000 } },
+  { value: 'glm-4.6v', label: 'GLM-4.6V', provider: 'zai', description: 'Multimodal', capabilities: { thinking: false, tools: true, vision: true, contextWindow: 128000 } },
+  { value: 'glm-4.5-flash', label: 'GLM-4.5 Flash', provider: 'zai', description: 'Fast', capabilities: { thinking: false, tools: true, vision: false, contextWindow: 128000 } },
 ];
 
 // Maps model shorthand to actual Claude model IDs
@@ -302,6 +307,12 @@ export const PROVIDER_PRESET_DEFINITIONS: Partial<Record<BuiltinProvider, Record
     auto:     { primaryModel: 'meta-llama/llama-4-maverick', primaryThinking: 'low', phaseModels: { spec: 'meta-llama/llama-4-maverick', planning: 'meta-llama/llama-4-maverick', coding: 'meta-llama/llama-4-maverick', qa: 'meta-llama/llama-4-maverick' }, phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
     balanced: { primaryModel: 'llama-3.3-70b-versatile',     primaryThinking: 'low', phaseModels: { spec: 'llama-3.3-70b-versatile', planning: 'llama-3.3-70b-versatile', coding: 'llama-3.3-70b-versatile', qa: 'llama-3.3-70b-versatile' },                 phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
   },
+  zai: {
+    auto:     { primaryModel: 'glm-5',          primaryThinking: 'low', phaseModels: { spec: 'glm-5', planning: 'glm-5', coding: 'glm-5', qa: 'glm-5' },                         phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
+    complex:  { primaryModel: 'glm-5',          primaryThinking: 'low', phaseModels: { spec: 'glm-5', planning: 'glm-5', coding: 'glm-5', qa: 'glm-5' },                         phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
+    balanced: { primaryModel: 'glm-4.7',        primaryThinking: 'low', phaseModels: { spec: 'glm-4.7', planning: 'glm-4.7', coding: 'glm-4.7', qa: 'glm-4.7' },                 phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
+    quick:    { primaryModel: 'glm-4.5-flash',  primaryThinking: 'low', phaseModels: { spec: 'glm-4.5-flash', planning: 'glm-4.5-flash', coding: 'glm-4.5-flash', qa: 'glm-4.5-flash' }, phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
+  },
 };
 
 /**
@@ -393,6 +404,17 @@ export const DEFAULT_MODEL_EQUIVALENCES: Record<string, Partial<Record<BuiltinPr
     xai: { modelId: 'grok-4-0709', reasoning: { type: 'reasoning_effort', level: 'high' } },
     mistral: { modelId: 'mistral-large-latest', reasoning: { type: 'none' } },
     groq: { modelId: 'meta-llama/llama-4-maverick', reasoning: { type: 'none' } },
+    zai: { modelId: 'glm-5', reasoning: { type: 'none' } },
+  },
+  'glm-5': {
+    zai: { modelId: 'glm-5', reasoning: { type: 'none' } },
+    anthropic: { modelId: 'claude-opus-4-6', reasoning: { type: 'adaptive_effort', level: 'high' } },
+    openai: { modelId: 'gpt-5.3-codex', reasoning: { type: 'reasoning_effort', level: 'high' } },
+  },
+  'glm-4.7': {
+    zai: { modelId: 'glm-4.7', reasoning: { type: 'none' } },
+    anthropic: { modelId: 'claude-sonnet-4-6', reasoning: { type: 'thinking_tokens', level: 'medium' } },
+    openai: { modelId: 'gpt-5.2', reasoning: { type: 'reasoning_effort', level: 'medium' } },
   },
   'opus-1m': {
     anthropic: { modelId: 'claude-opus-4-6', reasoning: { type: 'adaptive_effort', level: 'high' } },
@@ -411,6 +433,7 @@ export const DEFAULT_MODEL_EQUIVALENCES: Record<string, Partial<Record<BuiltinPr
     mistral: { modelId: 'mistral-large-latest', reasoning: { type: 'none' } },
     groq: { modelId: 'llama-3.3-70b-versatile', reasoning: { type: 'none' } },
     xai: { modelId: 'grok-3-mini', reasoning: { type: 'reasoning_effort', level: 'medium' } },
+    zai: { modelId: 'glm-4.7', reasoning: { type: 'none' } },
   },
   'haiku': {
     anthropic: { modelId: 'claude-haiku-4-5-20251001', reasoning: { type: 'none' } },
@@ -418,6 +441,7 @@ export const DEFAULT_MODEL_EQUIVALENCES: Record<string, Partial<Record<BuiltinPr
     google: { modelId: 'gemini-2.5-flash-lite', reasoning: { type: 'thinking_toggle', level: 'low' } },
     mistral: { modelId: 'mistral-small-latest', reasoning: { type: 'none' } },
     groq: { modelId: 'llama-3.3-70b-versatile', reasoning: { type: 'none' } },
+    zai: { modelId: 'glm-4.5-flash', reasoning: { type: 'none' } },
   },
   // ── OpenAI models ─────────────────────────────────────────────────────────
   'gpt-5.3-codex': {
@@ -554,11 +578,30 @@ export function resolveModelEquivalent(
 }
 
 /**
- * Look up the context window size for a model shorthand.
- * Searches ALL_AVAILABLE_MODELS by value.
+ * Look up the context window size for a model shorthand or full model ID.
+ * Searches ALL_AVAILABLE_MODELS by value first, then searches
+ * DEFAULT_MODEL_EQUIVALENCES for full model IDs (e.g., 'claude-opus-4-6').
  * Falls back to 200,000 (conservative default) if not found.
  */
-export function getModelContextWindow(modelShorthand: string): number {
-  const model = ALL_AVAILABLE_MODELS.find((m) => m.value === modelShorthand);
-  return model?.capabilities?.contextWindow ?? 200_000;
+export function getModelContextWindow(modelIdOrShorthand: string): number {
+  // Direct match by shorthand (e.g., 'opus', 'gpt-5.3-codex')
+  const directMatch = ALL_AVAILABLE_MODELS.find((m) => m.value === modelIdOrShorthand);
+  if (directMatch?.capabilities?.contextWindow) {
+    return directMatch.capabilities.contextWindow;
+  }
+
+  // Search equivalences for full model IDs (e.g., 'claude-opus-4-6' → find 'opus' entry)
+  for (const [shorthand, providerMap] of Object.entries(DEFAULT_MODEL_EQUIVALENCES)) {
+    for (const spec of Object.values(providerMap)) {
+      if (spec?.modelId === modelIdOrShorthand) {
+        // Found the full model ID — look up context window via the shorthand
+        const shorthandMatch = ALL_AVAILABLE_MODELS.find((m) => m.value === shorthand);
+        if (shorthandMatch?.capabilities?.contextWindow) {
+          return shorthandMatch.capabilities.contextWindow;
+        }
+      }
+    }
+  }
+
+  return 200_000;
 }

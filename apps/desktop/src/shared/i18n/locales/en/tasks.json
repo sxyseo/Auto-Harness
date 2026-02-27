@@ -306,7 +306,9 @@
     }
   },
   "subtasks": {
-    "untitled": "Untitled subtask"
+    "untitled": "Untitled subtask",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all"
   },
   "bulkPR": {
     "selectAllInColumn": "Select all tasks in column",

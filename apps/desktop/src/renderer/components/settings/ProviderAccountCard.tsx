@@ -136,6 +136,13 @@ export function ProviderAccountCard({ account, onEdit, onDelete, onReauth }: Pro
             <span className="text-xs text-muted-foreground truncate block">{identifier}</span>
           )}
 
+          {/* Custom models count for openai-compatible */}
+          {account.provider === 'openai-compatible' && account.customModels && account.customModels.length > 0 && (
+            <span className="text-[10px] text-muted-foreground mt-1 block">
+              {t('providers.card.customModels', { count: account.customModels.length })}
+            </span>
+          )}
+
           {/* Usage bars for OAuth accounts */}
           {hasUsage && (
             <div className="flex items-center gap-3 mt-2">

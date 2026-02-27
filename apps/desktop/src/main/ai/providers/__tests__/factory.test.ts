@@ -72,6 +72,20 @@ vi.mock('@ai-sdk/openai-compatible', () => ({
   }),
 }));
 
+vi.mock('@openrouter/ai-sdk-provider', () => ({
+  createOpenRouter: vi.fn(() => {
+    const provider = vi.fn((modelId: string) => ({ modelId, provider: 'openrouter' }));
+    return provider;
+  }),
+}));
+
+vi.mock('zhipu-ai-provider', () => ({
+  createZhipu: vi.fn(() => {
+    const provider = vi.fn((modelId: string) => ({ modelId, provider: 'zai' }));
+    return provider;
+  }),
+}));
+
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createProvider, detectProviderFromModel, createProviderFromModelId } from '../factory';
 import { SupportedProvider } from '../types';

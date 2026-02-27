@@ -12,6 +12,23 @@ import { writeFileAtomicSync } from './utils/atomic-file';
 import { updateRoadmapFeatureOutcome, revertRoadmapFeatureOutcome } from './utils/roadmap-utils';
 import { safeParseJson } from './utils/json-repair';
 
+/**
+ * Extract a short title from a long description string.
+ * Takes the first sentence (up to first period) or first ~60 chars, whichever is shorter.
+ */
+function truncateToTitle(desc: string): string {
+  if (!desc) return '';
+  // First sentence (up to first period followed by space or end)
+  const sentenceMatch = desc.match(/^(.+?\.)\s/);
+  const firstSentence = sentenceMatch ? sentenceMatch[1] : desc;
+  // Cap at 60 chars
+  if (firstSentence.length <= 60) return firstSentence;
+  // Find last word boundary before 60 chars
+  const truncated = firstSentence.slice(0, 60);
+  const lastSpace = truncated.lastIndexOf(' ');
+  return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + '...';
+}
+
 interface TabState {
   openProjectIds: string[];
   activeProjectId: string | null;
@@ -512,9 +529,10 @@ export class ProjectStore {
           const items = phase.subtasks || (phase as { chunks?: PlanSubtask[] }).chunks || [];
           return items.map((subtask) => {
             const desc = subtask.description || subtask.title || (subtask as unknown as { name?: string }).name || '';
+            const shortTitle = subtask.title || truncateToTitle(desc);
             return {
               id: subtask.id,
-              title: desc,
+              title: shortTitle,
               description: desc,
               status: subtask.status,
               files: []

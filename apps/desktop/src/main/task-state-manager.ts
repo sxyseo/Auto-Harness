@@ -284,10 +284,6 @@ export class TaskStateManager {
 
       this.persistStatus(task, project, status, reviewReason, stateValue, executionPhase);
       this.emitStatus(taskId, status, reviewReason, project.id);
-
-      // Also emit execution progress to sync phase display with column
-      // This ensures crisp transitions - phase and column update together
-      this.emitPhaseFromState(taskId, stateValue, project.id);
     });
 
     actor.start();
@@ -346,35 +342,6 @@ export class TaskStateManager {
       status,
       projectId,
       reviewReason
-    );
-  }
-
-  /**
-   * Emit execution progress to sync phase display with XState state.
-   * This ensures the card shows the correct phase when XState transitions.
-   */
-  private emitPhaseFromState(
-    taskId: string,
-    xstateState: string,
-    projectId?: string
-  ): void {
-    if (!this.getMainWindow) return;
-
-    const phase = XSTATE_TO_PHASE[xstateState] || 'idle';
-
-    // Emit execution progress with the phase derived from XState
-    safeSendToRenderer(
-      this.getMainWindow,
-      IPC_CHANNELS.TASK_EXECUTION_PROGRESS,
-      taskId,
-      {
-        phase,
-        phaseProgress: phase === 'complete' ? 100 : 50,
-        overallProgress: phase === 'complete' ? 100 : 50,
-        message: `State: ${xstateState}`,
-        sequenceNumber: Date.now()  // Use timestamp as sequence to ensure it's newer
-      },
-      projectId
     );
   }
 
