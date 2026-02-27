@@ -14,13 +14,19 @@
  * into the next phase's kickoff message, eliminating redundant file re-reads.
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { EventEmitter } from 'events';
 
 import type { AgentType } from '../config/agent-configs';
 import type { Phase } from '../config/types';
-import { validateJsonFile, ComplexityAssessmentSchema } from '../schema';
+import {
+  validateJsonFile,
+  validateAndNormalizeJsonFile,
+  ComplexityAssessmentSchema,
+  ImplementationPlanSchema,
+} from '../schema';
+import type { ZodSchema } from 'zod';
 import type { SessionResult } from '../session/types';
 
 // =============================================================================
@@ -167,6 +173,8 @@ export interface SpecSessionRunConfig {
   priorPhaseOutputs?: Record<string, string>;
   /** Pre-generated project index (JSON string) */
   projectIndex?: string;
+  /** Optional Zod schema for structured output (uses AI SDK Output.object()) */
+  outputSchema?: ZodSchema;
 }
 
 /** Result of a single phase execution */
@@ -398,6 +406,37 @@ export class SpecOrchestrator extends EventEmitter {
       }
 
       if (result.outcome === 'completed' || result.outcome === 'max_steps' || result.outcome === 'context_window') {
+        // Validate that expected output files were actually created.
+        // Some models (e.g., GLM-5) may complete a session without calling
+        // any tools, producing no output files despite a successful stream.
+        const missingFiles = await this.validatePhaseOutputs(phase);
+        if (missingFiles.length > 0) {
+          const noToolCalls = result.toolCallCount === 0;
+          const detail = noToolCalls
+            ? `Model completed session without making any tool calls — expected files not created: ${missingFiles.join(', ')}`
+            : `Phase completed but expected output files missing: ${missingFiles.join(', ')}`;
+          errors.push(detail);
+          this.emitTyped('log', `Phase ${phase} output validation failed (attempt ${attempt + 1}): ${detail}`);
+
+          if (attempt < MAX_PHASE_RETRIES) {
+            continue; // Retry the phase
+          }
+          // All retries exhausted — fall through to failure
+          break;
+        }
+
+        // Schema validation for phases with structured output requirements
+        // (e.g., planning phase must produce valid implementation_plan.json)
+        const schemaValidation = await this.validatePhaseSchema(phase);
+        if (schemaValidation && !schemaValidation.valid) {
+          errors.push(`Schema validation failed: ${schemaValidation.errors.join(', ')}`);
+          this.emitTyped('log', `Phase ${phase} schema validation failed (attempt ${attempt + 1}): ${schemaValidation.errors.join(', ')}`);
+          if (attempt < MAX_PHASE_RETRIES) {
+            continue; // Retry the phase
+          }
+          break;
+        }
+
         const phaseResult: SpecPhaseResult = { phase, success: true, errors: [], retries: attempt };
         this.emitTyped('phase-complete', phase, phaseResult);
         return phaseResult;
@@ -440,7 +479,12 @@ export class SpecOrchestrator extends EventEmitter {
       attemptCount: 0,
     });
 
-    const result = await this.config.runSession({
+    // NOTE: We intentionally do NOT pass outputSchema here. The ComplexityAssessmentSchema
+    // uses z.preprocess(), .default(), .optional(), and .passthrough() — none of which are
+    // compatible with OpenAI's strict structured output (requires all properties in `required`,
+    // `additionalProperties: false`). File-based validation via validateJsonFile() is the
+    // correct provider-agnostic approach for these coercion-heavy schemas.
+    const sessionResult = await this.config.runSession({
       agentType: 'spec_gatherer',
       phase: 'spec',
       systemPrompt: prompt,
@@ -453,20 +497,20 @@ export class SpecOrchestrator extends EventEmitter {
       projectIndex: this.config.projectIndex,
     });
 
-    this.emitTyped('session-complete', result, 'complexity_assessment');
+    this.emitTyped('session-complete', sessionResult, 'complexity_assessment');
 
-    if (result.outcome === 'cancelled') {
+    if (sessionResult.outcome === 'cancelled') {
       return { phase: 'complexity_assessment', success: false, errors: ['Cancelled'], retries: 0 };
     }
 
-    // Try to load assessment from file
+    // Try to load assessment from file (agent writes it via tool)
     try {
       const assessmentPath = join(this.config.specDir, 'complexity_assessment.json');
-      const result = await validateJsonFile(assessmentPath, ComplexityAssessmentSchema);
+      const fileResult = await validateJsonFile(assessmentPath, ComplexityAssessmentSchema);
 
-      if (result.valid && result.data) {
-        this.assessment = result.data as ComplexityAssessment;
-        this.emitTyped('log', `Complexity assessed: ${result.data.complexity} (confidence: ${(result.data.confidence * 100).toFixed(0)}%)`);
+      if (fileResult.valid && fileResult.data) {
+        this.assessment = fileResult.data as ComplexityAssessment;
+        this.emitTyped('log', `Complexity assessed: ${fileResult.data.complexity} (confidence: ${(fileResult.data.confidence * 100).toFixed(0)}%)`);
         return { phase: 'complexity_assessment', success: true, errors: [], retries: 0 };
       }
     } catch {
@@ -490,6 +534,47 @@ export class SpecOrchestrator extends EventEmitter {
    * Capture output files from a completed phase and store them in phaseSummaries.
    * These are injected into subsequent phases to eliminate redundant file re-reads.
    */
+
+  /**
+   * Validate that a phase produced its expected output files.
+   * Returns the list of missing file names (empty if all exist).
+   */
+  private async validatePhaseOutputs(phase: SpecPhase): Promise<string[]> {
+    const expectedFiles = PHASE_OUTPUTS[phase];
+    if (!expectedFiles?.length) return []; // Phase has no expected outputs
+
+    const missing: string[] = [];
+    for (const fileName of expectedFiles) {
+      try {
+        await access(join(this.config.specDir, fileName));
+      } catch {
+        missing.push(fileName);
+      }
+    }
+    return missing;
+  }
+
+  /**
+   * Validate phase output files against their Zod schemas.
+   * Returns null for phases without schema requirements.
+   * For phases with schemas (planning, quick_spec), validates and normalizes
+   * the output file, writing back coerced data on success.
+   */
+  private async validatePhaseSchema(
+    phase: SpecPhase,
+  ): Promise<{ valid: boolean; errors: string[] } | null> {
+    if (phase === 'planning' || phase === 'quick_spec') {
+      const planPath = join(this.config.specDir, 'implementation_plan.json');
+      try {
+        const result = await validateAndNormalizeJsonFile(planPath, ImplementationPlanSchema);
+        return { valid: result.valid, errors: result.errors };
+      } catch {
+        return null; // File doesn't exist yet — handled by validatePhaseOutputs
+      }
+    }
+    return null; // No schema for this phase
+  }
+
   private async capturePhaseOutput(phase: SpecPhase): Promise<void> {
     const outputFiles = PHASE_OUTPUTS[phase];
     if (!outputFiles?.length) return;

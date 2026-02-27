@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import {
+  isBillingError,
   isRateLimitError,
   isAuthenticationError,
   isToolConcurrencyError,
@@ -9,6 +10,34 @@ import {
   classifyToolError,
   ErrorCode,
 } from '../error-classifier';
+
+// =============================================================================
+// isBillingError
+// =============================================================================
+
+describe('isBillingError', () => {
+  it('should detect Z.AI insufficient balance error', () => {
+    expect(isBillingError('Insufficient balance or no resource package. Please recharge.')).toBe(true);
+  });
+
+  it('should detect individual billing patterns', () => {
+    expect(isBillingError('insufficient balance')).toBe(true);
+    expect(isBillingError('no resource package')).toBe(true);
+    expect(isBillingError('please recharge your account')).toBe(true);
+    expect(isBillingError('payment required')).toBe(true);
+    expect(isBillingError('credits exhausted')).toBe(true);
+    expect(isBillingError('subscription expired')).toBe(true);
+  });
+
+  it('should not match rate limit messages that mention billing period', () => {
+    expect(isBillingError('limit reached for this billing period')).toBe(false);
+  });
+
+  it('should not match unrelated errors', () => {
+    expect(isBillingError('rate limit exceeded')).toBe(false);
+    expect(isBillingError('connection refused')).toBe(false);
+  });
+});
 
 // =============================================================================
 // isRateLimitError
@@ -25,6 +54,11 @@ describe('isRateLimitError', () => {
     expect(isRateLimitError('usage limit reached')).toBe(true);
     expect(isRateLimitError('quota exceeded')).toBe(true);
     expect(isRateLimitError('limit reached for this billing period')).toBe(true);
+  });
+
+  it('should not match billing errors that use 429', () => {
+    expect(isRateLimitError('429 Insufficient balance or no resource package')).toBe(false);
+    expect(isRateLimitError('429 please recharge')).toBe(false);
   });
 
   it('should not match non-rate-limit errors', () => {
@@ -111,6 +145,13 @@ describe('classifyError', () => {
     const result = classifyError(err);
     expect(result.sessionError.code).toBe(ErrorCode.ABORTED);
     expect(result.outcome).toBe('cancelled');
+    expect(result.sessionError.retryable).toBe(false);
+  });
+
+  it('should classify billing errors as non-retryable', () => {
+    const result = classifyError(new Error('429 Insufficient balance or no resource package'));
+    expect(result.sessionError.code).toBe(ErrorCode.BILLING_ERROR);
+    expect(result.outcome).toBe('error');
     expect(result.sessionError.retryable).toBe(false);
   });
 

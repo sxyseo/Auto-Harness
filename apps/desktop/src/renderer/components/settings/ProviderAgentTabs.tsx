@@ -26,9 +26,16 @@ export function ProviderAgentTabs() {
   const needsSetup = useCallback((provider: BuiltinProvider): boolean => {
     if (provider !== 'ollama') return false;
     const ollamaConfig = settings.providerAgentConfig?.ollama;
+    // Check phase models
     if (!ollamaConfig?.customPhaseModels) return true;
     const models = ollamaConfig.customPhaseModels;
-    return !models.spec && !models.planning && !models.coding && !models.qa;
+    if (!models.spec && !models.planning && !models.coding && !models.qa) return true;
+    // Check feature models — all must be set for the provider to be fully configured
+    const featureModels = ollamaConfig.featureModels;
+    if (!featureModels) return true;
+    if (!featureModels.insights || !featureModels.ideation || !featureModels.roadmap ||
+        !featureModels.githubIssues || !featureModels.githubPrs || !featureModels.utility) return true;
+    return false;
   }, [settings.providerAgentConfig]);
 
   // Order: anthropic first, then remaining providers alphabetically

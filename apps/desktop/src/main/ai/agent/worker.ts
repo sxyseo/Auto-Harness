@@ -274,6 +274,7 @@ async function runSingleSession(
   registry: ToolRegistry,
   initialUserMessage?: string,
   skipPhaseLogging = false,
+  outputSchema?: import('zod').ZodSchema,
 ): Promise<SessionResult> {
   // Use queue-resolved model ID from baseSession (already mapped to the correct
   // provider-specific model, e.g., 'gpt-5.3-codex' for OpenAI Codex).
@@ -317,6 +318,7 @@ async function runSingleSession(
     sessionNumber,
     subtaskId,
     contextWindowLimit,
+    outputSchema,
   };
 
   // Start phase logging for this session (skip when orchestrator manages phases)
@@ -856,6 +858,7 @@ async function runSpecOrchestrator(
         registry,
         kickoffMessage,
         true, // skipPhaseLogging — orchestrator manages phase start/end
+        runConfig.outputSchema,
       );
     },
   });

@@ -30,6 +30,15 @@ import { scoreProviderAccount } from '../../claude-profile/profile-scorer';
 import type { ClaudeAutoSwitchSettings } from '../../../shared/types/agent';
 
 // ============================================
+// Z.AI Endpoint Routing
+// ============================================
+
+/** Z.AI General API — for usage-based (pay-per-use) API keys */
+const ZAI_GENERAL_API = 'https://api.z.ai/api/paas/v4';
+/** Z.AI Coding API — for Coding Plan subscription keys */
+const ZAI_CODING_API = 'https://api.z.ai/api/coding/paas/v4';
+
+// ============================================
 // Settings Accessor
 // ============================================
 
@@ -66,7 +75,7 @@ async function resolveFromProviderAccount(ctx: AuthResolverContext): Promise<Res
   const accountsRaw = _getSettingsValue('providerAccounts');
   if (!accountsRaw) return null;
 
-  let accounts: Array<{ provider: string; isActive: boolean; authType: string; apiKey?: string; baseUrl?: string; claudeProfileId?: string }>;
+  let accounts: Array<{ provider: string; isActive: boolean; authType: string; apiKey?: string; baseUrl?: string; claudeProfileId?: string; billingModel?: string }>;
   try {
     accounts = typeof accountsRaw === 'string' ? JSON.parse(accountsRaw) : (accountsRaw as any);
   } catch {
@@ -104,10 +113,15 @@ async function resolveFromProviderAccount(ctx: AuthResolverContext): Promise<Res
 
   // API key accounts
   if (account.authType === 'api-key' && account.apiKey) {
+    // Z.AI: route to correct endpoint based on billing model
+    const baseURL = account.provider === 'zai'
+      ? (account.baseUrl || (account.billingModel === 'subscription' ? ZAI_CODING_API : ZAI_GENERAL_API))
+      : account.baseUrl;
+
     return {
       apiKey: account.apiKey,
       source: 'profile-api-key',
-      baseURL: account.baseUrl,
+      baseURL,
     };
   }
 
@@ -363,13 +377,16 @@ export async function resolveAuthFromQueue(
     const supportedProvider = BUILTIN_TO_SUPPORTED[account.provider];
     if (!supportedProvider) continue;
 
-    // Find model equivalent for this provider
+    // Resolve which model to use on this account.
+    // First try the equivalence table (maps shorthands like 'sonnet' across providers).
+    // If no equivalence exists, the model was already chosen by the user for this
+    // specific provider (e.g., 'llama3.1:8b' on Ollama) — use it as-is.
     const modelSpec = resolveModelEquivalent(
       requestedModel,
       account.provider,
       options?.userModelOverrides,
     );
-    if (!modelSpec) continue;
+    const resolvedModelId = modelSpec?.modelId ?? requestedModel;
 
     // Resolve credentials for this account
     const auth = await resolveCredentialsForAccount(account, supportedProvider);
@@ -380,12 +397,73 @@ export async function resolveAuthFromQueue(
       ...auth,
       accountId: account.id,
       resolvedProvider: supportedProvider,
-      resolvedModelId: modelSpec.modelId,
-      reasoningConfig: modelSpec.reasoning,
+      resolvedModelId,
+      reasoningConfig: modelSpec?.reasoning ?? { type: 'none' },
     };
   }
 
   return null;
+}
+
+/**
+ * Build a default queue config from app settings.
+ * Reads providerAccounts and globalPriorityOrder, sorts accounts
+ * by the priority order, and returns a queueConfig object compatible
+ * with createSimpleClient() / createAgentClient().
+ *
+ * Returns undefined if no provider accounts are configured.
+ */
+export function buildDefaultQueueConfig(
+  requestedModel: string,
+): { queue: ProviderAccount[]; requestedModel: string } | undefined {
+  if (!_getSettingsValue) return undefined;
+
+  // Read providerAccounts
+  const accountsRaw = _getSettingsValue('providerAccounts');
+  if (!accountsRaw) return undefined;
+
+  let accounts: ProviderAccount[];
+  try {
+    accounts = typeof accountsRaw === 'string' ? JSON.parse(accountsRaw) : (accountsRaw as ProviderAccount[]);
+  } catch {
+    return undefined;
+  }
+
+  if (!Array.isArray(accounts) || accounts.length === 0) return undefined;
+
+  // Read priority order
+  const priorityRaw = _getSettingsValue('globalPriorityOrder');
+  let priorityOrder: string[] = [];
+  if (priorityRaw) {
+    try {
+      priorityOrder = typeof priorityRaw === 'string' ? JSON.parse(priorityRaw) : (priorityRaw as string[]);
+    } catch {
+      // Use accounts in their natural order
+    }
+  }
+
+  // Sort accounts by priority order (accounts not in the list go to the end)
+  const sorted = [...accounts].sort((a, b) => {
+    const idxA = priorityOrder.indexOf(a.id);
+    const idxB = priorityOrder.indexOf(b.id);
+    const effectiveA = idxA === -1 ? Infinity : idxA;
+    const effectiveB = idxB === -1 ? Infinity : idxB;
+    return effectiveA - effectiveB;
+  });
+
+  return { queue: sorted, requestedModel };
+}
+
+/**
+ * Resolve the correct Z.AI base URL based on billing model.
+ * Coding Plan (subscription) → /api/coding/paas/v4
+ * Usage-Based (pay-per-use)  → /api/paas/v4
+ *
+ * If the account has an explicit baseUrl set, it takes precedence.
+ */
+function resolveZaiBaseUrl(account: ProviderAccount): string {
+  if (account.baseUrl) return account.baseUrl;
+  return account.billingModel === 'subscription' ? ZAI_CODING_API : ZAI_GENERAL_API;
 }
 
 /**
@@ -396,6 +474,15 @@ async function resolveCredentialsForAccount(
   account: ProviderAccount,
   provider: SupportedProvider,
 ): Promise<ResolvedAuth | null> {
+  // No-auth providers (e.g., Ollama) — no API key required
+  if (NO_AUTH_PROVIDERS.has(provider)) {
+    return {
+      apiKey: '',
+      source: 'default',
+      baseURL: account.baseUrl,
+    };
+  }
+
   // File-based OAuth (e.g., OpenAI Codex subscription)
   if (account.authType === 'oauth' && account.provider === 'openai') {
     try {
@@ -426,10 +513,15 @@ async function resolveCredentialsForAccount(
 
   // API key accounts
   if (account.authType === 'api-key' && account.apiKey) {
+    // Z.AI: route to correct endpoint based on billing model
+    const baseURL = account.provider === 'zai'
+      ? resolveZaiBaseUrl(account)
+      : account.baseUrl;
+
     return {
       apiKey: account.apiKey,
       source: 'profile-api-key',
-      baseURL: account.baseUrl,
+      baseURL,
     };
   }
 

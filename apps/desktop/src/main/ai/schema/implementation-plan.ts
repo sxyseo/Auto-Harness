@@ -64,19 +64,29 @@ function coerceSubtask(input: unknown): unknown {
 
   return {
     ...raw,
-    // Coerce id: accept subtask_id, task_id as aliases
-    id: raw.id ?? raw.subtask_id ?? raw.task_id ?? undefined,
+    // Coerce id: accept subtask_id, task_id, step as aliases
+    // Some models use "step": 1 as the identifier instead of "id"
+    id: raw.id ?? raw.subtask_id ?? raw.task_id ?? (raw.step !== undefined ? String(raw.step) : undefined),
     // Keep title as-is (short summary). Preserved separately from description.
     title: raw.title ?? undefined,
-    // Coerce description: falls back to title/name/summary for backward compatibility
-    // (old plans may only have "title" and no "description")
-    description: raw.description ?? raw.title ?? raw.name ?? raw.summary ?? undefined,
+    // Coerce description: falls back to title/name/summary/details for backward compatibility
+    // (old plans may only have "title" and no "description"; some models write "details")
+    description: raw.description ?? raw.title ?? raw.name ?? raw.summary ?? raw.details ?? undefined,
     // Normalize status
     status: normalizeStatus(raw.status),
     // Coerce files_to_modify: accept file_paths as alias
     files_to_modify: raw.files_to_modify ?? raw.file_paths ?? undefined,
     // Coerce files_to_create: accept new_files as alias
     files_to_create: raw.files_to_create ?? raw.new_files ?? undefined,
+    // Coerce verification: accept method as alias for type
+    verification: raw.verification && typeof raw.verification === 'object'
+      ? {
+          ...(raw.verification as Record<string, unknown>),
+          type: (raw.verification as Record<string, unknown>).type
+            ?? (raw.verification as Record<string, unknown>).method
+            ?? undefined,
+        }
+      : raw.verification,
   };
 }
 
@@ -135,12 +145,26 @@ function coercePlan(input: unknown): unknown {
   if (!input || typeof input !== 'object') return input;
   const raw = input as Record<string, unknown>;
 
+  // If model wrote flat steps/tasks instead of phases[], wrap in a single phase.
+  // Some providers (e.g., OpenAI) produce a flat array of steps rather than
+  // the nested phases[].subtasks[] structure our schema requires.
+  let phases = raw.phases;
+  if (!phases && (raw.steps || raw.tasks)) {
+    const items = (raw.steps ?? raw.tasks) as unknown[];
+    phases = [{
+      id: '1',
+      name: raw.feature ?? raw.title ?? raw.name ?? 'Implementation',
+      subtasks: items,
+    }];
+  }
+
   return {
     ...raw,
     // Coerce feature: accept title, name as aliases
     feature: raw.feature ?? raw.title ?? raw.name ?? undefined,
     // Coerce workflow_type: accept type as alias
     workflow_type: raw.workflow_type ?? raw.type ?? undefined,
+    phases,
   };
 }
 

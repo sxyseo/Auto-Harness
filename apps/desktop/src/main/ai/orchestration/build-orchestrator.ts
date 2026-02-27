@@ -256,7 +256,13 @@ export class BuildOrchestrator extends EventEmitter {
       // build orchestrator runs) — it may omit `status` fields or use alternate
       // field names, causing the subtask iterator to find 0 pending subtasks.
       const preCodingPlanPath = join(this.config.specDir, 'implementation_plan.json');
-      await validateAndNormalizeJsonFile(preCodingPlanPath, ImplementationPlanSchema);
+      const preCodingValidation = await validateAndNormalizeJsonFile(preCodingPlanPath, ImplementationPlanSchema);
+      if (!preCodingValidation.valid) {
+        const errorDetail = preCodingValidation.errors.join('; ');
+        this.emitTyped('log', `Pre-coding plan validation failed: ${errorDetail}`);
+        return this.buildOutcome(false, Date.now() - startTime,
+          `Implementation plan is invalid and cannot be executed: ${errorDetail}`);
+      }
 
       // Check if build is already complete
       if (await this.isBuildComplete()) {

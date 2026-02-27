@@ -14,7 +14,7 @@
 
 import type { Tool as AITool } from 'ai';
 
-import { resolveAuth, resolveAuthFromQueue } from '../auth/resolver';
+import { resolveAuth, resolveAuthFromQueue, buildDefaultQueueConfig } from '../auth/resolver';
 import {
   getDefaultThinkingLevel,
   getRequiredMcpServers,
@@ -207,8 +207,11 @@ export async function createSimpleClient(
     profileId,
     maxSteps = DEFAULT_SIMPLE_MAX_STEPS,
     tools = {},
-    queueConfig,
+    queueConfig: explicitQueueConfig,
   } = config;
+
+  // Auto-build queue config from settings if none was explicitly provided.
+  const queueConfig = explicitQueueConfig ?? buildDefaultQueueConfig(resolveModelId(modelShorthand));
 
   // Resolve model + auth
   let model;
@@ -217,12 +220,14 @@ export async function createSimpleClient(
 
   if (queueConfig) {
     // Queue-based resolution: use global priority queue
+    const excludeAccountIds = (queueConfig as { excludeAccountIds?: string[] }).excludeAccountIds;
+    const userModelOverrides = (queueConfig as { userModelOverrides?: Record<string, unknown> }).userModelOverrides;
     queueAuth = await resolveAuthFromQueue(
       queueConfig.requestedModel,
       queueConfig.queue,
       {
-        excludeAccountIds: queueConfig.excludeAccountIds,
-        userModelOverrides: queueConfig.userModelOverrides as any,
+        excludeAccountIds,
+        userModelOverrides: userModelOverrides as any,
       }
     );
 

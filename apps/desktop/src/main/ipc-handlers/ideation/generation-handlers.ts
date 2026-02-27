@@ -3,55 +3,25 @@
  */
 
 import type { IpcMainEvent, IpcMainInvokeEvent, BrowserWindow } from "electron";
-import { app } from "electron";
-import { existsSync, readFileSync } from "fs";
-import path from "path";
 import {
   IPC_CHANNELS,
-  DEFAULT_APP_SETTINGS,
-  DEFAULT_FEATURE_MODELS,
-  DEFAULT_FEATURE_THINKING,
 } from "../../../shared/constants";
 import type {
   IPCResult,
   IdeationConfig,
   IdeationGenerationStatus,
-  AppSettings,
 } from "../../../shared/types";
 import { projectStore } from "../../project-store";
 import type { AgentManager } from "../../agent";
-import { debugLog, debugError } from "../../../shared/utils/debug-logger";
+import { debugLog } from "../../../shared/utils/debug-logger";
 import { safeSendToRenderer } from "../utils";
+import { getActiveProviderFeatureSettings } from "../feature-settings-helper";
 
 /**
- * Read ideation feature settings from the settings file
+ * Read ideation feature settings using per-provider resolution
  */
 function getIdeationFeatureSettings(): { model?: string; thinkingLevel?: string } {
-  const settingsPath = path.join(app.getPath("userData"), "settings.json");
-
-  try {
-    if (existsSync(settingsPath)) {
-      const content = readFileSync(settingsPath, "utf-8");
-      const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(content) };
-
-      // Get ideation-specific settings
-      const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
-      const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
-
-      return {
-        model: featureModels.ideation,
-        thinkingLevel: featureThinking.ideation,
-      };
-    }
-  } catch (error) {
-    debugError("[Ideation Handler] Failed to read feature settings:", error);
-  }
-
-  // Return defaults if settings file doesn't exist or fails to parse
-  return {
-    model: DEFAULT_FEATURE_MODELS.ideation,
-    thinkingLevel: DEFAULT_FEATURE_THINKING.ideation,
-  };
+  return getActiveProviderFeatureSettings('ideation');
 }
 
 /**

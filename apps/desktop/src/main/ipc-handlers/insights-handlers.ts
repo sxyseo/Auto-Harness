@@ -1,15 +1,11 @@
 import { ipcMain, app } from "electron";
 import type { BrowserWindow } from "electron";
 import path from "path";
-import { existsSync, readdirSync, mkdirSync, writeFileSync, readFileSync } from "fs";
-import { debugError } from "../../shared/utils/debug-logger";
+import { existsSync, readdirSync, mkdirSync, writeFileSync } from "fs";
 import {
   IPC_CHANNELS,
   getSpecsDir,
   AUTO_BUILD_PATHS,
-  DEFAULT_APP_SETTINGS,
-  DEFAULT_FEATURE_MODELS,
-  DEFAULT_FEATURE_THINKING,
 } from "../../shared/constants";
 import type {
   IPCResult,
@@ -19,43 +15,22 @@ import type {
   ImageAttachment,
   Task,
   TaskMetadata,
-  AppSettings,
 } from "../../shared/types";
 import { projectStore } from "../project-store";
 import { insightsService } from "../insights-service";
 import { safeSendToRenderer } from "./utils";
+import { getActiveProviderFeatureSettings } from "./feature-settings-helper";
+import type { ThinkingLevel } from "../../shared/types/settings";
 
 /**
- * Read insights feature settings from the settings file
+ * Read insights feature settings using per-provider resolution
  */
 function getInsightsFeatureSettings(): InsightsModelConfig {
-  const settingsPath = path.join(app.getPath("userData"), "settings.json");
-
-  try {
-    if (existsSync(settingsPath)) {
-      const content = readFileSync(settingsPath, "utf-8");
-      const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(content) };
-
-      // Get insights-specific settings from Agent Settings
-      // Use nullish coalescing at property level to handle partial settings objects
-      const featureModels = settings.featureModels ?? DEFAULT_FEATURE_MODELS;
-      const featureThinking = settings.featureThinking ?? DEFAULT_FEATURE_THINKING;
-
-      return {
-        profileId: "balanced", // Default profile for settings-based config
-        model: featureModels.insights ?? DEFAULT_FEATURE_MODELS.insights,
-        thinkingLevel: featureThinking.insights ?? DEFAULT_FEATURE_THINKING.insights,
-      };
-    }
-  } catch (error) {
-    debugError("[Insights Handler] Failed to read feature settings:", error);
-  }
-
-  // Return defaults if settings file doesn't exist or fails to parse
+  const { model, thinkingLevel } = getActiveProviderFeatureSettings('insights');
   return {
-    profileId: "balanced", // Default profile for settings-based config
-    model: DEFAULT_FEATURE_MODELS.insights,
-    thinkingLevel: DEFAULT_FEATURE_THINKING.insights,
+    profileId: "balanced",
+    model,
+    thinkingLevel: thinkingLevel as ThinkingLevel,
   };
 }
 

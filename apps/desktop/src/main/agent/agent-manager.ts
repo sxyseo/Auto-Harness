@@ -346,7 +346,7 @@ export class AgentManager extends EventEmitter {
     }
 
     // Resolve model and thinking level for the spec phase
-    const specModelShorthand = (metadata?.isAutoProfile && metadata.phaseModels)
+    const specModelShorthand = metadata?.phaseModels?.spec
       ? metadata.phaseModels.spec
       : (metadata?.model ?? 'sonnet');
     const specModelId = resolveModelId(specModelShorthand);
@@ -934,7 +934,7 @@ export class AgentManager extends EventEmitter {
           model?: string;
         };
 
-        if (metadata.isAutoProfile && metadata.phaseModels?.[phase]) {
+        if (metadata.phaseModels?.[phase]) {
           return resolveModelId(metadata.phaseModels[phase]);
         }
         if (metadata.model) {
@@ -958,8 +958,11 @@ export class AgentManager extends EventEmitter {
         const raw = readFileSync(metadataPath, 'utf-8');
         const metadata = JSON.parse(raw) as {
           phaseProviders?: Record<string, string>;
+          provider?: string;
         };
-        return metadata.phaseProviders?.[phase] ?? null;
+        // Per-phase provider (cross-provider mode) takes precedence,
+        // then fall back to the single task-level provider (e.g. 'ollama')
+        return metadata.phaseProviders?.[phase] ?? metadata.provider ?? null;
       }
     } catch {
       // Fall through

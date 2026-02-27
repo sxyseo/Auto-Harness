@@ -21,6 +21,7 @@ import type { SessionError, SessionOutcome } from './types';
 
 export const ErrorCode = {
   RATE_LIMITED: 'rate_limited',
+  BILLING_ERROR: 'billing_error',
   AUTH_FAILURE: 'auth_failure',
   CONCURRENCY: 'concurrency_error',
   TOOL_ERROR: 'tool_execution_error',
@@ -37,6 +38,24 @@ export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
 const WORD_BOUNDARY_429 = /\b429\b/;
 const WORD_BOUNDARY_401 = /\b401\b/;
+
+/**
+ * Billing/balance errors that use HTTP 429 but are NOT temporary rate limits.
+ * These require user action (recharging credits) and should not be retried.
+ * Checked BEFORE rate limit patterns so they don't get misclassified.
+ *
+ * Patterns are deliberately specific to avoid false positives on messages
+ * like "limit reached for this billing period" (which IS a rate limit).
+ */
+const BILLING_ERROR_PATTERNS = [
+  'insufficient balance',
+  'no resource package',
+  'please recharge',
+  'payment required',
+  'credits exhausted',
+  'subscription expired',
+  'billing error',
+] as const;
 
 const RATE_LIMIT_PATTERNS = [
   'limit reached',
@@ -62,9 +81,21 @@ const AUTH_PATTERNS = [
 ] as const;
 
 /**
+ * Check if an error is a billing/balance error.
+ * Some providers (e.g., Z.AI) return HTTP 429 for billing errors,
+ * which must be distinguished from temporary rate limits.
+ */
+export function isBillingError(error: unknown): boolean {
+  const errorStr = errorToString(error);
+  return BILLING_ERROR_PATTERNS.some((p) => errorStr.includes(p));
+}
+
+/**
  * Check if an error is a rate limit error (429 or similar).
+ * Excludes billing errors which also use 429 but are not temporary.
  */
 export function isRateLimitError(error: unknown): boolean {
+  if (isBillingError(error)) return false;
   const errorStr = errorToString(error);
   if (WORD_BOUNDARY_429.test(errorStr)) return true;
   return RATE_LIMIT_PATTERNS.some((p) => errorStr.includes(p));
@@ -117,11 +148,12 @@ export interface ClassifiedError {
  *
  * Priority order:
  * 1. Abort (not retryable)
- * 2. Rate limit (retryable after backoff)
- * 3. Auth failure (not retryable without re-auth)
- * 4. Concurrency (retryable)
- * 5. Tool error (retryable)
- * 6. Generic (not retryable)
+ * 2. Billing/balance error (not retryable — needs user action)
+ * 3. Rate limit (retryable after backoff)
+ * 4. Auth failure (not retryable without re-auth)
+ * 5. Concurrency (retryable)
+ * 6. Tool error (retryable)
+ * 7. Generic (not retryable)
  */
 export function classifyError(error: unknown): ClassifiedError {
   const message = sanitizeErrorMessage(errorToString(error));
@@ -135,6 +167,20 @@ export function classifyError(error: unknown): ClassifiedError {
         cause: error,
       },
       outcome: 'cancelled',
+    };
+  }
+
+  // Billing errors checked BEFORE rate limit — some providers (Z.AI) return
+  // HTTP 429 for billing issues which should NOT be retried as rate limits.
+  if (isBillingError(error)) {
+    return {
+      sessionError: {
+        code: ErrorCode.BILLING_ERROR,
+        message: `Billing error: ${message}`,
+        retryable: false,
+        cause: error,
+      },
+      outcome: 'error',
     };
   }
 

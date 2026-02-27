@@ -65,8 +65,13 @@ export function TaskCreationWizard({
   const providerPreset = activeProvider ? getProviderPreset(activeProvider, resolvedProfileId) : null;
   const profilePhaseModels = providerPreset?.phaseModels ?? selectedProfile.phaseModels ?? DEFAULT_PHASE_MODELS;
   const profilePhaseThinking = providerPreset?.phaseThinking ?? selectedProfile.phaseThinking ?? DEFAULT_PHASE_THINKING;
-  const resolvedPhaseModels = providerConfig?.customPhaseModels ?? settings.customPhaseModels ?? profilePhaseModels;
-  const resolvedPhaseThinking = providerConfig?.customPhaseThinking ?? settings.customPhaseThinking ?? profilePhaseThinking;
+  // When a provider is active, use provider-specific config or preset defaults (skip global fallback)
+  const resolvedPhaseModels = activeProvider
+    ? (providerConfig?.customPhaseModels ?? profilePhaseModels)
+    : (settings.customPhaseModels ?? profilePhaseModels);
+  const resolvedPhaseThinking = activeProvider
+    ? (providerConfig?.customPhaseThinking ?? profilePhaseThinking)
+    : (settings.customPhaseThinking ?? profilePhaseThinking);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -446,7 +451,7 @@ export function TaskCreationWizard({
       if (thinkingLevel) metadata.thinkingLevel = thinkingLevel;
       if (activeProvider) metadata.provider = activeProvider;
       if (phaseModels && phaseThinking) {
-        metadata.isAutoProfile = profileId === 'auto';
+        metadata.isAutoProfile = true;
         metadata.phaseModels = phaseModels;
         metadata.phaseThinking = phaseThinking;
       }

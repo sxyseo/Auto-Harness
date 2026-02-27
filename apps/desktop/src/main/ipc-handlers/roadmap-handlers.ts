@@ -1,12 +1,9 @@
-import { ipcMain, app } from "electron";
+import { ipcMain } from "electron";
 import type { BrowserWindow } from "electron";
 import {
   IPC_CHANNELS,
   AUTO_BUILD_PATHS,
   getSpecsDir,
-  DEFAULT_APP_SETTINGS,
-  DEFAULT_FEATURE_MODELS,
-  DEFAULT_FEATURE_THINKING,
 } from "../../shared/constants";
 import type {
   IPCResult,
@@ -17,47 +14,23 @@ import type {
   Task,
   TaskMetadata,
   CompetitorAnalysis,
-  AppSettings,
 } from "../../shared/types";
 import type { RoadmapConfig } from "../agent/types";
 import path from "path";
-import { existsSync, readFileSync, mkdirSync, readdirSync, unlinkSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, unlinkSync } from "fs";
 import { projectStore } from "../project-store";
 import { AgentManager } from "../agent";
 import { debugLog, debugError } from "../../shared/utils/debug-logger";
 import { safeSendToRenderer } from "./utils";
 import { writeFileWithRetry, readFileWithRetry } from "../utils/atomic-file";
 import { withFileLock } from "../utils/file-lock";
+import { getActiveProviderFeatureSettings } from "./feature-settings-helper";
 
 /**
- * Read feature settings from the settings file
+ * Read roadmap feature settings using per-provider resolution
  */
 function getFeatureSettings(): { model?: string; thinkingLevel?: string } {
-  const settingsPath = path.join(app.getPath("userData"), "settings.json");
-
-  try {
-    const content = readFileSync(settingsPath, "utf-8");
-    const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(content) };
-
-    // Get roadmap-specific settings
-    const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
-    const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
-
-    return {
-      model: featureModels.roadmap,
-      thinkingLevel: featureThinking.roadmap,
-    };
-  } catch (error) {
-    // Return defaults if settings file doesn't exist (ENOENT) or fails to parse
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      debugError("[Roadmap Handler] Failed to read feature settings:", error);
-    }
-  }
-
-  return {
-    model: DEFAULT_FEATURE_MODELS.roadmap,
-    thinkingLevel: DEFAULT_FEATURE_THINKING.roadmap,
-  };
+  return getActiveProviderFeatureSettings('roadmap');
 }
 
 /**
