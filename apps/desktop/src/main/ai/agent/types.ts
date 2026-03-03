@@ -75,6 +75,8 @@ export interface SerializableSessionConfig {
     agentMcpAdd?: string;
     agentMcpRemove?: string;
   };
+  /** Enable agentic orchestration mode where the AI drives the pipeline via SpawnSubagent tool */
+  useAgenticOrchestration?: boolean;
   /** Tool context serialized fields */
   toolContext: {
     cwd: string;

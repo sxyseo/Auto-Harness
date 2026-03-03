@@ -387,6 +387,27 @@ export function registerAgenteventsHandlers(
   fileWatcher.on("progress", (taskId: string, plan: ImplementationPlan) => {
     // File watcher events don't carry projectId — fall back to lookup
     const { task, project } = findTaskAndProject(taskId);
+
+    // Diagnostic: log subtask status summary for debugging status-not-updating issues.
+    // Only log when there are non-pending statuses (reduces noise).
+    if (plan.phases?.length) {
+      const statusCounts: Record<string, number> = {};
+      for (const phase of plan.phases) {
+        for (const st of phase.subtasks ?? []) {
+          const s = st.status || 'pending';
+          statusCounts[s] = (statusCounts[s] || 0) + 1;
+        }
+      }
+      const hasNonPending = Object.keys(statusCounts).some(k => k !== 'pending');
+      if (hasNonPending) {
+        console.warn(
+          `[FileWatcher→Renderer] Task ${taskId} subtask statuses:`,
+          statusCounts,
+          `| projectId: ${project?.id ?? 'UNKNOWN'}`,
+        );
+      }
+    }
+
     safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_PROGRESS, taskId, plan, project?.id);
 
     // Re-stamp XState status fields if the backend overwrote the plan file without them.

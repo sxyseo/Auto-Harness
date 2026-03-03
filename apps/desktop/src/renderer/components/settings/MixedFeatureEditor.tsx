@@ -30,6 +30,7 @@ const DEFAULT_MIXED_FEATURE_CONFIG: MixedFeatureConfig = {
   githubIssues: { provider: 'anthropic', modelId: 'opus', thinkingLevel: 'medium' },
   githubPrs: { provider: 'anthropic', modelId: 'opus', thinkingLevel: 'medium' },
   utility: { provider: 'anthropic', modelId: 'haiku', thinkingLevel: 'low' },
+  naming: { provider: 'anthropic', modelId: 'haiku', thinkingLevel: 'low' },
 };
 
 /**

@@ -1,16 +1,12 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
-import type { IPCResult, ProjectEnvConfig, ClaudeAuthResult, AppSettings } from '../../shared/types';
+import type { IPCResult, ProjectEnvConfig, AppSettings } from '../../shared/types';
 import path from 'path';
 import { app } from 'electron';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { spawn } from 'child_process';
 import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
-import { getClaudeCliInvocation, getClaudeCliInvocationAsync } from '../claude-cli-utils';
-import { debugError } from '../../shared/utils/debug-logger';
-import { getSpawnOptions, getSpawnCommand } from '../env-utils';
 
 // GitLab environment variable keys
 const GITLAB_ENV_KEYS = {
@@ -27,44 +23,6 @@ const GITLAB_ENV_KEYS = {
 function envLine(vars: Record<string, string>, key: string, defaultVal: string = ''): string {
   return vars[key] ? `${key}=${vars[key]}` : `# ${key}=${defaultVal}`;
 }
-
-type ResolvedClaudeCliInvocation =
-  | { command: string; env: Record<string, string> }
-  | { error: string };
-
-function _resolveClaudeCliInvocation(): ResolvedClaudeCliInvocation {
-  try {
-    const invocation = getClaudeCliInvocation();
-    if (!invocation?.command) {
-      throw new Error('Claude CLI path not resolved');
-    }
-    return { command: invocation.command, env: invocation.env };
-  } catch (error) {
-    debugError('[IPC] Failed to resolve Claude CLI path:', error);
-    return {
-      error: error instanceof Error ? error.message : 'Failed to resolve Claude CLI path',
-    };
-  }
-}
-
-/**
- * Async version of resolveClaudeCliInvocation - non-blocking for main process
- */
-async function resolveClaudeCliInvocationAsync(): Promise<ResolvedClaudeCliInvocation> {
-  try {
-    const invocation = await getClaudeCliInvocationAsync();
-    if (!invocation?.command) {
-      throw new Error('Claude CLI path not resolved');
-    }
-    return { command: invocation.command, env: invocation.env };
-  } catch (error) {
-    debugError('[IPC] Failed to resolve Claude CLI path:', error);
-    return {
-      error: error instanceof Error ? error.message : 'Failed to resolve Claude CLI path',
-    };
-  }
-}
-
 
 /**
  * Register all env-related IPC handlers
@@ -90,9 +48,6 @@ export function registerEnvHandlers(
     const existingVars = existingContent ? parseEnvFile(existingContent) : {};
 
     // Update with new values
-    if (config.claudeOAuthToken !== undefined) {
-      existingVars['CLAUDE_CODE_OAUTH_TOKEN'] = config.claudeOAuthToken;
-    }
     if (config.autoBuildModel !== undefined) {
       existingVars['AUTO_BUILD_MODEL'] = config.autoBuildModel;
     }
@@ -231,9 +186,6 @@ export function registerEnvHandlers(
     const content = `# Auto Claude Framework Environment Variables
 # Managed by Auto Claude UI
 
-# Claude Code OAuth Token (REQUIRED)
-CLAUDE_CODE_OAUTH_TOKEN=${existingVars['CLAUDE_CODE_OAUTH_TOKEN'] || ''}
-
 # Model override (OPTIONAL)
 ${existingVars['AUTO_BUILD_MODEL'] ? `AUTO_BUILD_MODEL=${existingVars['AUTO_BUILD_MODEL']}` : '# AUTO_BUILD_MODEL=claude-opus-4-6'}
 
@@ -369,13 +321,11 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
 
       // Default config
       const config: ProjectEnvConfig = {
-        claudeAuthStatus: 'not_configured',
         linearEnabled: false,
         githubEnabled: false,
         gitlabEnabled: false,
         graphitiEnabled: false,
         enableFancyUi: true,
-        claudeTokenIsGlobal: false,
         openaiKeyIsGlobal: false
       };
 
@@ -388,17 +338,6 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         } catch {
           // Continue with empty vars
         }
-      }
-
-      // Claude OAuth Token: project-specific takes precedence, then global
-      if (vars['CLAUDE_CODE_OAUTH_TOKEN']) {
-        config.claudeOAuthToken = vars['CLAUDE_CODE_OAUTH_TOKEN'];
-        config.claudeAuthStatus = 'token_set';
-        config.claudeTokenIsGlobal = false;
-      } else if (globalSettings.globalClaudeOAuthToken) {
-        config.claudeOAuthToken = globalSettings.globalClaudeOAuthToken;
-        config.claudeAuthStatus = 'token_set';
-        config.claudeTokenIsGlobal = true;
       }
 
       if (vars['AUTO_BUILD_MODEL']) {
@@ -582,157 +521,6 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to update .env file'
-        };
-      }
-    }
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.ENV_CHECK_CLAUDE_AUTH,
-    async (_, projectId: string): Promise<IPCResult<ClaudeAuthResult>> => {
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        return { success: false, error: 'Project not found' };
-      }
-
-      // Use async version to avoid blocking main process during CLI detection
-      const resolved = await resolveClaudeCliInvocationAsync();
-      if ('error' in resolved) {
-        return { success: false, error: resolved.error };
-      }
-      const claudeCmd = resolved.command;
-      const claudeEnv = resolved.env;
-
-      try {
-        // Check if Claude CLI is available and authenticated
-        const result = await new Promise<ClaudeAuthResult>((resolve) => {
-          const proc = spawn(getSpawnCommand(claudeCmd), ['--version'], getSpawnOptions(claudeCmd, {
-            cwd: project.path,
-            env: claudeEnv,
-          }));
-
-          let _stdout = '';
-          let _stderr = '';
-
-          proc.stdout?.on('data', (data: Buffer) => {
-            _stdout += data.toString('utf-8');
-          });
-
-          proc.stderr?.on('data', (data: Buffer) => {
-            _stderr += data.toString('utf-8');
-          });
-
-          proc.on('close', (code: number | null) => {
-            if (code === 0) {
-              // Claude CLI is available, check if authenticated
-              // Run a simple command that requires auth
-              const authCheck = spawn(getSpawnCommand(claudeCmd), ['api', '--help'], getSpawnOptions(claudeCmd, {
-                cwd: project.path,
-                env: claudeEnv,
-              }));
-
-              authCheck.on('close', (authCode: number | null) => {
-                resolve({
-                  success: true,
-                  authenticated: authCode === 0
-                });
-              });
-
-              authCheck.on('error', () => {
-                resolve({
-                  success: true,
-                  authenticated: false,
-                  error: 'Could not verify authentication'
-                });
-              });
-            } else {
-              resolve({
-                success: false,
-                authenticated: false,
-                error: 'Claude CLI not found. Please install it first.'
-              });
-            }
-          });
-
-          proc.on('error', () => {
-            resolve({
-              success: false,
-              authenticated: false,
-              error: 'Claude CLI not found. Please install it first.'
-            });
-          });
-        });
-
-        if (!result.success) {
-          return { success: false, error: result.error || 'Failed to check Claude auth' };
-        }
-        return { success: true, data: result };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to check Claude auth'
-        };
-      }
-    }
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.ENV_INVOKE_CLAUDE_SETUP,
-    async (_, projectId: string): Promise<IPCResult<ClaudeAuthResult>> => {
-      const project = projectStore.getProject(projectId);
-      if (!project) {
-        return { success: false, error: 'Project not found' };
-      }
-
-      // Use async version to avoid blocking main process during CLI detection
-      const resolved = await resolveClaudeCliInvocationAsync();
-      if ('error' in resolved) {
-        return { success: false, error: resolved.error };
-      }
-      const claudeCmd = resolved.command;
-      const claudeEnv = resolved.env;
-
-      try {
-        // Run claude setup-token which will open browser for OAuth
-        const result = await new Promise<ClaudeAuthResult>((resolve) => {
-          const proc = spawn(getSpawnCommand(claudeCmd), ['setup-token'], getSpawnOptions(claudeCmd, {
-            cwd: project.path,
-            env: claudeEnv,
-            stdio: 'inherit' // This allows the terminal to handle the interactive auth
-          }));
-
-          proc.on('close', (code: number | null) => {
-            if (code === 0) {
-              resolve({
-                success: true,
-                authenticated: true
-              });
-            } else {
-              resolve({
-                success: false,
-                authenticated: false,
-                error: 'Setup cancelled or failed'
-              });
-            }
-          });
-
-          proc.on('error', (err: Error) => {
-            resolve({
-              success: false,
-              authenticated: false,
-              error: err.message
-            });
-          });
-        });
-
-        if (!result.success) {
-          return { success: false, error: result.error || 'Failed to invoke Claude setup' };
-        }
-        return { success: true, data: result };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to invoke Claude setup'
         };
       }
     }

@@ -273,6 +273,72 @@ describe('ImplementationPlanSchema', () => {
     }
   });
 
+  it('coerces flat files_to_modify/implementation_order format into phases', () => {
+    // This is the format some models (especially quick_spec) produce:
+    // flat files_to_modify with changes + implementation_order strings
+    const flatPlan = {
+      files_to_modify: [
+        {
+          path: 'script.js',
+          changes: [
+            { description: 'Increase PARTICLE_MAX_TRAIL from 100 to 150', location: 'line 40' },
+            { description: 'Modify renderParticles to accept glow parameter', location: 'lines 97-117' },
+          ],
+        },
+      ],
+      files_to_create: [],
+      implementation_order: [
+        'script.js: Increase PARTICLE_MAX_TRAIL constant',
+        'script.js: Modify renderParticles to support glow parameter',
+        'script.js: Update render() to pass glow flag',
+      ],
+      estimated_effort: 'small',
+    };
+
+    const result = ImplementationPlanSchema.safeParse(flatPlan);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.phases).toHaveLength(1);
+      expect(result.data.phases[0].subtasks).toHaveLength(3);
+      expect(result.data.phases[0].subtasks[0].id).toBe('1-1');
+      expect(result.data.phases[0].subtasks[0].description).toBe('script.js: Increase PARTICLE_MAX_TRAIL constant');
+      expect(result.data.phases[0].subtasks[0].files_to_modify).toEqual(['script.js']);
+      expect(result.data.phases[0].subtasks[0].status).toBe('pending');
+    }
+  });
+
+  it('coerces flat files_to_modify with changes[] when no implementation_order', () => {
+    const flatPlan = {
+      feature: 'Add glow effect',
+      files_to_modify: [
+        {
+          path: 'src/main.ts',
+          changes: [
+            { description: 'Add import statement' },
+            { description: 'Initialize glow renderer' },
+          ],
+        },
+        {
+          path: 'src/render.ts',
+          changes: [
+            { description: 'Apply glow shader pass' },
+          ],
+        },
+      ],
+    };
+
+    const result = ImplementationPlanSchema.safeParse(flatPlan);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.feature).toBe('Add glow effect');
+      expect(result.data.phases).toHaveLength(1);
+      expect(result.data.phases[0].name).toBe('Add glow effect');
+      expect(result.data.phases[0].subtasks).toHaveLength(3);
+      expect(result.data.phases[0].subtasks[0].files_to_modify).toEqual(['src/main.ts']);
+      expect(result.data.phases[0].subtasks[2].files_to_modify).toEqual(['src/render.ts']);
+    }
+  });
+
   it('fails when phases is missing', () => {
     const result = ImplementationPlanSchema.safeParse({
       feature: 'Test',

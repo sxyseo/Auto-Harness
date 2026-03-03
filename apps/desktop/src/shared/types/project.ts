@@ -315,12 +315,6 @@ export interface ProjectContextData {
 
 // Environment Configuration for project .env files
 export interface ProjectEnvConfig {
-  // Claude Authentication
-  claudeOAuthToken?: string;
-  claudeAuthStatus: 'authenticated' | 'token_set' | 'not_configured';
-  // Indicates if the Claude token is from global settings (not project-specific)
-  claudeTokenIsGlobal?: boolean;
-
   // Model Override
   autoBuildModel?: string;
 

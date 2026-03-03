@@ -19,6 +19,12 @@ You MUST create `spec.md` with ALL required sections (see template below).
 
 **DO NOT** interact with the user. You have all the context you need.
 
+**CRITICAL BOUNDARIES**:
+- You may READ any project file to understand the codebase
+- You may only WRITE files inside the spec directory (the directory containing your output files)
+- Do NOT create, edit, or modify any project source code, configuration files, or git state
+- Do NOT run shell commands — you do not have Bash access
+
 ---
 
 ## PHASE 0: REVIEW PROVIDED CONTEXT

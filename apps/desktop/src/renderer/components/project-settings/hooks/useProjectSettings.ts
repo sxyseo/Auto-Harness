@@ -61,11 +61,6 @@ export interface UseProjectSettingsReturn {
   gitLabConnectionStatus: GitLabSyncStatus | null;
   isCheckingGitLab: boolean;
 
-  // Claude auth state
-  isCheckingClaudeAuth: boolean;
-  claudeAuthStatus: 'checking' | 'authenticated' | 'not_authenticated' | 'error';
-  setClaudeAuthStatus: React.Dispatch<React.SetStateAction<'checking' | 'authenticated' | 'not_authenticated' | 'error'>>;
-
   // Linear state
   showLinearImportModal: boolean;
   setShowLinearImportModal: React.Dispatch<React.SetStateAction<boolean>>;
@@ -74,7 +69,6 @@ export interface UseProjectSettingsReturn {
 
   // Actions
   handleInitialize: () => Promise<void>;
-  handleClaudeSetup: () => Promise<void>;
   handleSave: (onClose: () => void) => Promise<void>;
 }
 
@@ -125,10 +119,6 @@ export function useProjectSettings(
   const [gitLabConnectionStatus, setGitLabConnectionStatus] = useState<GitLabSyncStatus | null>(null);
   const [isCheckingGitLab, setIsCheckingGitLab] = useState(false);
 
-  // Claude auth state
-  const [isCheckingClaudeAuth, setIsCheckingClaudeAuth] = useState(false);
-  const [claudeAuthStatus, setClaudeAuthStatus] = useState<'checking' | 'authenticated' | 'not_authenticated' | 'error'>('checking');
-
   // Linear import state
   const [showLinearImportModal, setShowLinearImportModal] = useState(false);
   const [linearConnectionStatus, setLinearConnectionStatus] = useState<LinearSyncStatus | null>(null);
@@ -176,28 +166,6 @@ export function useProjectSettings(
       }
     };
     loadEnvConfig();
-  }, [open, project.id, project.autoBuildPath]);
-
-  // Check Claude authentication status
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (open && project.autoBuildPath) {
-        setIsCheckingClaudeAuth(true);
-        try {
-          const result = await window.electronAPI.checkClaudeAuth(project.id);
-          if (result.success && result.data) {
-            setClaudeAuthStatus(result.data.authenticated ? 'authenticated' : 'not_authenticated');
-          } else {
-            setClaudeAuthStatus('error');
-          }
-        } catch {
-          setClaudeAuthStatus('error');
-        } finally {
-          setIsCheckingClaudeAuth(false);
-        }
-      }
-    };
-    checkAuth();
   }, [open, project.id, project.autoBuildPath]);
 
   // Check Linear connection when API key changes
@@ -310,27 +278,6 @@ export function useProjectSettings(
     }
   };
 
-  const handleClaudeSetup = async () => {
-    setIsCheckingClaudeAuth(true);
-    try {
-      const result = await window.electronAPI.invokeClaudeSetup(project.id);
-      if (result.success && result.data?.authenticated) {
-        setClaudeAuthStatus('authenticated');
-        const envResult = await window.electronAPI.getProjectEnv(project.id);
-        if (envResult.success && envResult.data) {
-          setEnvConfig(envResult.data);
-          committedEnvConfigRef.current = envResult.data;
-          // Update global store so Sidebar and other components reflect changes
-          setProjectEnvConfig(project.id, envResult.data);
-        }
-      }
-    } catch {
-      setClaudeAuthStatus('error');
-    } finally {
-      setIsCheckingClaudeAuth(false);
-    }
-  };
-
   const handleSave = async (onClose: () => void) => {
     setIsSaving(true);
     setError(null);
@@ -428,15 +375,11 @@ export function useProjectSettings(
     setShowGitLabToken,
     gitLabConnectionStatus,
     isCheckingGitLab,
-    isCheckingClaudeAuth,
-    claudeAuthStatus,
-    setClaudeAuthStatus,
     showLinearImportModal,
     setShowLinearImportModal,
     linearConnectionStatus,
     isCheckingLinear,
     handleInitialize,
-    handleClaudeSetup,
     handleSave
   };
 }

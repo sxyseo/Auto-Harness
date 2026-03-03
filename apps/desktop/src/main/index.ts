@@ -48,6 +48,7 @@ import { initializeAppUpdater, stopPeriodicUpdates } from './app-updater';
 import { DEFAULT_APP_SETTINGS, IPC_CHANNELS, SPELL_CHECK_LANGUAGE_MAP, DEFAULT_SPELL_CHECK_LANGUAGE, ADD_TO_DICTIONARY_LABELS } from '../shared/constants';
 import { getAppLanguage, initAppLanguage } from './app-language';
 import { readSettingsFile } from './settings-utils';
+import { registerSettingsAccessor } from './ai/auth/resolver';
 import { appLog, setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
 import { preWarmToolCache } from './cli-tool-manager';
@@ -79,6 +80,14 @@ setupErrorLogging();
 
 // Initialize Sentry for error tracking (respects user's sentryEnabled setting)
 initSentryMain();
+
+// Wire up settings accessor for the AI auth resolver.
+// This lets resolveAuth() / buildDefaultQueueConfig() read provider accounts
+// and priority order from app settings without a circular dependency on the settings store.
+registerSettingsAccessor((key: string) => {
+  const settings = readSettingsFile();
+  return settings?.[key] as string | undefined;
+});
 
 /**
  * Load app settings synchronously (for use during startup).

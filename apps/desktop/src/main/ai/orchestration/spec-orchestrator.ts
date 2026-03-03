@@ -25,6 +25,7 @@ import {
   validateAndNormalizeJsonFile,
   ComplexityAssessmentSchema,
   ImplementationPlanSchema,
+  ComplexityAssessmentOutputSchema,
 } from '../schema';
 import type { ZodSchema } from 'zod';
 import type { SessionResult } from '../session/types';
@@ -107,7 +108,7 @@ const PHASE_OUTPUTS: Partial<Record<SpecPhase, string[]>> = {
   research: ['research.json'],
   context: ['context.json'],
   spec_writing: ['spec.md'],
-  self_critique: ['spec.md', 'critique_report.json'],
+  self_critique: ['spec.md'],
   planning: ['implementation_plan.json'],
   quick_spec: ['spec.md', 'implementation_plan.json'],
 };
@@ -162,6 +163,8 @@ export interface SpecPromptContext {
 export interface SpecSessionRunConfig {
   agentType: AgentType;
   phase: Phase;
+  /** Spec pipeline phase name (e.g., 'complexity_assessment', 'discovery', 'requirements') */
+  specPhase: SpecPhase;
   systemPrompt: string;
   specDir: string;
   projectDir: string;
@@ -266,7 +269,18 @@ export class SpecOrchestrator extends EventEmitter {
       // ===================================================================
       let complexity: ComplexityTier;
 
-      if (this.config.complexityOverride) {
+      // Fast-path heuristic: catch obviously simple tasks before expensive AI assessment
+      const heuristicResult = this.assessComplexityHeuristic(this.config.taskDescription ?? '');
+      if (heuristicResult) {
+        complexity = heuristicResult;
+        this.assessment = {
+          complexity: heuristicResult,
+          confidence: 0.9,
+          reasoning: `Heuristic: task description matches ${heuristicResult} pattern`,
+        };
+        this.emitTyped('log', `Complexity heuristic: ${heuristicResult} (skipping AI assessment)`);
+        phasesExecuted.push('complexity_assessment');
+      } else if (this.config.complexityOverride) {
         complexity = this.config.complexityOverride;
         this.emitTyped('log', `Complexity override: ${complexity}`);
       } else if (this.config.useAiAssessment !== false) {
@@ -349,6 +363,36 @@ export class SpecOrchestrator extends EventEmitter {
   }
 
   // ===========================================================================
+  // Complexity Heuristic
+  // ===========================================================================
+
+  /**
+   * Fast-path heuristic for obviously simple tasks.
+   * Returns 'simple' if the description matches simple patterns, null otherwise.
+   * This avoids an expensive AI assessment call for trivial tasks.
+   */
+  private assessComplexityHeuristic(taskDescription: string): ComplexityTier | null {
+    const desc = taskDescription.toLowerCase().trim();
+    const wordCount = desc.split(/\s+/).length;
+
+    // Very short descriptions (under 30 words) with simple signal words → SIMPLE
+    if (wordCount <= 30) {
+      const simplePatterns = [
+        /\b(change|rename|update|replace|swap|switch)\b.*\b(color|colour|name|text|label|title|string|value|icon|logo)\b/,
+        /\b(fix|correct)\b.*\b(typo|spelling|grammar)\b/,
+        /\b(bump|update)\b.*\b(version|dependency)\b/,
+        /\b(remove|delete)\b.*\b(unused|dead|deprecated)\b/,
+      ];
+      if (simplePatterns.some(p => p.test(desc))) {
+        return 'simple';
+      }
+    }
+
+    // Long descriptions or complex signal words → let AI decide
+    return null;
+  }
+
+  // ===========================================================================
   // Phase Execution
   // ===========================================================================
 
@@ -388,6 +432,7 @@ export class SpecOrchestrator extends EventEmitter {
       const result = await this.config.runSession({
         agentType,
         phase: 'spec',
+        specPhase: phase,
         systemPrompt: prompt,
         specDir: this.config.specDir,
         projectDir: this.config.projectDir,
@@ -467,26 +512,26 @@ export class SpecOrchestrator extends EventEmitter {
   private async runComplexityAssessment(
     phaseNumber: number,
   ): Promise<SpecPhaseResult> {
-    this.emitTyped('phase-start', 'complexity_assessment', phaseNumber, 0);
+    // totalPhases=1 for the assessment itself; actual phase count is determined after assessment
+    this.emitTyped('phase-start', 'complexity_assessment', phaseNumber, 1);
     this.sessionNumber++;
 
     const prompt = await this.config.generatePrompt('spec_gatherer', 'complexity_assessment', {
       phaseNumber,
-      totalPhases: 0,
+      totalPhases: 1,
       phaseName: 'complexity_assessment',
       taskDescription: this.config.taskDescription,
       projectIndex: this.config.projectIndex,
       attemptCount: 0,
     });
 
-    // NOTE: We intentionally do NOT pass outputSchema here. The ComplexityAssessmentSchema
-    // uses z.preprocess(), .default(), .optional(), and .passthrough() — none of which are
-    // compatible with OpenAI's strict structured output (requires all properties in `required`,
-    // `additionalProperties: false`). File-based validation via validateJsonFile() is the
-    // correct provider-agnostic approach for these coercion-heavy schemas.
+    // Pass clean output schema for constrained decoding (all fields required,
+    // no preprocess/passthrough). Providers with native structured output
+    // (Anthropic, OpenAI) enforce this at the token level.
     const sessionResult = await this.config.runSession({
       agentType: 'spec_gatherer',
       phase: 'spec',
+      specPhase: 'complexity_assessment',
       systemPrompt: prompt,
       specDir: this.config.specDir,
       projectDir: this.config.projectDir,
@@ -495,6 +540,7 @@ export class SpecOrchestrator extends EventEmitter {
       cliModel: this.config.cliModel,
       cliThinking: this.config.cliThinking,
       projectIndex: this.config.projectIndex,
+      outputSchema: ComplexityAssessmentOutputSchema,
     });
 
     this.emitTyped('session-complete', sessionResult, 'complexity_assessment');
@@ -503,7 +549,14 @@ export class SpecOrchestrator extends EventEmitter {
       return { phase: 'complexity_assessment', success: false, errors: ['Cancelled'], retries: 0 };
     }
 
-    // Try to load assessment from file (agent writes it via tool)
+    // Prefer structured output from constrained decoding (no file I/O needed)
+    if (sessionResult.structuredOutput) {
+      this.assessment = sessionResult.structuredOutput as unknown as ComplexityAssessment;
+      this.emitTyped('log', `Complexity assessed (structured output): ${this.assessment.complexity} (confidence: ${(this.assessment.confidence * 100).toFixed(0)}%)`);
+      return { phase: 'complexity_assessment', success: true, errors: [], retries: 0 };
+    }
+
+    // Fallback: read assessment from file (agent wrote it via tool)
     try {
       const assessmentPath = join(this.config.specDir, 'complexity_assessment.json');
       const fileResult = await validateJsonFile(assessmentPath, ComplexityAssessmentSchema);

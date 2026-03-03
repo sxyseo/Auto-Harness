@@ -145,17 +145,73 @@ function coercePlan(input: unknown): unknown {
   if (!input || typeof input !== 'object') return input;
   const raw = input as Record<string, unknown>;
 
-  // If model wrote flat steps/tasks instead of phases[], wrap in a single phase.
+  // If model wrote flat steps/tasks/implementation_steps instead of phases[], wrap in a single phase.
   // Some providers (e.g., OpenAI) produce a flat array of steps rather than
   // the nested phases[].subtasks[] structure our schema requires.
+  // The quick_spec agent commonly writes "implementation_steps" as well.
   let phases = raw.phases;
-  if (!phases && (raw.steps || raw.tasks)) {
-    const items = (raw.steps ?? raw.tasks) as unknown[];
+  if (!phases && (raw.steps || raw.tasks || raw.implementation_steps)) {
+    const items = (raw.steps ?? raw.tasks ?? raw.implementation_steps) as unknown[];
     phases = [{
       id: '1',
       name: raw.feature ?? raw.title ?? raw.name ?? 'Implementation',
       subtasks: items,
     }];
+  }
+
+  // Handle flat files_to_modify / implementation_order format.
+  // Some models (especially for simple tasks) write a flat structure:
+  //   { "files_to_modify": [{ "path": "...", "changes": [...] }], "implementation_order": ["..."] }
+  // instead of the nested phases[].subtasks[] structure. Convert to canonical form.
+  if (!phases && Array.isArray(raw.files_to_modify)) {
+    const subtasks: unknown[] = [];
+
+    if (Array.isArray(raw.implementation_order) && raw.implementation_order.length > 0) {
+      // Use implementation_order entries as subtasks (each is a string description)
+      for (let i = 0; i < (raw.implementation_order as unknown[]).length; i++) {
+        const orderEntry = (raw.implementation_order as unknown[])[i];
+        const desc = typeof orderEntry === 'string' ? orderEntry : String(orderEntry);
+        // Extract file path from the description (format: "file.js: Do something")
+        const colonIdx = desc.indexOf(':');
+        const filePath = colonIdx > 0 ? desc.slice(0, colonIdx).trim() : undefined;
+        subtasks.push({
+          id: `1-${i + 1}`,
+          description: desc,
+          status: 'pending',
+          files_to_modify: filePath ? [filePath] : [],
+        });
+      }
+    } else {
+      // Fall back to creating subtasks from files_to_modify[].changes[]
+      let subtaskIndex = 0;
+      for (const fileEntry of raw.files_to_modify as unknown[]) {
+        if (fileEntry && typeof fileEntry === 'object') {
+          const entry = fileEntry as Record<string, unknown>;
+          const filePath = typeof entry.path === 'string' ? entry.path : undefined;
+          const changes = Array.isArray(entry.changes) ? entry.changes : [];
+          for (const change of changes) {
+            subtaskIndex++;
+            const changeDesc = change && typeof change === 'object'
+              ? (change as Record<string, unknown>).description ?? JSON.stringify(change)
+              : String(change);
+            subtasks.push({
+              id: `1-${subtaskIndex}`,
+              description: changeDesc,
+              status: 'pending',
+              files_to_modify: filePath ? [filePath] : [],
+            });
+          }
+        }
+      }
+    }
+
+    if (subtasks.length > 0) {
+      phases = [{
+        id: '1',
+        name: raw.feature ?? raw.title ?? raw.name ?? 'Implementation',
+        subtasks,
+      }];
+    }
   }
 
   return {

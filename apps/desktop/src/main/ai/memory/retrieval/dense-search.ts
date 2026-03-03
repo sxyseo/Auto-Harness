@@ -1,12 +1,9 @@
 /**
  * Dense Vector Search
  *
- * Uses sqlite-vec for local cosine similarity search.
- * Falls back to JS-side cosine similarity if sqlite-vec is unavailable.
- *
- * Note: The sqlite-vec query syntax with @libsql/client may need adjustment
- * depending on how the extension is loaded. The JS fallback computes cosine
- * similarity in-process after fetching stored embeddings.
+ * Attempts libsql's native vector_distance_cos() for cosine similarity search.
+ * Falls back to JS-side cosine similarity if the native query fails (e.g. when
+ * embeddings are stored as plain BLOBs rather than F32_BLOB typed columns).
  */
 
 import type { Client } from '@libsql/client';
@@ -40,9 +37,8 @@ export async function searchDense(
 ): Promise<DenseResult[]> {
   const queryEmbedding = await embeddingService.embed(query, dims);
 
-  // Attempt sqlite-vec vector_distance_cos query
-  // NOTE: The exact API with @libsql/client depends on how vec0 extension is loaded.
-  // If vector_distance_cos is unavailable, this falls back to JS-side cosine similarity.
+  // Attempt libsql native vector_distance_cos query.
+  // Falls back to JS-side cosine similarity if the query fails.
   try {
     const embeddingBlob = serializeEmbedding(queryEmbedding);
 
@@ -63,7 +59,7 @@ export async function searchDense(
       distance: r.distance as number,
     }));
   } catch {
-    // sqlite-vec not available or query failed — use JS-side cosine similarity
+    // Native vector query failed — use JS-side cosine similarity
     return searchDenseJsFallback(db, queryEmbedding, projectId, dims, limit);
   }
 }

@@ -7,7 +7,6 @@ export const integrationMock = {
   getProjectEnv: async () => ({
     success: true,
     data: {
-      claudeAuthStatus: 'not_configured' as const,
       linearEnabled: false,
       githubEnabled: false,
       gitlabEnabled: false,
@@ -18,47 +17,6 @@ export const integrationMock = {
 
   updateProjectEnv: async () => ({
     success: true
-  }),
-
-  // Auto-Build Source Environment Operations
-  getSourceEnv: async () => ({
-    success: true,
-    data: {
-      hasClaudeToken: true,
-      envExists: true,
-      sourcePath: '/mock/auto-claude'
-    }
-  }),
-
-  updateSourceEnv: async () => ({
-    success: true
-  }),
-
-  checkSourceToken: async () => ({
-    success: true,
-    data: {
-      hasToken: true,
-      sourcePath: '/mock/auto-claude'
-    }
-  }),
-
-  // Claude Authentication
-  checkClaudeAuth: async () => ({
-    success: true,
-    data: {
-      success: false,
-      authenticated: false,
-      error: 'Not available in browser mock'
-    }
-  }),
-
-  invokeClaudeSetup: async () => ({
-    success: true,
-    data: {
-      success: false,
-      authenticated: false,
-      error: 'Not available in browser mock'
-    }
   }),
 
   // Linear Integration Operations

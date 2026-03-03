@@ -109,6 +109,7 @@ export function useResolvedAgentSettings(
             githubIssues: mixedFeature.githubIssues.modelId,
             githubPrs: mixedFeature.githubPrs.modelId,
             utility: mixedFeature.utility.modelId,
+            naming: mixedFeature.naming?.modelId ?? 'haiku',
           }
         : settings.featureModels || DEFAULT_FEATURE_MODELS;
       const featureThinking: FeatureThinkingConfig = mixedFeature
@@ -119,6 +120,7 @@ export function useResolvedAgentSettings(
             githubIssues: mixedFeature.githubIssues.thinkingLevel,
             githubPrs: mixedFeature.githubPrs.thinkingLevel,
             utility: mixedFeature.utility.thinkingLevel,
+            naming: mixedFeature.naming?.thinkingLevel ?? 'low',
           }
         : settings.featureThinking || DEFAULT_FEATURE_THINKING;
 

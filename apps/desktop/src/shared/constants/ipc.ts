@@ -224,8 +224,6 @@ export const IPC_CHANNELS = {
   // Environment configuration
   ENV_GET: 'env:get',
   ENV_UPDATE: 'env:update',
-  ENV_CHECK_CLAUDE_AUTH: 'env:checkClaudeAuth',
-  ENV_INVOKE_CLAUDE_SETUP: 'env:invokeClaudeSetup',
 
   // Ideation operations
   IDEATION_GET: 'ideation:get',
@@ -479,11 +477,6 @@ export const IPC_CHANNELS = {
   OLLAMA_LIST_EMBEDDING_MODELS: 'ollama:listEmbeddingModels',
   OLLAMA_PULL_MODEL: 'ollama:pullModel',
   OLLAMA_PULL_PROGRESS: 'ollama:pullProgress',
-
-  // Auto Claude source environment configuration
-  AUTOBUILD_SOURCE_ENV_GET: 'autobuild:source:env:get',
-  AUTOBUILD_SOURCE_ENV_UPDATE: 'autobuild:source:env:update',
-  AUTOBUILD_SOURCE_ENV_CHECK_TOKEN: 'autobuild:source:env:checkToken',
 
   // Changelog operations
   CHANGELOG_GET_DONE_TASKS: 'changelog:getDoneTasks',

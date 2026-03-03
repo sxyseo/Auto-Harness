@@ -14,7 +14,6 @@ import path from "path";
 import fs from "fs";
 import {
   IPC_CHANNELS,
-  MODEL_ID_MAP,
   DEFAULT_FEATURE_MODELS,
   DEFAULT_FEATURE_THINKING,
 } from "../../../shared/constants";
@@ -38,6 +37,10 @@ import {
   type FollowupReviewContext,
   type PreviousReviewResult,
 } from "../../ai/runners/github/parallel-followup";
+import {
+  ParallelOrchestratorReviewer,
+  type ParallelOrchestratorConfig,
+} from "../../ai/runners/github/parallel-orchestrator";
 import type { ModelShorthand, ThinkingLevel } from "../../ai/config/types";
 import { getPRStatusPoller } from "../../services/pr-status-poller";
 import { safeBreadcrumb, safeCaptureException } from "../../sentry";
@@ -222,7 +225,7 @@ function sanitizeNetworkData(data: string, maxLength = 1000000): string {
 }
 
 // Debug logging
-const { debug: debugLog } = createContextLogger("GitHub PR");
+const { debug: debugLog, trace: traceLog } = createContextLogger("GitHub PR");
 
 /**
  * Sentinel value indicating a review is waiting for CI checks to complete.
@@ -646,7 +649,7 @@ async function waitForCIChecks(
       lastInProgressCount = inProgressCount;
       lastInProgressNames = inProgressNames;
 
-      debugLog("CI check status", {
+      traceLog("CI check status", {
         prNumber,
         iteration,
         totalChecks: checkRuns.total_count,
@@ -1035,15 +1038,18 @@ function getPhaseFromSource(source: string): PRLogPhase {
     "orchestrating",
     "quick_scan",
     "security",
+    "logic",
+    "codebase_fit",
     "deep_analysis",
     "structural",
     "quality",
     "validation",
     "dedup",
+    "FindingValidator",
   ];
   // Synthesis phase: final summary and results
   // Note: "Progress" logs are redundant (shown in progress bar) but kept for completeness
-  const synthesisSources = ["PR Review Engine", "Summary", "Progress", "generating", "posting", "complete", "finalizing", "synthesis"];
+  const synthesisSources = ["PR Review Engine", "Summary", "Progress", "generating", "posting", "complete", "finalizing", "synthesis", "synthesizing"];
 
   if (contextSources.includes(source)) return "context";
   if (analysisSources.includes(source)) return "analysis";
@@ -1199,9 +1205,9 @@ class PRLogCollector {
     this.logs = createEmptyPRLogs(prNumber, repo, isFollowup);
     this.mainWindow = mainWindow || null;
 
-    // Debug: Log collector creation
+    // Trace: Log collector creation (verbose only)
     const logPath = getPRLogsPath(project, prNumber);
-    debugLog("PRLogCollector created", {
+    traceLog("PRLogCollector created", {
       prNumber,
       repo,
       isFollowup,
@@ -1219,8 +1225,8 @@ class PRLogCollector {
 
     const phase = getPhaseFromSource(parsed.source);
 
-    // Debug: Log line processing
-    debugLog("PRLogCollector.processLine()", {
+    // Trace: Log line processing (verbose only - fires on every log line)
+    traceLog("PRLogCollector.processLine()", {
       prNumber: this.logs.pr_number,
       phase,
       currentPhase: this.currentPhase,
@@ -1300,7 +1306,7 @@ class PRLogCollector {
    */
   save(): void {
     const logPath = getPRLogsPath(this.project, this.logs.pr_number);
-    debugLog("PRLogCollector.save()", {
+    traceLog("PRLogCollector.save()", {
       prNumber: this.logs.pr_number,
       logPath,
       entryCount: this.entryCount,
@@ -1451,13 +1457,13 @@ function getGitHubPRSettings(): { model: string; thinkingLevel: string } {
   const featureThinking = rawSettings?.featureThinking ?? DEFAULT_FEATURE_THINKING;
 
   // Get PR-specific settings (with fallback to defaults)
-  const modelShort = featureModels.githubPrs ?? DEFAULT_FEATURE_MODELS.githubPrs;
+  // Return the raw shorthand — createSimpleClient() handles model-to-provider resolution
+  // via resolveModelId() and the priority queue. Do NOT resolve through MODEL_ID_MAP
+  // which is Anthropic-only and would silently replace non-Anthropic models.
+  const model = featureModels.githubPrs ?? DEFAULT_FEATURE_MODELS.githubPrs;
   const thinkingLevel = featureThinking.githubPrs ?? DEFAULT_FEATURE_THINKING.githubPrs;
 
-  // Convert model short name to full model ID
-  const model = MODEL_ID_MAP[modelShort] ?? MODEL_ID_MAP["opus"];
-
-  debugLog("GitHub PR settings", { modelShort, model, thinkingLevel });
+  debugLog("GitHub PR settings", { model, thinkingLevel });
 
   return { model, thinkingLevel };
 }
@@ -1694,21 +1700,23 @@ async function runPRReview(
   debugLog("Registered review abort controller", { reviewKey });
 
   try {
+    logCollector.processLine(`[fetching] Fetching PR #${prNumber} from GitHub...`);
     sendProgress({ phase: "fetching", prNumber, progress: 15, message: "Fetching PR data from GitHub..." });
 
     const context = await fetchPRContext(config, prNumber);
+    logCollector.processLine(`[Context] Fetched ${context.changedFiles.length} changed files, ${context.commits.length} commits`);
 
-    sendProgress({ phase: "analyzing", prNumber, progress: 30, message: "Starting multi-pass review..." });
+    sendProgress({ phase: "analyzing", prNumber, progress: 30, message: "Starting parallel orchestrator review..." });
 
-    const reviewConfig: PRReviewEngineConfig = {
+    const orchestratorConfig: ParallelOrchestratorConfig = {
       repo,
+      projectDir: project.path,
       model: model as ModelShorthand,
       thinkingLevel: thinkingLevel as ThinkingLevel,
     };
 
-    const multiPassResult = await runMultiPassReview(
-      context,
-      reviewConfig,
+    const orchestrator = new ParallelOrchestratorReviewer(
+      orchestratorConfig,
       (update) => {
         const allowedPhases = new Set(["fetching", "analyzing", "generating", "posting", "complete"]);
         const phase = (allowedPhases.has(update.phase) ? update.phase : "analyzing") as PRReviewProgress["phase"];
@@ -1718,25 +1726,34 @@ async function runPRReview(
           progress: update.progress,
           message: update.message,
         });
-        logCollector.processLine(`[${update.phase}] ${update.message}`);
-      }
+        // If the message already has a bracket prefix (e.g., [Specialist:security],
+        // [ParallelOrchestrator], [FindingValidator]), pass it directly so parseLogLine()
+        // extracts the correct source for frontend grouping.
+        // Otherwise, wrap with [phase] so bare messages aren't silently dropped.
+        const logLine = update.message.startsWith('[')
+          ? update.message
+          : `[${update.phase}] ${update.message}`;
+        logCollector.processLine(logLine);
+      },
     );
 
-    // Determine overall status
-    const hasCritical = multiPassResult.findings.some(
-      (f) => f.severity === "critical" || f.severity === "high"
-    );
-    const overallStatus = hasCritical ? "request_changes" : multiPassResult.findings.length > 0 ? "comment" : "approve";
+    const orchestratorResult = await orchestrator.review(context, abortController.signal);
 
-    // Build summary from scan result
-    const summary = `PR #${prNumber} reviewed: ${multiPassResult.findings.length} findings (${multiPassResult.structuralIssues.length} structural issues). Verdict: ${multiPassResult.scanResult.verdict ?? overallStatus}.`;
+    // Map orchestrator verdict to overallStatus
+    const verdictToStatus: Record<string, "approve" | "request_changes" | "comment"> = {
+      ready_to_merge: "approve",
+      merge_with_changes: "comment",
+      needs_revision: "request_changes",
+      blocked: "request_changes",
+    };
+    const overallStatus = verdictToStatus[orchestratorResult.verdict] ?? "comment";
 
     const result: PRReviewResult = {
       prNumber,
       repo,
       success: true,
-      findings: multiPassResult.findings as PRReviewFinding[],
-      summary,
+      findings: orchestratorResult.findings as PRReviewFinding[],
+      summary: orchestratorResult.summary,
       overallStatus,
       reviewedAt: new Date().toISOString(),
     };
@@ -1744,6 +1761,10 @@ async function runPRReview(
     // Save to disk
     saveReviewResultToDisk(project, prNumber, result);
     debugLog("Review result saved to disk", { findingsCount: result.findings.length });
+
+    // Emit synthesis-phase log lines before finalizing
+    logCollector.processLine(`[Summary] ${orchestratorResult.findings.length} findings, verdict: ${orchestratorResult.verdict}`);
+    logCollector.processLine(`[Summary] Agents: ${orchestratorResult.agentsInvoked.join(", ")}`);
 
     // Finalize logs
     logCollector.finalize(true);
@@ -3276,7 +3297,13 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
                 };
                 sendProgress(progressUpdate);
                 stateManager.handleProgress(projectId, prNumber, progressUpdate);
-                logCollector.processLine(`[${update.phase}] ${update.message}`);
+                // If the message already has a bracket prefix, pass it directly so
+                // parseLogLine() extracts the correct source for frontend grouping.
+                // Otherwise, wrap with [phase] so bare messages aren't silently dropped.
+                const logLine = update.message.startsWith('[')
+                  ? update.message
+                  : `[${update.phase}] ${update.message}`;
+                logCollector.processLine(logLine);
               }
             );
 

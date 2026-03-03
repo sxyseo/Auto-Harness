@@ -2356,6 +2356,17 @@ export function registerWorktreeHandlers(
           dryRun: true,
         });
 
+        // Refresh evolution data from git before previewing.
+        // previewMerge() only reads from the in-memory evolutions map (loaded from file_evolution.json).
+        // Without refreshFromGit(), the map is stale/empty for tasks whose evolution wasn't previously tracked.
+        const worktreePath = findTaskWorktree(project.path, task.specId);
+        if (worktreePath) {
+          console.warn('[IPC] Refreshing evolution data from worktree:', worktreePath);
+          orchestrator.evolutionTracker.refreshFromGit(task.specId, worktreePath, effectiveBaseBranch);
+        } else {
+          console.warn('[IPC] No worktree found for preview — evolution data may be stale');
+        }
+
         console.warn('[IPC] Running TypeScript merge preview for task:', task.specId);
         const previewResult = orchestrator.previewMerge([task.specId]);
 

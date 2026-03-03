@@ -102,11 +102,12 @@ describe('AGENT_CONFIGS', () => {
     expect(config.thinkingDefault).toBe('high');
   });
 
-  it('should configure spec_critic with all builtin tools and context7', () => {
+  it('should configure spec_critic with spec tools (no Edit/Bash) and context7', () => {
     const config = AGENT_CONFIGS.spec_critic;
     expect(config.tools).toContain('Read');
     expect(config.tools).toContain('Write');
-    expect(config.tools).toContain('Bash');
+    expect(config.tools).not.toContain('Edit');
+    expect(config.tools).not.toContain('Bash');
     expect(config.tools).toContain('WebFetch');
     expect(config.mcpServers).toContain('context7');
   });
@@ -115,6 +116,23 @@ describe('AGENT_CONFIGS', () => {
     const config = AGENT_CONFIGS.merge_resolver;
     expect(config.tools).toHaveLength(0);
     expect(config.mcpServers).toHaveLength(0);
+  });
+
+  it('should only give SpawnSubagent to orchestrator agent types', () => {
+    const orchestratorTypes: AgentType[] = ['spec_orchestrator', 'build_orchestrator'];
+    const nonOrchestratorTypes = Object.keys(AGENT_CONFIGS).filter(
+      t => !orchestratorTypes.includes(t as AgentType)
+    ) as AgentType[];
+
+    // Orchestrators should have SpawnSubagent
+    for (const type of orchestratorTypes) {
+      expect(AGENT_CONFIGS[type].tools).toContain('SpawnSubagent');
+    }
+
+    // Non-orchestrators should NOT have SpawnSubagent
+    for (const type of nonOrchestratorTypes) {
+      expect(AGENT_CONFIGS[type].tools).not.toContain('SpawnSubagent');
+    }
   });
 });
 

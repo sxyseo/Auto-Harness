@@ -42,15 +42,11 @@ export function createHookProxy(
     get setShowGitLabToken() { return hookRef.current.setShowGitLabToken; },
     get gitLabConnectionStatus() { return hookRef.current.gitLabConnectionStatus; },
     get isCheckingGitLab() { return hookRef.current.isCheckingGitLab; },
-    get isCheckingClaudeAuth() { return hookRef.current.isCheckingClaudeAuth; },
-    get claudeAuthStatus() { return hookRef.current.claudeAuthStatus; },
-    get setClaudeAuthStatus() { return hookRef.current.setClaudeAuthStatus; },
     get showLinearImportModal() { return hookRef.current.showLinearImportModal; },
     get setShowLinearImportModal() { return hookRef.current.setShowLinearImportModal; },
     get linearConnectionStatus() { return hookRef.current.linearConnectionStatus; },
     get isCheckingLinear() { return hookRef.current.isCheckingLinear; },
     get handleInitialize() { return hookRef.current.handleInitialize; },
-    get handleClaudeSetup() { return hookRef.current.handleClaudeSetup; },
     get handleSave() { return hookRef.current.handleSave; },
   };
 }

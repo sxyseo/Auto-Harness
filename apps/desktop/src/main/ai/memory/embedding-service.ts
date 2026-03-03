@@ -1,13 +1,12 @@
 /**
  * EmbeddingService
  *
- * Six-tier provider auto-detection:
+ * Five-tier provider auto-detection:
  *   1. qwen3-embedding:8b via Ollama (>32GB RAM)
  *   2. qwen3-embedding:4b via Ollama (recommended default)
  *   3. qwen3-embedding:0.6b via Ollama (low-memory)
  *   4. Any other Ollama embedding model (nomic-embed-text, all-minilm, bge-*, etc.)
- *   5. OpenAI text-embedding-3-small via @ai-sdk/openai (API key configured)
- *   6. Degraded hash-based fallback (no semantic similarity — install Ollama model to improve)
+ *   5. Degraded hash-based fallback (no semantic similarity — install Ollama model to improve)
  *
  * Uses contextual embeddings: file/module context prepended to every embed call.
  * Supports MRL (Matryoshka) dimensions: 256-dim for candidate gen, 1024-dim for storage.
@@ -16,15 +15,13 @@
 
 import { createHash } from 'crypto';
 import type { Client } from '@libsql/client';
-import { createOpenAI } from '@ai-sdk/openai';
-import { embed, embedMany } from 'ai';
 import type { Memory } from './types';
 
 // ============================================================
 // TYPES
 // ============================================================
 
-export type EmbeddingProvider = 'ollama-8b' | 'ollama-4b' | 'ollama-0.6b' | 'ollama-generic' | 'openai' | 'none';
+export type EmbeddingProvider = 'ollama-8b' | 'ollama-4b' | 'ollama-0.6b' | 'ollama-generic' | 'none';
 
 /** Contextual text prefix for AST chunks before embedding */
 export interface ASTChunk {
@@ -277,13 +274,6 @@ export class EmbeddingService {
       }
     }
 
-    // Try OpenAI fallback
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (openaiKey) {
-      this.provider = 'openai';
-      return;
-    }
-
     // Final fallback: degraded hash-based embeddings (no semantic similarity)
     this.provider = 'none';
   }
@@ -386,8 +376,6 @@ export class EmbeddingService {
         return `qwen3-embedding:0.6b-d${dims}`;
       case 'ollama-generic':
         return `${this.ollamaModel}-d${dims}`;
-      case 'openai':
-        return `text-embedding-3-small-d${dims}`;
       case 'none':
         return 'none-degraded';
     }
@@ -401,18 +389,6 @@ export class EmbeddingService {
       case 'ollama-generic': {
         const raw = await ollamaEmbed(this.ollamaModel, text);
         return dims === 256 ? truncateToDim(raw, 256) : raw;
-      }
-
-      case 'openai': {
-        const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const model = openai.embedding('text-embedding-3-small');
-        const result = await embed({
-          model,
-          value: text,
-          // Pass dimensions as provider-specific option for MRL truncation
-          providerOptions: { openai: { dimensions: dims } },
-        });
-        return result.embedding;
       }
 
       case 'none': {
@@ -429,17 +405,6 @@ export class EmbeddingService {
       case 'ollama-generic': {
         const raws = await ollamaEmbedBatch(this.ollamaModel, texts);
         return dims === 256 ? raws.map((r) => truncateToDim(r, 256)) : raws;
-      }
-
-      case 'openai': {
-        const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const model = openai.embedding('text-embedding-3-small');
-        const result = await embedMany({
-          model,
-          values: texts,
-          providerOptions: { openai: { dimensions: dims } },
-        });
-        return result.embeddings;
       }
 
       case 'none': {
@@ -460,7 +425,7 @@ export class EmbeddingService {
       console.warn(
         '[EmbeddingService] No embedding provider available. ' +
           'Install Ollama with an embedding model (e.g., `ollama pull nomic-embed-text`) ' +
-          'or set OPENAI_API_KEY for semantic search. Using hash-based fallback (no semantic similarity).',
+          'for semantic search. Using hash-based fallback (no semantic similarity).',
       );
       this.degradedEmbedWarned = true;
     }

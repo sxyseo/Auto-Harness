@@ -399,6 +399,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             }))
           });
 
+          // Diagnostic: always log when non-pending subtask statuses arrive.
+          // Helps trace whether real-time plan updates reach the store correctly.
+          const completedCount = subtasks.filter(s => s.status === 'completed').length;
+          if (completedCount > 0) {
+            console.warn(`[updateTaskFromPlan] Task ${taskId}: ${completedCount}/${subtasks.length} subtasks completed`);
+          }
+
           // NOTE: We do NOT update status from plan anymore.
           // XState is the source of truth for status - it emits TASK_STATUS_CHANGE.
           // Plan updates only update subtasks, title, and other non-status fields.

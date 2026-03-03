@@ -29,6 +29,8 @@ export interface ToolContext {
   securityProfile: SecurityProfile;
   /** Optional abort signal for cancellation */
   abortSignal?: AbortSignal;
+  /** If set, Write/Edit tools can only write within these directories */
+  allowedWritePaths?: string[];
 }
 
 // ---------------------------------------------------------------------------

@@ -15,11 +15,12 @@ import { join } from 'node:path';
 
 import { createSimpleClient } from '../client/factory';
 import type { SimpleClientResult } from '../client/types';
-import { ToolRegistry } from '../tools/registry';
+import { buildToolRegistry } from '../tools/build-registry';
 import type { ToolContext } from '../tools/types';
 import type { ModelShorthand, ThinkingLevel } from '../config/types';
 import type { SecurityProfile } from '../security/bash-validator';
 import { safeParseJson } from '../../utils/json-repair';
+import { tryLoadPrompt } from '../prompts/prompt-loader';
 
 // =============================================================================
 // Constants
@@ -112,8 +113,19 @@ async function runDiscoveryPhase(
 
   const errors: string[] = [];
 
+  // Detect Codex models — they require instructions via providerOptions, not system
+  const discoveryModelId = typeof client.model === 'string' ? client.model : client.model.modelId;
+  const isCodexDiscovery = discoveryModelId?.includes('codex') ?? false;
+
+  // Load the full prompt file with JSON schema; fall back to inline prompt
+  const loadedDiscoveryPrompt = tryLoadPrompt('roadmap_discovery');
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const prompt = `You are a project analyst. Analyze the project and create a discovery document.
+    const contextBlock = `\n\n---\n\n## CONTEXT (injected by runner)\n\n**Project Directory**: ${projectDir}\n**Project Index**: ${projectIndexFile}\n**Output Directory**: ${outputDir}\n**Output File**: ${discoveryFile}\n\nUse the paths above when reading input files and writing output.`;
+
+    const prompt = loadedDiscoveryPrompt
+      ? loadedDiscoveryPrompt + contextBlock
+      : `You are a project analyst. Analyze the project and create a discovery document.
 
 **Project Index**: ${projectIndexFile}
 **Output Directory**: ${outputDir}
@@ -130,13 +142,24 @@ The JSON must contain at minimum: project_name, target_audience, product_vision,
 
 Do NOT ask questions. Make educated inferences and create the file.`;
 
+    const discoveryUserPrompt = 'Analyze the project and create the discovery document. Use the available tools to explore the codebase, then write your findings as JSON to the output file specified in the context above.';
+
     try {
       const result = streamText({
         model: client.model,
-        prompt,
+        system: isCodexDiscovery ? undefined : prompt,
+        prompt: discoveryUserPrompt,
         tools: client.tools,
         stopWhen: stepCountIs(client.maxSteps),
         abortSignal,
+        ...(isCodexDiscovery ? {
+          providerOptions: {
+            openai: {
+              instructions: prompt,
+              store: false,
+            },
+          },
+        } : {}),
       });
 
       for await (const part of result.fullStream) {
@@ -212,6 +235,13 @@ async function runFeaturesPhase(
 
   const errors: string[] = [];
 
+  // Detect Codex models — they require instructions via providerOptions, not system
+  const featuresModelId = typeof client.model === 'string' ? client.model : client.model.modelId;
+  const isCodexFeatures = featuresModelId?.includes('codex') ?? false;
+
+  // Load the full prompt file with JSON schema; fall back to inline prompt
+  const loadedFeaturesPrompt = tryLoadPrompt('roadmap_features');
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     let preservedSection = '';
     if (preservedFeatures.length > 0) {
@@ -223,8 +253,11 @@ The following ${preservedFeatures.length} features already exist and will be pre
 Generate NEW features that complement these, do not duplicate them:
 ${preservedInfo}\n`;
     }
+    const featuresContextBlock = `\n\n---\n\n## CONTEXT (injected by runner)\n\n**Discovery File**: ${discoveryFile}\n**Project Index**: ${projectIndexFile}\n**Output File**: ${roadmapFile}\n${preservedSection}\nUse the paths above when reading input files and writing output. Write the complete roadmap JSON to the Output File path.`;
 
-    const prompt = `You are a product strategist. Generate a roadmap with prioritized features.
+    const prompt = loadedFeaturesPrompt
+      ? loadedFeaturesPrompt + featuresContextBlock
+      : `You are a product strategist. Generate a roadmap with prioritized features.
 
 **Discovery File**: ${discoveryFile}
 **Project Index**: ${projectIndexFile}
@@ -239,15 +272,26 @@ Based on the discovery data:
 6. Map dependencies
 
 Output the complete roadmap as valid JSON to ${roadmapFile}.
-The JSON must contain: vision, target_audience (object with "primary" key), phases (array), and features (array with at least 3 items).`;
+The JSON must contain: vision, target_audience (object with "primary" key), phases (array), and features (array with at least 3 items each with id, title, description, priority, complexity, impact, phase_id, status, acceptance_criteria, and user_stories).`;
+
+    const featuresUserPrompt = 'Read the discovery data and generate a complete roadmap with prioritized features. Write the roadmap JSON to the output file specified in the context above.';
 
     try {
       const result = streamText({
         model: client.model,
-        prompt,
+        system: isCodexFeatures ? undefined : prompt,
+        prompt: featuresUserPrompt,
         tools: client.tools,
         stopWhen: stepCountIs(client.maxSteps),
         abortSignal,
+        ...(isCodexFeatures ? {
+          providerOptions: {
+            openai: {
+              instructions: prompt,
+              store: false,
+            },
+          },
+        } : {}),
       });
 
       for await (const part of result.fullStream) {
@@ -406,7 +450,7 @@ export async function runRoadmapGeneration(
     abortSignal,
   };
 
-  const registry = new ToolRegistry();
+  const registry = buildToolRegistry();
   const tools = registry.getToolsForAgent('roadmap_discovery', toolContext);
 
   const client = await createSimpleClient({

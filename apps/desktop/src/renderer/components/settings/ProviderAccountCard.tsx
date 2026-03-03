@@ -91,13 +91,13 @@ export function ProviderAccountCard({ account, onEdit, onDelete, onReauth }: Pro
             : t('providers.card.apiKey');
 
   const identifier = isCodex
-    ? t('providers.card.codexSubscription')
+    ? (account.email || t('providers.card.codexSubscription'))
     : isClaudeCode
-      ? t('providers.card.claudeCodeSubscription')
+      ? (account.email || t('providers.card.claudeCodeSubscription'))
       : isZaiCodingPlan
-        ? t('providers.card.zaiCodingPlanSubscription')
+        ? (account.email || t('providers.card.zaiCodingPlanSubscription'))
         : isOAuth
-          ? (account.usage ? t('providers.card.oauthLinked') : t('providers.card.oauthAccount'))
+          ? (account.email || (account.usage ? t('providers.card.oauthLinked') : t('providers.card.oauthAccount')))
           : account.baseUrl ?? t('providers.card.noEndpoint');
 
   return (

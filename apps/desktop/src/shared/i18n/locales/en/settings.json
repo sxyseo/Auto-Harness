@@ -210,7 +210,7 @@
     "agentFrameworkDescription": "The coding framework used for autonomous tasks",
     "agentFrameworkAutoClaude": "Auto Claude",
     "aiTerminalNaming": "AI Terminal Naming",
-    "aiTerminalNamingDescription": "Automatically name terminals based on commands (uses Haiku)",
+    "aiTerminalNamingDescription": "Automatically name terminals based on commands (uses AI Naming model)",
     "featureModelSettings": "Feature Model Settings",
     "featureModelSettingsDescription": "Model and thinking level for Insights, Ideation, and Roadmap",
     "model": "Model",

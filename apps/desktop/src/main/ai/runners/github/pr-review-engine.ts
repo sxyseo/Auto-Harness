@@ -88,6 +88,14 @@ export interface PRReviewFinding {
   fixable: boolean;
   evidence?: string;
   verificationNote?: string;
+  /** Validation status from the finding-validator agent */
+  validationStatus?: 'confirmed_valid' | 'dismissed_false_positive' | 'needs_human_review' | null;
+  /** Explanation from the finding-validator */
+  validationExplanation?: string;
+  /** Which specialist agents flagged this finding */
+  sourceAgents?: string[];
+  /** Whether multiple specialists flagged the same location */
+  crossValidated?: boolean;
 }
 
 /** Triage result for an AI tool comment. */
@@ -592,43 +600,66 @@ export async function runMultiPassReview(
   };
 
   // Pass 1: Quick Scan
-  reportProgress('analyzing', 35, 'Pass 1/6: Quick Scan...');
+  reportProgress('quick_scan', 35, 'Pass 1/6: Quick Scan...');
   const scanResult = (await runReviewPass(ReviewPass.QUICK_SCAN, context, config)) as ScanResult;
+  const quickVerdict = scanResult.verdict ?? 'no issues';
+  reportProgress('quick_scan', 40, `Quick Scan complete — verdict: ${quickVerdict}`);
 
   const needsDeep = needsDeepAnalysis(scanResult, context);
   const hasAIComments = context.aiBotComments.length > 0;
 
-  // Build parallel tasks
-  reportProgress(
-    'analyzing',
-    50,
-    'Running Security, Quality, Structural & AI Triage in parallel...',
-  );
+  // Determine which parallel passes will run
+  const passNames = ['Security', 'Quality', 'Structural'];
+  if (hasAIComments) passNames.push('AI Triage');
+  if (needsDeep) passNames.push('Deep Analysis');
+  reportProgress('analyzing', 45, `Running ${passNames.join(', ')} in parallel...`);
 
+  // Build parallel tasks — each reports its own start/completion
   const tasks: Array<Promise<{ type: string; data: unknown }>> = [
-    runReviewPass(ReviewPass.SECURITY, context, config).then((data) => ({
-      type: 'findings',
-      data,
-    })),
-    runReviewPass(ReviewPass.QUALITY, context, config).then((data) => ({
-      type: 'findings',
-      data,
-    })),
-    runStructuralPass(context, config).then((data) => ({ type: 'structural', data })),
+    (async () => {
+      reportProgress('security', 50, 'Security analysis started...');
+      const data = await runReviewPass(ReviewPass.SECURITY, context, config);
+      const count = (data as PRReviewFinding[]).length;
+      reportProgress('security', 60, `Security analysis complete — ${count} finding${count !== 1 ? 's' : ''}`);
+      return { type: 'findings', data };
+    })(),
+    (async () => {
+      reportProgress('quality', 50, 'Quality analysis started...');
+      const data = await runReviewPass(ReviewPass.QUALITY, context, config);
+      const count = (data as PRReviewFinding[]).length;
+      reportProgress('quality', 60, `Quality analysis complete — ${count} finding${count !== 1 ? 's' : ''}`);
+      return { type: 'findings', data };
+    })(),
+    (async () => {
+      reportProgress('structural', 50, 'Structural analysis started...');
+      const data = await runStructuralPass(context, config);
+      const count = (data as StructuralIssue[]).length;
+      reportProgress('structural', 60, `Structural analysis complete — ${count} issue${count !== 1 ? 's' : ''}`);
+      return { type: 'structural', data };
+    })(),
   ];
 
   if (hasAIComments) {
     tasks.push(
-      runAITriagePass(context, config).then((data) => ({ type: 'ai_triage', data })),
+      (async () => {
+        reportProgress('analyzing', 50, `AI Comment Triage started (${context.aiBotComments.length} comments)...`);
+        const data = await runAITriagePass(context, config);
+        const count = (data as AICommentTriage[]).length;
+        reportProgress('analyzing', 60, `AI Comment Triage complete — ${count} triaged`);
+        return { type: 'ai_triage', data };
+      })(),
     );
   }
 
   if (needsDeep) {
     tasks.push(
-      runReviewPass(ReviewPass.DEEP_ANALYSIS, context, config).then((data) => ({
-        type: 'findings',
-        data,
-      })),
+      (async () => {
+        reportProgress('deep_analysis', 50, 'Deep analysis started...');
+        const data = await runReviewPass(ReviewPass.DEEP_ANALYSIS, context, config);
+        const count = (data as PRReviewFinding[]).length;
+        reportProgress('deep_analysis', 60, `Deep analysis complete — ${count} finding${count !== 1 ? 's' : ''}`);
+        return { type: 'findings', data };
+      })(),
     );
   }
 
@@ -650,8 +681,12 @@ export async function runMultiPassReview(
     }
   }
 
-  reportProgress('analyzing', 85, 'Deduplicating findings...');
+  reportProgress('dedup', 85, `Deduplicating ${allFindings.length} findings...`);
   const uniqueFindings = deduplicateFindings(allFindings);
+  const removed = allFindings.length - uniqueFindings.length;
+  if (removed > 0) {
+    reportProgress('dedup', 90, `Deduplication complete — removed ${removed} duplicate${removed !== 1 ? 's' : ''}, ${uniqueFindings.length} unique findings`);
+  }
 
   return {
     findings: uniqueFindings,

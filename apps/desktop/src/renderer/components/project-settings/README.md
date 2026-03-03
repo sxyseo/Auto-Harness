@@ -23,7 +23,6 @@ project-settings/
 ├── README.md                         # This file
 ├── index.ts                          # Barrel export for all components
 ├── AutoBuildIntegration.tsx          # Auto-Build setup and status
-├── ClaudeAuthSection.tsx             # Claude authentication configuration
 ├── LinearIntegrationSection.tsx      # Linear project management integration
 ├── GitHubIntegrationSection.tsx      # GitHub issues integration
 ├── MemoryBackendSection.tsx          # Graphiti/file-based memory configuration
@@ -63,24 +62,6 @@ hooks/
 - Display initialization status
 - Show Auto-Build version information
 - Handle initialization and updates
-
-#### ClaudeAuthSection.tsx
-**Purpose**: Manages Claude Code authentication configuration.
-**Props**:
-- `isExpanded`: Section expand/collapse state
-- `onToggle`: Toggle handler
-- `envConfig`: Environment configuration
-- `isLoadingEnv`: Loading state
-- `envError`: Error message
-- `isCheckingAuth`: Auth check in progress
-- `authStatus`: Current authentication status
-- `onClaudeSetup`: OAuth setup handler
-- `onUpdateConfig`: Configuration update handler
-
-**Responsibilities**:
-- Display Claude CLI authentication status
-- Manage OAuth token configuration
-- Handle global vs project-specific tokens
 
 #### LinearIntegrationSection.tsx
 **Purpose**: Configures Linear project management integration.
@@ -229,13 +210,6 @@ hooks/
 - `updateEnvConfig`: Partial update function (auto-saves to backend)
 - `isLoadingEnv`: Loading state
 - `envError`: Error state
-
-### useClaudeAuth.ts
-**Purpose**: Manages Claude authentication status checking.
-**Returns**:
-- `isCheckingClaudeAuth`: Loading state
-- `claudeAuthStatus`: Authentication status
-- `handleClaudeSetup`: OAuth setup handler
 
 ### useLinearConnection.ts
 **Purpose**: Monitors Linear connection status.

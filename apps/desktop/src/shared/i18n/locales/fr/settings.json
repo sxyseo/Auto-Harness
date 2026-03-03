@@ -210,7 +210,7 @@
     "agentFrameworkDescription": "Le framework de codage utilisé pour les tâches autonomes",
     "agentFrameworkAutoClaude": "Auto Claude",
     "aiTerminalNaming": "Nommage IA des terminaux",
-    "aiTerminalNamingDescription": "Nommer automatiquement les terminaux en fonction des commandes (utilise Haiku)",
+    "aiTerminalNamingDescription": "Nommer automatiquement les terminaux en fonction des commandes (utilise le modèle de nommage IA)",
     "featureModelSettings": "Paramètres du modèle de fonctionnalité",
     "featureModelSettingsDescription": "Modèle et niveau de réflexion pour Insights, Idéation et Roadmap",
     "model": "Modèle",

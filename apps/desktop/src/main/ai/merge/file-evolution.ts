@@ -119,9 +119,15 @@ class EvolutionStorage {
   }
 
   getRelativePath(filePath: string): string {
-    const p = path.isAbsolute(filePath) ? path.resolve(filePath) : filePath;
+    // If the path is already relative (e.g., from git diff output), just normalize slashes.
+    // Git always outputs paths relative to the repo root, which is what we want.
+    // Using path.relative() on a non-absolute path resolves against CWD (the Electron
+    // app directory), producing incorrect traversal paths.
+    if (!path.isAbsolute(filePath)) {
+      return filePath.replace(/\\/g, '/');
+    }
     try {
-      return path.relative(this.projectDir, p).replace(/\\/g, '/');
+      return path.relative(this.projectDir, path.resolve(filePath)).replace(/\\/g, '/');
     } catch {
       return filePath.replace(/\\/g, '/');
     }
@@ -310,22 +316,49 @@ export class FileEvolutionTracker {
     let mergeBase: string;
     try {
       mergeBase = runGit(['merge-base', branch, 'HEAD'], worktreePath);
-    } catch {
-      return;
+    } catch (err) {
+      // merge-base failed — the target branch may not exist in this repo.
+      // Fallback: use the main project's HEAD as the comparison base.
+      // This works because worktrees share the same git object store.
+      console.warn(`[FileEvolutionTracker] merge-base '${branch}' failed in ${worktreePath}: ${err instanceof Error ? err.message : err}`);
+      try {
+        mergeBase = runGit(['rev-parse', 'HEAD'], this.storage.projectDir);
+        console.warn(`[FileEvolutionTracker] Falling back to project HEAD: ${mergeBase.slice(0, 8)}`);
+      } catch (fallbackErr) {
+        console.warn(`[FileEvolutionTracker] Fallback also failed:`, fallbackErr);
+        return;
+      }
     }
 
-    let changedFilesOutput: string | null;
-    try {
-      changedFilesOutput = runGit(['diff', '--name-only', `${mergeBase}..HEAD`], worktreePath);
-    } catch {
-      return;
+    // Collect ALL changed files: committed (mergeBase..HEAD) + uncommitted working tree changes.
+    // The worktree may have uncommitted edits (e.g., after a fast-forward to base branch)
+    // that git diff mergeBase..HEAD won't capture.
+    const changedFileSet = new Set<string>();
+
+    // 1. Committed changes between merge base and HEAD
+    const committedOutput = tryRunGit(['diff', '--name-only', `${mergeBase}..HEAD`], worktreePath);
+    if (committedOutput) {
+      for (const f of committedOutput.split('\n')) { if (f) changedFileSet.add(f); }
     }
 
-    const changedFiles = changedFilesOutput.split('\n').filter((f) => f);
+    // 2. Uncommitted changes (working tree vs HEAD)
+    const unstaged = tryRunGit(['diff', '--name-only', 'HEAD'], worktreePath);
+    if (unstaged) {
+      for (const f of unstaged.split('\n')) { if (f) changedFileSet.add(f); }
+    }
+
+    // 3. Staged but not yet committed changes
+    const staged = tryRunGit(['diff', '--name-only', '--cached', 'HEAD'], worktreePath);
+    if (staged) {
+      for (const f of staged.split('\n')) { if (f) changedFileSet.add(f); }
+    }
+
+    const changedFiles = [...changedFileSet];
 
     for (const filePath of changedFiles) {
       try {
-        const diffOutput = tryRunGit(['diff', `${mergeBase}..HEAD`, '--', filePath], worktreePath) ?? '';
+        // Use mergeBase comparison against working tree to capture all changes
+        const diffOutput = tryRunGit(['diff', mergeBase, '--', filePath], worktreePath) ?? '';
 
         let oldContent = '';
         try {

@@ -130,9 +130,8 @@ describe('EmbeddingService (none / degraded fallback)', () => {
   let service: EmbeddingService;
 
   beforeEach(async () => {
-    // Ollama not available, no OpenAI key → forces ONNX fallback
+    // Ollama not available → forces degraded fallback
     mockFetch.mockRejectedValue(new Error('Connection refused'));
-    delete process.env.OPENAI_API_KEY;
 
     client = await getInMemoryClient();
     service = new EmbeddingService(client);
@@ -144,7 +143,7 @@ describe('EmbeddingService (none / degraded fallback)', () => {
     vi.clearAllMocks();
   });
 
-  it('selects none provider when Ollama and OpenAI are unavailable', () => {
+  it('selects none provider when Ollama is unavailable', () => {
     expect(service.getProvider()).toBe('none');
   });
 
@@ -213,7 +212,7 @@ describe('EmbeddingService caching', () => {
 
   beforeEach(async () => {
     mockFetch.mockRejectedValue(new Error('Connection refused'));
-    delete process.env.OPENAI_API_KEY;
+
 
     client = await getInMemoryClient();
     service = new EmbeddingService(client);
@@ -290,7 +289,7 @@ describe('EmbeddingService (Ollama provider)', () => {
       return Promise.reject(new Error(`Unexpected URL: ${url}`));
     });
 
-    delete process.env.OPENAI_API_KEY;
+
     client = await getInMemoryClient();
     service = new EmbeddingService(client);
     await service.initialize();
@@ -360,7 +359,7 @@ describe('EmbeddingService (Ollama 8b with high RAM)', () => {
       return Promise.reject(new Error('Unexpected'));
     });
 
-    delete process.env.OPENAI_API_KEY;
+
     client = await getInMemoryClient();
     service = new EmbeddingService(client);
     await service.initialize();
@@ -406,7 +405,7 @@ describe('EmbeddingService (Ollama generic embedding model)', () => {
       return Promise.reject(new Error(`Unexpected URL: ${url}`));
     });
 
-    delete process.env.OPENAI_API_KEY;
+
     client = await getInMemoryClient();
     service = new EmbeddingService(client);
     await service.initialize();
@@ -439,35 +438,6 @@ describe('EmbeddingService (Ollama generic embedding model)', () => {
 });
 
 // ============================================================
-// UNIT TESTS — OpenAI provider selection
-// ============================================================
-
-describe('EmbeddingService (OpenAI provider)', () => {
-  let client: Client;
-  let service: EmbeddingService;
-
-  beforeEach(async () => {
-    // Ollama not available
-    mockFetch.mockRejectedValue(new Error('Connection refused'));
-    process.env.OPENAI_API_KEY = 'sk-test-key-for-unit-tests';
-
-    client = await getInMemoryClient();
-    service = new EmbeddingService(client);
-    await service.initialize();
-  });
-
-  afterEach(() => {
-    client.close();
-    delete process.env.OPENAI_API_KEY;
-    vi.clearAllMocks();
-  });
-
-  it('selects openai provider when OPENAI_API_KEY is set and Ollama is unavailable', () => {
-    expect(service.getProvider()).toBe('openai');
-  });
-});
-
-// ============================================================
 // UNIT TESTS — initialize idempotence
 // ============================================================
 
@@ -477,7 +447,7 @@ describe('EmbeddingService.initialize idempotence', () => {
 
   beforeEach(async () => {
     mockFetch.mockRejectedValue(new Error('Connection refused'));
-    delete process.env.OPENAI_API_KEY;
+
     client = await getInMemoryClient();
     service = new EmbeddingService(client);
   });

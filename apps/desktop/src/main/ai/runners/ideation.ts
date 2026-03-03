@@ -15,7 +15,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { createSimpleClient } from '../client/factory';
-import { ToolRegistry } from '../tools/registry';
+import { buildToolRegistry } from '../tools/build-registry';
 import type { ToolContext } from '../tools/types';
 import type { ModelShorthand, ThinkingLevel } from '../config/types';
 import type { SecurityProfile } from '../security/bash-validator';
@@ -166,7 +166,7 @@ export async function runIdeation(
   };
 
   // Bind read-only tools + Write for output
-  const registry = new ToolRegistry();
+  const registry = buildToolRegistry();
   const tools = registry.getToolsForAgent('ideation', toolContext);
 
   // Create simple client
@@ -180,13 +180,27 @@ export async function runIdeation(
 
   let responseText = '';
 
+  // Detect Codex models — they require instructions via providerOptions, not system
+  const modelId = typeof client.model === 'string' ? client.model : client.model.modelId;
+  const isCodex = modelId?.includes('codex') ?? false;
+  const userPrompt = `Analyze the project at ${projectDir} and generate up to ${maxIdeasPerType} ${ideationType.replace(/_/g, ' ')} ideas. Use the available tools to explore the codebase, then write your findings as a JSON file to the output directory.`;
+
   try {
     const result = streamText({
       model: client.model,
-      prompt,
+      system: isCodex ? undefined : prompt,
+      prompt: userPrompt,
       tools: client.tools,
       stopWhen: stepCountIs(client.maxSteps),
       abortSignal,
+      ...(isCodex ? {
+        providerOptions: {
+          openai: {
+            instructions: prompt,
+            store: false,
+          },
+        },
+      } : {}),
     });
 
     for await (const part of result.fullStream) {

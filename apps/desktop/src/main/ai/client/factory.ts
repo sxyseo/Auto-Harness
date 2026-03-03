@@ -26,7 +26,7 @@ import { resolveReasoningParams } from '../config/types';
 import { createMcpClientsForAgent, closeAllMcpClients, mergeMcpTools } from '../mcp/client';
 import type { McpClientResult } from '../mcp/types';
 import { createProviderFromModelId, detectProviderFromModel } from '../providers/factory';
-import { ToolRegistry } from '../tools/registry';
+import { buildToolRegistry } from '../tools/build-registry';
 import type { QueueResolvedAuth } from '../auth/types';
 import type {
   AgentClientConfig,
@@ -141,7 +141,7 @@ export async function createAgentClient(
   // 3. (Thinking level resolved above)
 
   // 4. Bind builtin tools via ToolRegistry
-  const registry = new ToolRegistry();
+  const registry = buildToolRegistry();
   const tools: Record<string, AITool> = registry.getToolsForAgent(
     agentType,
     toolContext,
@@ -215,6 +215,7 @@ export async function createSimpleClient(
 
   // Resolve model + auth
   let model;
+  let resolvedModelId: string;
   let resolvedThinkingLevel: ThinkingLevel = thinkingLevel;
   let queueAuth: QueueResolvedAuth | null = null;
 
@@ -235,7 +236,8 @@ export async function createSimpleClient(
       throw new Error('No available account in priority queue for model: ' + queueConfig.requestedModel);
     }
 
-    model = createProviderFromModelId(queueAuth.resolvedModelId, {
+    resolvedModelId = queueAuth.resolvedModelId;
+    model = createProviderFromModelId(resolvedModelId, {
       apiKey: queueAuth.apiKey,
       baseURL: queueAuth.baseURL,
       headers: queueAuth.headers,
@@ -246,14 +248,14 @@ export async function createSimpleClient(
     resolvedThinkingLevel = (queueAuth.reasoningConfig.level as ThinkingLevel) ?? thinkingLevel;
   } else {
     // Legacy per-provider resolution
-    const modelId = resolveModelId(modelShorthand);
-    const detectedProvider = detectProviderFromModel(modelId) ?? 'anthropic';
+    resolvedModelId = resolveModelId(modelShorthand);
+    const detectedProvider = detectProviderFromModel(resolvedModelId) ?? 'anthropic';
     const auth = await resolveAuth({
       provider: detectedProvider,
       profileId,
     });
 
-    model = createProviderFromModelId(modelId, {
+    model = createProviderFromModelId(resolvedModelId, {
       apiKey: auth?.apiKey,
       baseURL: auth?.baseURL,
       headers: auth?.headers,
@@ -263,6 +265,7 @@ export async function createSimpleClient(
 
   return {
     model,
+    resolvedModelId,
     tools,
     systemPrompt,
     maxSteps,

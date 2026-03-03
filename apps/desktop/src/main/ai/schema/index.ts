@@ -78,3 +78,13 @@ export {
   type ValidatedExtractedInsights,
   type ValidatedTaskSuggestion,
 } from './insight-extractor';
+
+// Clean output schemas for AI SDK Output.object() constrained decoding
+export {
+  ComplexityAssessmentOutputSchema,
+  type ComplexityAssessmentOutput,
+  ImplementationPlanOutputSchema,
+  type ImplementationPlanOutput,
+  QASignoffOutputSchema,
+  type QASignoffOutput,
+} from './output';

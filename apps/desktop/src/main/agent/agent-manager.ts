@@ -26,6 +26,7 @@ import { createOrGetWorktree } from '../ai/worktree';
 import { findTaskWorktree } from '../worktree-paths';
 import { readSettingsFile } from '../settings-utils';
 import type { ProviderAccount } from '../../shared/types/provider-account';
+import { tryLoadPrompt } from '../ai/prompts/prompt-loader';
 
 /**
  * Main AgentManager - orchestrates agent process lifecycle
@@ -977,20 +978,7 @@ export class AgentManager extends EventEmitter {
    * @param promptName - The prompt filename without extension (e.g., 'planner', 'qa_reviewer')
    */
   private loadPrompt(promptName: string): string | null {
-    const autoBuildSource = this.processManager.getAutoBuildSourcePath();
-    if (!autoBuildSource) {
-      return null;
-    }
-
-    const promptPath = path.join(autoBuildSource, 'prompts', `${promptName}.md`);
-    try {
-      if (existsSync(promptPath)) {
-        return readFileSync(promptPath, 'utf-8');
-      }
-    } catch {
-      // Fall through
-    }
-    return null;
+    return tryLoadPrompt(promptName);
   }
 
   /**

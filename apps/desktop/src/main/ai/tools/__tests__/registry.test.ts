@@ -124,15 +124,17 @@ describe('ToolRegistry', () => {
 
     const context = createMockContext();
 
-    // spec_critic gets all builtin tools (security enforced at tool execution layer)
+    // spec_critic gets SPEC_TOOLS (Read, Glob, Grep, Write, WebFetch, WebSearch) — no Edit or Bash
     const criticTools = registry.getToolsForAgent('spec_critic', context);
     expect(Object.keys(criticTools)).toEqual(
       expect.arrayContaining([
         ...BASE_READ_TOOLS,
-        ...BASE_WRITE_TOOLS,
+        'Write',
         ...WEB_TOOLS,
       ]),
     );
+    expect(Object.keys(criticTools)).not.toContain('Edit');
+    expect(Object.keys(criticTools)).not.toContain('Bash');
 
     // coder gets everything
     const coderTools = registry.getToolsForAgent('coder', context);

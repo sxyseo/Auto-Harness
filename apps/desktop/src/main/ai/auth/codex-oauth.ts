@@ -47,9 +47,21 @@ async function getElectronShell() {
 // =============================================================================
 
 const DEBUG = process.env.DEBUG === 'true' || process.argv.includes('--debug');
+const VERBOSE = process.env.VERBOSE === 'true';
 
 function debugLog(message: string, data?: unknown): void {
   if (!DEBUG) return;
+  const timestamp = new Date().toISOString();
+  const prefix = `[CodexOAuth ${timestamp}]`;
+  if (data !== undefined) {
+    console.log(prefix, message, data);
+  } else {
+    console.log(prefix, message);
+  }
+}
+
+function verboseLog(message: string, data?: unknown): void {
+  if (!VERBOSE) return;
   const timestamp = new Date().toISOString();
   const prefix = `[CodexOAuth ${timestamp}]`;
   if (data !== undefined) {
@@ -110,7 +122,7 @@ async function readStoredTokens(explicitPath?: string): Promise<StoredTokens | n
     const filePath = explicitPath ?? await getTokenFilePath();
     const raw = fs.readFileSync(filePath, 'utf8');
     const tokens = JSON.parse(raw) as StoredTokens;
-    debugLog('Read stored tokens', { expiresAt: tokens.expires_at, hasAccess: !!tokens.access_token, hasRefresh: !!tokens.refresh_token });
+    verboseLog('Read stored tokens', { expiresAt: tokens.expires_at, hasAccess: !!tokens.access_token, hasRefresh: !!tokens.refresh_token });
     return tokens;
   } catch {
     debugLog('No stored tokens found');
@@ -461,7 +473,7 @@ export async function refreshCodexToken(refreshToken: string): Promise<CodexAuth
  * - Returns the valid access token.
  */
 export async function ensureValidCodexToken(tokenFilePath?: string): Promise<string | null> {
-  debugLog('Ensuring valid Codex token');
+  verboseLog('Ensuring valid Codex token');
   const stored = await readStoredTokens(tokenFilePath);
   if (!stored) {
     debugLog('No stored tokens — returning null');
@@ -469,10 +481,10 @@ export async function ensureValidCodexToken(tokenFilePath?: string): Promise<str
   }
 
   const expiresIn = stored.expires_at - Date.now();
-  debugLog('Token expiry check', { expiresInMs: expiresIn, thresholdMs: REFRESH_THRESHOLD_MS });
+  verboseLog('Token expiry check', { expiresInMs: expiresIn, thresholdMs: REFRESH_THRESHOLD_MS });
 
   if (expiresIn > REFRESH_THRESHOLD_MS) {
-    debugLog('Token still valid, returning stored token');
+    verboseLog('Token still valid, returning stored token');
     return stored.access_token;
   }
 

@@ -9,8 +9,7 @@
 
 import { createClient } from '@libsql/client';
 import type { Client } from '@libsql/client';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { MEMORY_SCHEMA_SQL, MEMORY_PRAGMA_SQL } from './schema';
 
 let _client: Client | null = null;
@@ -51,22 +50,8 @@ export async function getMemoryClient(
   // Initialize schema (idempotent — uses CREATE IF NOT EXISTS throughout)
   await _client.executeMultiple(MEMORY_SCHEMA_SQL);
 
-  // Load sqlite-vec extension for local mode only.
-  // Cloud Turso has built-in vector support (DiskANN) — no extension needed.
-  if (!tursoSyncUrl) {
-    try {
-      // Determine vec0 extension path
-      // In ESM bundles __dirname is not available; derive from import.meta.url
-      const currentDir = dirname(fileURLToPath(import.meta.url));
-      const vecExtPath = app.isPackaged
-        ? join(process.resourcesPath, 'extensions', 'vec0')
-        : join(currentDir, '..', '..', 'node_modules', 'sqlite-vec', 'vec0');
-      await _client.execute(`SELECT load_extension('${vecExtPath}')`);
-    } catch (err) {
-      // sqlite-vec may not be bundled yet — log warning but don't crash
-      console.warn('[MemoryDB] Failed to load sqlite-vec extension:', err);
-    }
-  }
+  // libsql has native vector support (vector_distance_cos, F32_BLOB) —
+  // no sqlite-vec extension needed for either local or cloud mode.
 
   return _client;
 }

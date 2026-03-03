@@ -152,13 +152,6 @@ export class InsightsService extends EventEmitter {
     // Cancel any existing session
     this.executor.cancelSession(projectId);
 
-    // Validate auto-claude source
-    const autoBuildSource = this.config.getAutoBuildSourcePath();
-    if (!autoBuildSource) {
-      this.emit('error', projectId, 'Auto Claude source not found');
-      return;
-    }
-
     // Load or create session
     let session = this.sessionManager.loadSession(projectId, projectPath);
     if (!session) {

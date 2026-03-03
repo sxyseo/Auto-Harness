@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { generateText } from 'ai';
 import { createSimpleClient } from './ai/client/factory';
+import { getActiveProviderFeatureSettings } from './ipc-handlers/feature-settings-helper';
 import { safeBreadcrumb, safeCaptureException } from './sentry';
 
 /**
@@ -56,10 +57,16 @@ export class TitleGenerator extends EventEmitter {
     });
 
     try {
+      // Read the user's configured naming model for their active provider.
+      // This ensures we use the correct model for the active provider
+      // (e.g., Codex models for OpenAI Codex OAuth, Gemini for Google, etc.)
+      const namingSettings = getActiveProviderFeatureSettings('naming');
+      debug('Using naming settings:', namingSettings.model, namingSettings.thinkingLevel);
+
       const client = await createSimpleClient({
         systemPrompt: SYSTEM_PROMPT,
-        modelShorthand: 'haiku',
-        thinkingLevel: 'low',
+        modelShorthand: namingSettings.model,
+        thinkingLevel: namingSettings.thinkingLevel as 'low' | 'medium' | 'high' | 'xhigh',
       });
 
       const result = await generateText({

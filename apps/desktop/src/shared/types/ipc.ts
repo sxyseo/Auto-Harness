@@ -68,12 +68,11 @@ import type {
   ClaudeProfileSettings,
   ClaudeProfile,
   ClaudeAutoSwitchSettings,
-  ClaudeAuthResult,
   ClaudeUsageSnapshot,
   AllProfilesUsage,
   TerminalProfileChangedEvent
 } from './agent';
-import type { AppSettings, SourceEnvConfig, SourceEnvCheckResult } from './settings';
+import type { AppSettings } from './settings';
 import type { AppUpdateInfo, AppUpdateProgress, AppUpdateAvailableEvent, AppUpdateDownloadedEvent, AppUpdateErrorEvent } from './app-update';
 import type {
   ChangelogTask,
@@ -486,8 +485,6 @@ export interface ElectronAPI {
   // Environment configuration operations
   getProjectEnv: (projectId: string) => Promise<IPCResult<ProjectEnvConfig>>;
   updateProjectEnv: (projectId: string, config: Partial<ProjectEnvConfig>) => Promise<IPCResult>;
-  checkClaudeAuth: (projectId: string) => Promise<IPCResult<ClaudeAuthResult>>;
-  invokeClaudeSetup: (projectId: string) => Promise<IPCResult<ClaudeAuthResult>>;
 
   // Memory Infrastructure operations (LadybugDB - no Docker required)
   getMemoryInfrastructureStatus: (dbPath?: string) => Promise<IPCResult<InfrastructureStatus>>;
@@ -751,11 +748,6 @@ export interface ElectronAPI {
   // Shell operations
   openExternal: (url: string) => Promise<void>;
   openTerminal: (dirPath: string) => Promise<IPCResult<void>>;
-
-  // Auto Claude source environment operations
-  getSourceEnv: () => Promise<IPCResult<SourceEnvConfig>>;
-  updateSourceEnv: (config: { claudeOAuthToken?: string }) => Promise<IPCResult>;
-  checkSourceToken: () => Promise<IPCResult<SourceEnvCheckResult>>;
 
   // Changelog operations
   getChangelogDoneTasks: (projectId: string, tasks?: Task[]) => Promise<IPCResult<ChangelogTask[]>>;

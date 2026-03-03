@@ -178,14 +178,15 @@ export const DEFAULT_PHASE_THINKING: import('../types/settings').PhaseThinkingCo
 // Feature Settings (Non-Pipeline Features)
 // ============================================
 
-// Default feature model configuration (for insights, ideation, roadmap, github, utility)
+// Default feature model configuration (for insights, ideation, roadmap, github, utility, naming)
 export const DEFAULT_FEATURE_MODELS: FeatureModelConfig = {
   insights: 'sonnet',     // Fast, responsive chat
   ideation: 'opus',       // Creative ideation benefits from Opus
   roadmap: 'opus',        // Strategic planning benefits from Opus
   githubIssues: 'opus',   // Issue triage and analysis benefits from Opus
   githubPrs: 'opus',      // PR review benefits from thorough Opus analysis
-  utility: 'haiku'        // Fast utility operations (commit messages, merge resolution)
+  utility: 'haiku',       // Fast utility operations (commit messages, merge resolution)
+  naming: 'haiku'         // Fast, cheap model for task titles and terminal names
 };
 
 // Default feature thinking configuration
@@ -195,7 +196,8 @@ export const DEFAULT_FEATURE_THINKING: FeatureThinkingConfig = {
   roadmap: 'high',        // Strategic thinking for roadmap
   githubIssues: 'medium', // Moderate thinking for issue analysis
   githubPrs: 'medium',    // Moderate thinking for PR review
-  utility: 'low'          // Fast thinking for utility operations
+  utility: 'low',         // Fast thinking for utility operations
+  naming: 'low'           // No thinking needed for short name generation
 };
 
 // Feature labels for UI display
@@ -205,7 +207,8 @@ export const FEATURE_LABELS: Record<keyof FeatureModelConfig, { label: string; d
   roadmap: { label: 'Roadmap', description: 'Create strategic feature roadmaps' },
   githubIssues: { label: 'GitHub Issues', description: 'Automated issue triage and labeling' },
   githubPrs: { label: 'GitHub PR Review', description: 'AI-powered pull request reviews' },
-  utility: { label: 'Utility', description: 'Commit messages and merge conflict resolution' }
+  utility: { label: 'Utility', description: 'Commit messages and merge conflict resolution' },
+  naming: { label: 'AI Naming', description: 'Task titles and terminal tab names' },
 };
 
 // Default agent profiles for preset model/thinking configurations

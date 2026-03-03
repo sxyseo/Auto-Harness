@@ -22,6 +22,8 @@ import { tool } from 'ai';
 import type { Tool as AITool } from 'ai';
 import { z } from 'zod/v3';
 
+import { resolve } from 'node:path';
+
 import { bashSecurityHook } from '../security/bash-validator';
 import type {
   ToolContext,
@@ -110,6 +112,23 @@ function define<TInput extends z.ZodType, TOutput>(
             context,
           );
         }
+
+        // Write-path containment: reject writes outside allowed directories
+        // Only applies to tools that can modify files (Write, Edit) — not read-only tools
+        if (context.allowedWritePaths?.length && metadata.permission !== ToolPermission.ReadOnly) {
+          const writePath = (input as Record<string, unknown>).file_path as string | undefined;
+          if (writePath) {
+            const resolved = resolve(writePath);
+            const allowed = context.allowedWritePaths.some(dir => resolved.startsWith(resolve(dir)));
+            if (!allowed) {
+              throw new Error(
+                `Write denied: ${metadata.name} cannot write to ${writePath}. ` +
+                `Allowed directories: ${context.allowedWritePaths.join(', ')}`,
+              );
+            }
+          }
+        }
+
         const result = await (execute(input as z.infer<TInput>, context) as Promise<TOutput>);
 
         // Safety-net: apply disk-spillover truncation to string outputs

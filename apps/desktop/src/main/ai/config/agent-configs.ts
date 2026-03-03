@@ -32,6 +32,9 @@ const WEB_TOOLS = ['WebFetch', 'WebSearch'] as const;
 /** All builtin tools — given to most agents since security is enforced at the tool execution layer */
 const ALL_BUILTIN_TOOLS = [...BASE_READ_TOOLS, ...BASE_WRITE_TOOLS, ...WEB_TOOLS] as const;
 
+/** Spec pipeline tools — read codebase + write to spec dir + web research. No Edit, no Bash. */
+const SPEC_TOOLS = [...BASE_READ_TOOLS, 'Write', ...WEB_TOOLS] as const;
+
 // =============================================================================
 // Auto-Claude MCP Tools (Custom build management)
 // =============================================================================
@@ -135,6 +138,10 @@ export type AgentType =
   | 'pr_followup_parallel'
   | 'pr_followup_extraction'
   | 'pr_finding_validator'
+  | 'pr_security_specialist'
+  | 'pr_quality_specialist'
+  | 'pr_logic_specialist'
+  | 'pr_codebase_fit_specialist'
   | 'analysis'
   | 'batch_analysis'
   | 'batch_validation'
@@ -169,49 +176,49 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
   // SPEC CREATION PHASES (Minimal tools, fast startup)
   // ═══════════════════════════════════════════════════════════════════════
   spec_gatherer: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...SPEC_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
   spec_researcher: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...SPEC_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
   spec_writer: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...SPEC_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   spec_critic: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...SPEC_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   spec_discovery: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...SPEC_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
   spec_context: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...SPEC_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
   },
   spec_validation: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...SPEC_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
   },
   spec_compaction: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...SPEC_TOOLS],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'medium',
@@ -223,7 +230,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
    * Needs full tool access to read/write spec files and research documentation.
    */
   spec_orchestrator: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS, 'SpawnSubagent'],
     mcpServers: ['context7'],
     autoClaudeTools: [],
     thinkingDefault: 'high',
@@ -235,7 +242,7 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
    * Needs full tool access with MCP integrations.
    */
   build_orchestrator: {
-    tools: [...ALL_BUILTIN_TOOLS],
+    tools: [...ALL_BUILTIN_TOOLS, 'SpawnSubagent'],
     mcpServers: ['context7', 'graphiti', 'auto-claude'],
     mcpServersOptional: ['linear'],
     autoClaudeTools: [
@@ -356,6 +363,30 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
   },
   pr_finding_validator: {
     tools: [...ALL_BUILTIN_TOOLS],
+    mcpServers: [],
+    autoClaudeTools: [],
+    thinkingDefault: 'medium',
+  },
+  pr_security_specialist: {
+    tools: [...BASE_READ_TOOLS],
+    mcpServers: [],
+    autoClaudeTools: [],
+    thinkingDefault: 'medium',
+  },
+  pr_quality_specialist: {
+    tools: [...BASE_READ_TOOLS],
+    mcpServers: [],
+    autoClaudeTools: [],
+    thinkingDefault: 'medium',
+  },
+  pr_logic_specialist: {
+    tools: [...BASE_READ_TOOLS],
+    mcpServers: [],
+    autoClaudeTools: [],
+    thinkingDefault: 'medium',
+  },
+  pr_codebase_fit_specialist: {
+    tools: [...BASE_READ_TOOLS],
     mcpServers: [],
     autoClaudeTools: [],
     thinkingDefault: 'medium',

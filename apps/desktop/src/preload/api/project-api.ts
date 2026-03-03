@@ -7,7 +7,6 @@ import type {
   InitializationResult,
   AutoBuildVersionInfo,
   ProjectEnvConfig,
-  ClaudeAuthResult,
   InfrastructureStatus,
   GraphitiValidationResult,
   GraphitiConnectionTestResult,
@@ -59,8 +58,6 @@ export interface ProjectAPI {
   // Environment Configuration
   getProjectEnv: (projectId: string) => Promise<IPCResult<ProjectEnvConfig>>;
   updateProjectEnv: (projectId: string, config: Partial<ProjectEnvConfig>) => Promise<IPCResult>;
-  checkClaudeAuth: (projectId: string) => Promise<IPCResult<ClaudeAuthResult>>;
-  invokeClaudeSetup: (projectId: string) => Promise<IPCResult<ClaudeAuthResult>>;
 
   // Dialog Operations
   selectDirectory: () => Promise<string | null>;
@@ -227,12 +224,6 @@ export const createProjectAPI = (): ProjectAPI => ({
 
   updateProjectEnv: (projectId: string, config: Partial<ProjectEnvConfig>): Promise<IPCResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ENV_UPDATE, projectId, config),
-
-  checkClaudeAuth: (projectId: string): Promise<IPCResult<ClaudeAuthResult>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.ENV_CHECK_CLAUDE_AUTH, projectId),
-
-  invokeClaudeSetup: (projectId: string): Promise<IPCResult<ClaudeAuthResult>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.ENV_INVOKE_CLAUDE_SETUP, projectId),
 
   // Dialog Operations
   selectDirectory: (): Promise<string | null> =>

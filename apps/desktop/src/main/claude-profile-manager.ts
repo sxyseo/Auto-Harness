@@ -321,7 +321,7 @@ export class ClaudeProfileManager {
       // Fallback to default
       const defaultProfile = this.data.profiles.find(p => p.isDefault);
       if (defaultProfile) {
-        if (process.env.DEBUG === 'true') {
+        if (process.env.VERBOSE === 'true') {
           console.warn('[ClaudeProfileManager] getActiveProfile - using default:', {
             id: defaultProfile.id,
             name: defaultProfile.name,
@@ -332,7 +332,7 @@ export class ClaudeProfileManager {
       }
       // If somehow no default exists, return first profile
       const fallback = this.data.profiles[0];
-      if (process.env.DEBUG === 'true') {
+      if (process.env.VERBOSE === 'true') {
         console.warn('[ClaudeProfileManager] getActiveProfile - using fallback:', {
           id: fallback.id,
           name: fallback.name,
@@ -342,7 +342,7 @@ export class ClaudeProfileManager {
       return fallback;
     }
 
-    if (process.env.DEBUG === 'true') {
+    if (process.env.VERBOSE === 'true') {
       console.warn('[ClaudeProfileManager] getActiveProfile:', {
         id: active.id,
         name: active.name,
@@ -553,7 +553,7 @@ export class ClaudeProfileManager {
       );
 
       env.CLAUDE_CONFIG_DIR = expandedConfigDir;
-      if (process.env.DEBUG === 'true') {
+      if (process.env.VERBOSE === 'true') {
         console.warn('[ClaudeProfileManager] Using CLAUDE_CONFIG_DIR for profile:', profile.name, expandedConfigDir);
       }
     } else if (profile) {
@@ -864,7 +864,7 @@ export class ClaudeProfileManager {
         : profile.configDir
     );
 
-    if (process.env.DEBUG === 'true') {
+    if (process.env.VERBOSE === 'true') {
       console.warn('[ClaudeProfileManager] getProfileEnv:', {
         profileId,
         profileName: profile.name,
@@ -885,7 +885,7 @@ export class ClaudeProfileManager {
       const credentials = getCredentialsFromKeychain(expandedConfigDir);
       if (credentials.token) {
         env.CLAUDE_CODE_OAUTH_TOKEN = credentials.token;
-        if (process.env.DEBUG === 'true') {
+        if (process.env.VERBOSE === 'true') {
           console.warn('[ClaudeProfileManager] Retrieved OAuth token from Keychain for profile:', profile.name);
         }
       }

@@ -428,12 +428,12 @@ async function migrateOnboardingCompleted(settings: AppSettings): Promise<AppSet
   }
 
   // Check for signs of an existing user:
-  // - Has a Claude OAuth token configured
+  // - Has provider accounts configured (Vercel AI SDK migration)
   // - Has the auto-build source path configured
-  const hasOAuthToken = Boolean(settings.globalClaudeOAuthToken);
+  const hasProviderAccounts = useSettingsStore.getState().providerAccounts.length > 0;
   const hasAutoBuildPath = Boolean(settings.autoBuildPath);
 
-  const isExistingUser = hasOAuthToken || hasAutoBuildPath;
+  const isExistingUser = hasProviderAccounts || hasAutoBuildPath;
 
   if (isExistingUser) {
     // Mark onboarding as completed for existing users

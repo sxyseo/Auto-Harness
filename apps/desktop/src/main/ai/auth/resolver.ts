@@ -17,6 +17,7 @@
 import * as path from 'node:path';
 import { ensureValidToken, reactiveTokenRefresh } from '../../claude-profile/token-refresh';
 import type { SupportedProvider } from '../providers/types';
+import { detectProviderFromModel } from '../providers/factory';
 import type { AuthResolverContext, QueueResolvedAuth, ResolvedAuth } from './types';
 import {
   PROVIDER_BASE_URL_ENV,
@@ -379,14 +380,32 @@ export async function resolveAuthFromQueue(
 
     // Resolve which model to use on this account.
     // First try the equivalence table (maps shorthands like 'sonnet' across providers).
-    // If no equivalence exists, the model was already chosen by the user for this
-    // specific provider (e.g., 'llama3.1:8b' on Ollama) — use it as-is.
+    // If no equivalence exists, check if the model is native to this provider
+    // (e.g., 'llama3.1:8b' on Ollama). If the model belongs to a different provider,
+    // skip this account to avoid sending provider-mismatched requests (e.g., sending
+    // an Anthropic model ID to an OpenAI endpoint → 400 Bad Request).
     const modelSpec = resolveModelEquivalent(
       requestedModel,
       account.provider,
       options?.userModelOverrides,
     );
+
+    if (!modelSpec) {
+      // No cross-provider equivalent found. Only proceed if the model is
+      // native to this provider's API (detected via model ID prefix).
+      const nativeProvider = detectProviderFromModel(requestedModel);
+      if (nativeProvider !== supportedProvider) continue;
+    }
+
     const resolvedModelId = modelSpec?.modelId ?? requestedModel;
+
+    // Codex OAuth accounts only support Codex models (Responses API format).
+    // Non-Codex models use Chat Completions format, but the Codex OAuth fetch
+    // handler rewrites the URL to the Codex Responses endpoint, causing a
+    // format mismatch → 400 Bad Request. Skip to the next account.
+    if (account.provider === 'openai' && account.authType === 'oauth' && !resolvedModelId.includes('codex')) {
+      continue;
+    }
 
     // Resolve credentials for this account
     const auth = await resolveCredentialsForAccount(account, supportedProvider);

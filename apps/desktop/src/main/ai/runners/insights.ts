@@ -16,7 +16,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { createSimpleClient } from '../client/factory';
-import { ToolRegistry } from '../tools/registry';
+import { buildToolRegistry } from '../tools/build-registry';
 import type { ToolContext } from '../tools/types';
 import type { ModelShorthand, ThinkingLevel } from '../config/types';
 import type { SecurityProfile } from '../security/bash-validator';
@@ -252,7 +252,7 @@ export async function runInsightsQuery(
   };
 
   // Bind tools via registry (insights agent gets Read, Glob, Grep)
-  const registry = new ToolRegistry();
+  const registry = buildToolRegistry();
   const tools = registry.getToolsForAgent('insights', toolContext);
 
   // Create simple client with tools
@@ -267,14 +267,26 @@ export async function runInsightsQuery(
   const toolCalls: ToolCallInfo[] = [];
   let responseText = '';
 
+  // Detect Codex models — they require instructions via providerOptions, not system
+  const insightsModelId = typeof client.model === 'string' ? client.model : client.model.modelId;
+  const isCodexInsights = insightsModelId?.includes('codex') ?? false;
+
   try {
     const result = streamText({
       model: client.model,
-      system: client.systemPrompt,
+      system: isCodexInsights ? undefined : client.systemPrompt,
       prompt: fullPrompt,
       tools: client.tools,
       stopWhen: stepCountIs(client.maxSteps),
       abortSignal,
+      ...(isCodexInsights ? {
+        providerOptions: {
+          openai: {
+            instructions: client.systemPrompt,
+            store: false,
+          },
+        },
+      } : {}),
     });
 
     for await (const part of result.fullStream) {

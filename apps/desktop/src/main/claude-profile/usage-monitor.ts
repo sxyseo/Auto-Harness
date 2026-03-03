@@ -22,7 +22,7 @@ import { isProfileRateLimited } from './rate-limit-manager';
 import { getOperationRegistry } from './operation-registry';
 import { ensureValidCodexToken } from '../ai/auth/codex-oauth';
 import { fetchCodexUsage, normalizeCodexResponse } from './codex-usage-fetcher';
-import { readSettingsFileAsync } from '../settings-utils';
+import { readSettingsFileAsync, writeSettingsFile } from '../settings-utils';
 import type { ProviderAccount } from '../../shared/types/provider-account';
 
 // Re-export for backward compatibility
@@ -98,9 +98,9 @@ const PROVIDER_USAGE_ENDPOINTS: readonly ProviderUsageEndpoint[] = [
  * // returns null
  */
 export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string | null {
-  const isDebug = process.env.DEBUG === 'true';
+  const isVerbose = process.env.VERBOSE === 'true';
 
-  if (isDebug) {
+  if (isVerbose) {
     console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Constructing usage endpoint:', {
       provider,
       baseUrl
@@ -109,7 +109,7 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
 
   const endpointConfig = PROVIDER_USAGE_ENDPOINTS.find(e => e.provider === provider);
   if (!endpointConfig) {
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Unknown provider - no endpoint configured:', {
         provider,
         availableProviders: PROVIDER_USAGE_ENDPOINTS.map(e => e.provider)
@@ -118,7 +118,7 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
     return null;
   }
 
-  if (isDebug) {
+  if (isVerbose) {
     console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Found endpoint config for provider:', {
       provider,
       usagePath: endpointConfig.usagePath
@@ -136,7 +136,7 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
 
     const finalUrl = url.toString();
 
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Successfully constructed endpoint:', {
         provider,
         originalPath,
@@ -148,7 +148,7 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
     return finalUrl;
   } catch (error) {
     console.error('[UsageMonitor] Invalid baseUrl for usage endpoint:', baseUrl);
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] URL construction failed:', {
         baseUrl,
         error: error instanceof Error ? error.message : String(error)
@@ -172,12 +172,12 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
  * detectProvider('https://unknown.com/api') // returns 'unknown'
  */
 export function detectProvider(baseUrl: string): ApiProvider {
-  // Wrapper around shared detectProvider with debug logging for main process
-  const isDebug = process.env.DEBUG === 'true';
+  // Wrapper around shared detectProvider with verbose logging for main process
+  const isVerbose = process.env.VERBOSE === 'true';
 
   const provider = sharedDetectProvider(baseUrl);
 
-  if (isDebug) {
+  if (isVerbose) {
     console.warn('[UsageMonitor:PROVIDER_DETECTION] Detected provider:', {
       baseUrl,
       provider
@@ -235,12 +235,27 @@ export class UsageMonitor extends EventEmitter {
 
   // Debug flag for verbose logging
   private readonly isDebug = process.env.DEBUG === 'true';
+  // Verbose flag for trace-level logging (only with VERBOSE=true)
+  private readonly isVerbose = process.env.VERBOSE === 'true';
 
   /**
    * Debug log helper - only logs when DEBUG=true
    */
   private debugLog(message: string, data?: unknown): void {
     if (this.isDebug) {
+      if (data !== undefined) {
+        console.warn(message, data);
+      } else {
+        console.warn(message);
+      }
+    }
+  }
+
+  /**
+   * Trace log helper - only logs when VERBOSE=true (more granular than debug)
+   */
+  private traceLog(message: string, data?: unknown): void {
+    if (this.isVerbose) {
       if (data !== undefined) {
         console.warn(message, data);
       } else {
@@ -660,7 +675,7 @@ export class UsageMonitor extends EventEmitter {
         }
       }
 
-      this.debugLog('[UsageMonitor] Fetching usage for inactive profile:', {
+      this.traceLog('[UsageMonitor] Fetching usage for inactive profile:', {
         profileId: profile.id,
         profileName: profile.name,
         tokenFingerprint: getCredentialFingerprint(token),
@@ -683,7 +698,7 @@ export class UsageMonitor extends EventEmitter {
       );
 
       if (usage) {
-        this.debugLog('[UsageMonitor] Successfully fetched inactive profile usage:', {
+        this.traceLog('[UsageMonitor] Successfully fetched inactive profile usage:', {
           profileName: profile.name,
           sessionPercent: usage.sessionPercent,
           weeklyPercent: usage.weeklyPercent
@@ -975,13 +990,13 @@ export class UsageMonitor extends EventEmitter {
           (p) => p.id === profilesFile.activeProfileId
         );
         if (activeProfile?.apiKey) {
-          this.debugLog('[UsageMonitor:TRACE] Using API profile credential: ' + activeProfile.name);
+          this.traceLog('[UsageMonitor:TRACE] Using API profile credential: ' + activeProfile.name);
           return activeProfile.apiKey;
         }
       }
     } catch (error) {
       // API profile loading failed, fall through to OAuth
-      this.debugLog('[UsageMonitor:TRACE] Failed to load API profiles, falling back to OAuth:', error);
+      this.traceLog('[UsageMonitor:TRACE] Failed to load API profiles, falling back to OAuth:', error);
     }
 
     // Check for Codex OAuth token (OpenAI)
@@ -995,18 +1010,18 @@ export class UsageMonitor extends EventEmitter {
           if (account?.provider === 'openai' && account.authType === 'oauth') {
             const codexToken = await ensureValidCodexToken();
             if (codexToken) {
-              this.debugLog('[UsageMonitor:TRACE] Using Codex OAuth token', {
+              this.traceLog('[UsageMonitor:TRACE] Using Codex OAuth token', {
                 tokenFingerprint: getCredentialFingerprint(codexToken)
               });
               return codexToken;
             }
-            this.debugLog('[UsageMonitor:TRACE] Codex OAuth token not available');
+            this.traceLog('[UsageMonitor:TRACE] Codex OAuth token not available');
             break;
           }
         }
       }
     } catch (error) {
-      this.debugLog('[UsageMonitor:TRACE] Failed to get Codex token, falling back to Claude OAuth:', error);
+      this.traceLog('[UsageMonitor:TRACE] Failed to get Codex token, falling back to Claude OAuth:', error);
     }
 
     // Fall back to Claude OAuth profile - use ensureValidToken for proactive refresh
@@ -1036,7 +1051,7 @@ export class UsageMonitor extends EventEmitter {
         }
 
         if (tokenResult.token) {
-          this.debugLog('[UsageMonitor:TRACE] Using OAuth token for profile: ' + activeProfile.name, {
+          this.traceLog('[UsageMonitor:TRACE] Using OAuth token for profile: ' + activeProfile.name, {
             tokenFingerprint: getCredentialFingerprint(tokenResult.token),
             wasRefreshed: tokenResult.wasRefreshed
           });
@@ -1045,19 +1060,19 @@ export class UsageMonitor extends EventEmitter {
 
         // Token unavailable - log the error
         if (tokenResult.error) {
-          this.debugLog('[UsageMonitor] Token validation failed:', tokenResult.error);
+          this.traceLog('[UsageMonitor:TRACE] Token validation failed:', tokenResult.error);
 
           // Check for invalid_grant error - indicates refresh token is permanently invalid
           // and user needs to manually re-authenticate
           if (tokenResult.errorCode === 'invalid_grant') {
-            this.debugLog('[UsageMonitor] Profile needs re-authentication (invalid refresh token): ' + activeProfile.name);
+            this.traceLog('[UsageMonitor:TRACE] Profile needs re-authentication (invalid refresh token): ' + activeProfile.name);
             this.needsReauthProfiles.add(activeProfile.id);
           }
 
           // Check for missing_credentials error - indicates no token in credential store
           // User needs to authenticate via /login
           if (tokenResult.errorCode === 'missing_credentials') {
-            this.debugLog('[UsageMonitor] Profile needs authentication (no credentials found): ' + activeProfile.name);
+            this.traceLog('[UsageMonitor:TRACE] Profile needs authentication (no credentials found): ' + activeProfile.name);
             this.needsReauthProfiles.add(activeProfile.id);
           }
         }
@@ -1068,7 +1083,7 @@ export class UsageMonitor extends EventEmitter {
       // Fallback: Try direct keychain read (e.g., if refresh token unavailable)
       const keychainCreds = getCredentialsFromKeychain(activeProfile.configDir);
       if (keychainCreds.token) {
-        this.debugLog('[UsageMonitor:TRACE] Using fallback OAuth token from Keychain for profile: ' + activeProfile.name, {
+        this.traceLog('[UsageMonitor:TRACE] Using fallback OAuth token from Keychain for profile: ' + activeProfile.name, {
           tokenFingerprint: getCredentialFingerprint(keychainCreds.token)
         });
         return keychainCreds.token;
@@ -1076,9 +1091,9 @@ export class UsageMonitor extends EventEmitter {
 
       // Keychain read also failed
       if (keychainCreds.error) {
-        this.debugLog('[UsageMonitor] Keychain access failed:', keychainCreds.error);
+        this.traceLog('[UsageMonitor:TRACE] Keychain access failed:', keychainCreds.error);
       } else {
-        this.debugLog('[UsageMonitor:TRACE] No token in Keychain for profile: ' + activeProfile.name +
+        this.traceLog('[UsageMonitor:TRACE] No token in Keychain for profile: ' + activeProfile.name +
           ' - user may need to re-authenticate with claude /login');
       }
 
@@ -1087,7 +1102,7 @@ export class UsageMonitor extends EventEmitter {
     }
 
     // No credential available
-    this.debugLog('[UsageMonitor:TRACE] No credential available (no API or OAuth profile active)');
+    this.traceLog('[UsageMonitor:TRACE] No credential available (no API or OAuth profile active)');
     return undefined;
   }
 
@@ -1118,9 +1133,8 @@ export class UsageMonitor extends EventEmitter {
       profileId = activeProfile.profileId;
       isAPIProfile = activeProfile.isAPIProfile;
 
-      // Step 2: Fetch current usage (pass activeProfile for consistency)
-      const credential = await this.getCredential();
-      const usage = await this.fetchUsage(profileId, credential, activeProfile);
+      // Step 2: Fetch current usage using the credential resolved by determineActiveProfile
+      const usage = await this.fetchUsage(profileId, activeProfile.credential, activeProfile);
       if (!usage) {
         this.debugLog('[UsageMonitor] Failed to fetch usage');
         return;
@@ -1143,6 +1157,14 @@ export class UsageMonitor extends EventEmitter {
       const allProfilesUsage = await this.getAllProfilesUsage();
       if (allProfilesUsage) {
         this.emit('all-profiles-usage-updated', allProfilesUsage);
+
+        // Single summary line for debug output
+        if (this.isDebug) {
+          const summary = allProfilesUsage.allProfiles
+            .map(p => `${p.profileName} ${p.sessionPercent}%/${p.weeklyPercent}%`)
+            .join(' | ');
+          console.warn(`[UsageMonitor] Usage: ${summary}`);
+        }
       }
 
       // Step 4: Check thresholds and perform proactive swap (OAuth profiles only)
@@ -1151,18 +1173,18 @@ export class UsageMonitor extends EventEmitter {
         const settings = profileManager.getAutoSwitchSettings();
 
         if (!settings.enabled || !settings.proactiveSwapEnabled) {
-          this.debugLog('[UsageMonitor:TRACE] Proactive swap disabled, skipping threshold check');
+          this.traceLog('[UsageMonitor:TRACE] Proactive swap disabled, skipping threshold check');
           return;
         }
 
         const thresholds = this.checkThresholdsExceeded(usage, settings);
 
         if (thresholds.anyExceeded) {
-          this.debugLog('[UsageMonitor:TRACE] Threshold exceeded', {
+          this.traceLog('[UsageMonitor:TRACE] Threshold exceeded', {
             sessionPercent: usage.sessionPercent,
             weekPercent: usage.weeklyPercent,
             activeProfile: profileId,
-            hasCredential: !!credential
+            hasCredential: !!activeProfile.credential
           });
 
           this.debugLog('[UsageMonitor] Threshold exceeded:', {
@@ -1178,13 +1200,13 @@ export class UsageMonitor extends EventEmitter {
             thresholds.sessionExceeded ? 'session' : 'weekly'
           );
         } else {
-          this.debugLog('[UsageMonitor:TRACE] Usage OK', {
+          this.traceLog('[UsageMonitor:TRACE] Usage OK', {
             sessionPercent: usage.sessionPercent,
             weekPercent: usage.weeklyPercent
           });
         }
       } else {
-        this.debugLog('[UsageMonitor:TRACE] Skipping proactive swap for API profile (only supported for OAuth profiles)');
+        this.traceLog('[UsageMonitor:TRACE] Skipping proactive swap for API profile (only supported for OAuth profiles)');
       }
     } catch (error) {
       // Step 5: Handle auth failures
@@ -1218,12 +1240,274 @@ export class UsageMonitor extends EventEmitter {
   }
 
   /**
-   * Determine which profile is active (API profile vs OAuth profile)
-   * API profiles take priority over OAuth profiles
+   * Determine which profile is active by reading globalPriorityOrder from settings.
+   * The first account in the priority order is considered the active one — this
+   * matches the UI's account-selection logic so usage monitoring always tracks the
+   * same account the user sees as "active".
    *
-   * @returns Active profile info or null if no profile is active
+   * Supported account types (in order of detection within the priority list):
+   *   - Anthropic OAuth  (provider: 'anthropic', authType: 'oauth')
+   *   - Anthropic API key (provider: 'anthropic', authType: 'api-key')
+   *   - OpenAI/Codex OAuth (provider: 'openai', authType: 'oauth')
+   *   - Z.AI API key (provider: 'zai')
+   *   - Other providers: returns null (no usage monitoring supported)
+   *
+   * @returns Active profile info (including resolved credential) or null if undetermined
    */
   private async determineActiveProfile(): Promise<ActiveProfileResult | null> {
+    // Step 1: Read settings to get providerAccounts and globalPriorityOrder
+    let settings: Record<string, unknown> | undefined;
+    try {
+      settings = await readSettingsFileAsync();
+    } catch (error) {
+      this.traceLog('[UsageMonitor:TRACE] Failed to read settings file:', error);
+    }
+
+    if (!settings) {
+      this.traceLog('[UsageMonitor:TRACE] No settings available, falling back to legacy profile detection');
+      return this.determineActiveProfileLegacy();
+    }
+
+    const providerAccounts = (settings.providerAccounts as ProviderAccount[] | undefined) ?? [];
+    const globalPriorityOrder = (settings.globalPriorityOrder as string[] | undefined) ?? [];
+
+    if (globalPriorityOrder.length === 0) {
+      this.traceLog('[UsageMonitor:TRACE] No globalPriorityOrder in settings, falling back to legacy profile detection');
+      return this.determineActiveProfileLegacy();
+    }
+
+    // Step 2: Find the first ProviderAccount in the priority order
+    let account: ProviderAccount | undefined;
+    for (const accountId of globalPriorityOrder) {
+      const found = providerAccounts.find(a => a.id === accountId);
+      if (found) {
+        account = found;
+        break;
+      }
+    }
+
+    if (!account) {
+      this.traceLog('[UsageMonitor:TRACE] No ProviderAccount found in globalPriorityOrder, falling back to legacy profile detection');
+      return this.determineActiveProfileLegacy();
+    }
+
+    this.traceLog('[UsageMonitor:TRACE] Resolved active account from globalPriorityOrder:', {
+      accountId: account.id,
+      accountName: account.name,
+      provider: account.provider,
+      authType: account.authType
+    });
+
+    // Step 3: Resolve credential and baseUrl based on account type
+    if (account.provider === 'anthropic' && account.authType === 'oauth') {
+      // Anthropic OAuth — resolve via ClaudeProfileManager + keychain
+      const claudeProfileId = account.claudeProfileId;
+      if (!claudeProfileId) {
+        this.traceLog('[UsageMonitor:TRACE] Anthropic OAuth account missing claudeProfileId:', account.id);
+        return null;
+      }
+
+      const profileManager = getClaudeProfileManager();
+      const claudeProfile = profileManager.getProfile(claudeProfileId);
+      if (!claudeProfile || !claudeProfile.configDir) {
+        this.traceLog('[UsageMonitor:TRACE] ClaudeProfile not found or missing configDir for id:', claudeProfileId);
+        return null;
+      }
+
+      const configDir = claudeProfile.configDir.startsWith('~')
+        ? claudeProfile.configDir.replace(/^~/, homedir())
+        : claudeProfile.configDir;
+
+      // Get a fresh OAuth token (proactively refresh if near expiry)
+      let credential: string | undefined;
+      try {
+        const tokenResult = await ensureValidToken(configDir);
+
+        if (tokenResult.wasRefreshed) {
+          this.debugLog('[UsageMonitor] Proactively refreshed OAuth token for active account: ' + account.name, {
+            tokenFingerprint: getCredentialFingerprint(tokenResult.token)
+          });
+          if (tokenResult.persistenceFailed) {
+            console.warn('[UsageMonitor] Token refreshed but persistence failed for account: ' + account.name +
+              ' - user should re-authenticate to avoid auth errors on next restart');
+            this.needsReauthProfiles.add(account.id);
+          } else {
+            this.needsReauthProfiles.delete(account.id);
+          }
+        }
+
+        if (tokenResult.token) {
+          credential = tokenResult.token;
+        } else if (tokenResult.error) {
+          this.traceLog('[UsageMonitor:TRACE] Token validation failed for active account:', tokenResult.error);
+          if (tokenResult.errorCode === 'invalid_grant') {
+            this.needsReauthProfiles.add(account.id);
+          }
+          if (tokenResult.errorCode === 'missing_credentials') {
+            this.needsReauthProfiles.add(account.id);
+          }
+        }
+      } catch (error) {
+        this.traceLog('[UsageMonitor:TRACE] ensureValidToken failed for active account:', error);
+      }
+
+      // Fallback: direct keychain read
+      if (!credential) {
+        const keychainCreds = getCredentialsFromKeychain(configDir);
+        credential = keychainCreds.token ?? undefined;
+        if (!credential) {
+          this.traceLog('[UsageMonitor:TRACE] No token in keychain for Anthropic OAuth account: ' + account.name);
+          this.needsReauthProfiles.add(account.id);
+        }
+      }
+
+      // Discover email from keychain if not persisted on the account
+      let email: string | undefined = account.email;
+      if (!email) {
+        const keychainCreds = getCredentialsFromKeychain(configDir);
+        email = keychainCreds.email ?? undefined;
+
+        // Persist discovered email back to settings asynchronously (non-blocking)
+        if (email) {
+          const discoveredEmail = email;
+          const accountId = account.id;
+          readSettingsFileAsync().then(currentSettings => {
+            if (!currentSettings) return;
+            const accounts = (currentSettings.providerAccounts as ProviderAccount[] | undefined) ?? [];
+            const target = accounts.find(a => a.id === accountId);
+            if (target && !target.email) {
+              target.email = discoveredEmail;
+              try {
+                writeSettingsFile(currentSettings);
+              } catch {
+                // Non-critical — email will be discovered again next poll
+              }
+            }
+          }).catch(() => {});
+        }
+      }
+
+      this.traceLog('[UsageMonitor:TRACE] Active auth type: Anthropic OAuth (via globalPriorityOrder)', {
+        profileId: account.id,
+        profileName: account.name,
+        profileEmail: email
+      });
+
+      return {
+        profileId: account.id,
+        profileName: account.name,
+        profileEmail: email,
+        isAPIProfile: false,
+        baseUrl: 'https://api.anthropic.com',
+        credential
+      };
+    }
+
+    if (account.provider === 'anthropic' && account.authType === 'api-key') {
+      // Anthropic API key account
+      const credential = account.apiKey;
+      if (!credential) {
+        this.traceLog('[UsageMonitor:TRACE] Anthropic API key account missing apiKey:', account.id);
+        return null;
+      }
+
+      // Try to get baseUrl from the legacy profiles file if there's a matching API profile
+      let baseUrl = account.baseUrl ?? 'https://api.anthropic.com';
+      try {
+        const profilesFile = await loadProfilesFile();
+        const matchingProfile = profilesFile.profiles.find(p => p.apiKey === credential);
+        if (matchingProfile?.baseUrl) {
+          baseUrl = matchingProfile.baseUrl;
+        }
+      } catch {
+        // Use account.baseUrl or default
+      }
+
+      this.traceLog('[UsageMonitor:TRACE] Active auth type: Anthropic API key (via globalPriorityOrder)', {
+        profileId: account.id,
+        profileName: account.name,
+        baseUrl
+      });
+
+      return {
+        profileId: account.id,
+        profileName: account.name,
+        profileEmail: account.email,
+        isAPIProfile: true,
+        baseUrl,
+        credential
+      };
+    }
+
+    if (account.provider === 'openai' && account.authType === 'oauth') {
+      // OpenAI/Codex OAuth account
+      let credential: string | undefined;
+      try {
+        const codexToken = await ensureValidCodexToken();
+        credential = codexToken ?? undefined;
+      } catch (error) {
+        this.traceLog('[UsageMonitor:TRACE] Failed to get Codex OAuth token:', error);
+      }
+
+      this.traceLog('[UsageMonitor:TRACE] Active auth type: Codex OAuth (via globalPriorityOrder)', {
+        profileId: account.id,
+        profileName: account.name,
+        hasCredential: !!credential
+      });
+
+      return {
+        profileId: account.id,
+        profileName: account.name,
+        profileEmail: account.email,
+        isAPIProfile: false,
+        baseUrl: 'https://chatgpt.com',
+        credential
+      };
+    }
+
+    if (account.provider === 'zai') {
+      // Z.AI API key account
+      const credential = account.apiKey;
+      if (!credential) {
+        this.traceLog('[UsageMonitor:TRACE] Z.AI account missing apiKey:', account.id);
+        return null;
+      }
+
+      const baseUrl = account.baseUrl ?? 'https://api.z.ai';
+
+      this.traceLog('[UsageMonitor:TRACE] Active auth type: Z.AI API key (via globalPriorityOrder)', {
+        profileId: account.id,
+        profileName: account.name,
+        baseUrl
+      });
+
+      return {
+        profileId: account.id,
+        profileName: account.name,
+        profileEmail: account.email,
+        isAPIProfile: true,
+        baseUrl,
+        credential
+      };
+    }
+
+    // Other providers (google, amazon-bedrock, etc.) — no usage monitoring support
+    this.traceLog('[UsageMonitor:TRACE] Provider not supported for usage monitoring:', {
+      provider: account.provider,
+      accountId: account.id
+    });
+    return null;
+  }
+
+  /**
+   * Legacy fallback for determineActiveProfile when settings/globalPriorityOrder
+   * are not available. Uses the old hardcoded priority:
+   *   1. API profiles file (loadProfilesFile)
+   *   2. ClaudeProfileManager.getActiveProfile()
+   *
+   * @returns Active profile info or null
+   */
+  private async determineActiveProfileLegacy(): Promise<ActiveProfileResult | null> {
     // First, check if an API profile is active
     try {
       const profilesFile = await loadProfilesFile();
@@ -1232,8 +1516,7 @@ export class UsageMonitor extends EventEmitter {
           (p) => p.id === profilesFile.activeProfileId
         );
         if (activeAPIProfile?.apiKey) {
-          // API profile is active and has an apiKey
-          this.debugLog('[UsageMonitor:TRACE] Active auth type: API Profile', {
+          this.traceLog('[UsageMonitor:TRACE] [Legacy] Active auth type: API Profile', {
             profileId: activeAPIProfile.id,
             profileName: activeAPIProfile.name,
             baseUrl: activeAPIProfile.baseUrl
@@ -1242,86 +1525,56 @@ export class UsageMonitor extends EventEmitter {
             profileId: activeAPIProfile.id,
             profileName: activeAPIProfile.name,
             isAPIProfile: true,
-            baseUrl: activeAPIProfile.baseUrl
+            baseUrl: activeAPIProfile.baseUrl,
+            credential: activeAPIProfile.apiKey
           };
-        } else if (activeAPIProfile) {
-          // API profile exists but missing apiKey - fall back to OAuth
-          this.debugLog('[UsageMonitor:TRACE] Active API profile missing apiKey, falling back to OAuth', {
-            profileId: activeAPIProfile.id,
-            profileName: activeAPIProfile.name
-          });
-        } else {
-          // activeProfileId is set but profile not found - fall through to OAuth
-          this.debugLog('[UsageMonitor:TRACE] Active API profile ID set but profile not found, falling back to OAuth');
         }
       }
     } catch (error) {
-      // Failed to load API profiles - fall through to OAuth
-      this.debugLog('[UsageMonitor:TRACE] Failed to load API profiles, falling back to OAuth:', error);
+      this.traceLog('[UsageMonitor:TRACE] [Legacy] Failed to load API profiles:', error);
     }
 
-    // Check for Codex (OpenAI OAuth) accounts in providerAccounts
-    try {
-      const settings = await readSettingsFileAsync();
-      if (settings) {
-        const providerAccounts = (settings.providerAccounts as ProviderAccount[] | undefined) ?? [];
-        const queue = (settings.globalPriorityOrder as string[] | undefined) ?? [];
-
-        // Find the first Codex OAuth account in the priority queue
-        for (const accountId of queue) {
-          const account = providerAccounts.find(a => a.id === accountId);
-          if (account?.provider === 'openai' && account.authType === 'oauth') {
-            this.debugLog('[UsageMonitor:TRACE] Active auth type: Codex OAuth', {
-              profileId: account.id,
-              profileName: account.name
-            });
-            return {
-              profileId: account.id,
-              profileName: account.name,
-              profileEmail: undefined,
-              isAPIProfile: false,
-              baseUrl: 'https://chatgpt.com'
-            };
-          }
-        }
-      }
-    } catch (error) {
-      this.debugLog('[UsageMonitor:TRACE] Failed to check provider accounts for Codex:', error);
-    }
-
-    // If no API profile or Codex account is active, check Claude OAuth profiles
+    // Fall back to Claude OAuth profile
     const profileManager = getClaudeProfileManager();
     const activeOAuthProfile = profileManager.getActiveProfile();
 
     if (!activeOAuthProfile) {
-      this.debugLog('[UsageMonitor] No active profile (neither API, Codex, nor OAuth)');
+      this.debugLog('[UsageMonitor] [Legacy] No active profile found');
       return null;
     }
 
-    // Get email from profile or try keychain
     let profileEmail = activeOAuthProfile.email;
     if (!profileEmail) {
-      // Try to get email from keychain
-      // IMPORTANT: Always pass configDir - service name is based on expanded path (e.g., /Users/xxx/.claude)
       const keychainCreds = getCredentialsFromKeychain(activeOAuthProfile.configDir);
       profileEmail = keychainCreds.email ?? undefined;
     }
 
-    this.debugLog('[UsageMonitor:TRACE] Active auth type: OAuth Profile', {
+    // Get credential via ensureValidToken
+    let credential: string | undefined;
+    try {
+      const tokenResult = await ensureValidToken(activeOAuthProfile.configDir);
+      if (tokenResult.token) {
+        credential = tokenResult.token;
+      }
+    } catch {
+      const keychainCreds = getCredentialsFromKeychain(activeOAuthProfile.configDir);
+      credential = keychainCreds.token ?? undefined;
+    }
+
+    this.traceLog('[UsageMonitor:TRACE] [Legacy] Active auth type: OAuth Profile', {
       profileId: activeOAuthProfile.id,
       profileName: activeOAuthProfile.name,
       profileEmail
     });
 
-    const result = {
+    return {
       profileId: activeOAuthProfile.id,
       profileName: activeOAuthProfile.name,
       profileEmail,
       isAPIProfile: false,
-      baseUrl: 'https://api.anthropic.com'
+      baseUrl: 'https://api.anthropic.com',
+      credential
     };
-
-    return result;
   }
 
   /**
@@ -1463,7 +1716,7 @@ export class UsageMonitor extends EventEmitter {
     if (activeProfile?.profileName) {
       profileName = activeProfile.profileName;
       profileEmail = activeProfile.profileEmail;
-      this.debugLog('[UsageMonitor:FETCH] Using activeProfile data:', {
+      this.traceLog('[UsageMonitor:FETCH] Using activeProfile data:', {
         profileId,
         profileName,
         profileEmail,
@@ -1478,7 +1731,7 @@ export class UsageMonitor extends EventEmitter {
         const apiProfile = profilesFile.profiles.find(p => p.id === profileId);
         if (apiProfile) {
           profileName = apiProfile.name;
-          this.debugLog('[UsageMonitor:FETCH] Found API profile:', {
+          this.traceLog('[UsageMonitor:FETCH] Found API profile:', {
             profileId,
             profileName,
             baseUrl: apiProfile.baseUrl
@@ -1486,7 +1739,7 @@ export class UsageMonitor extends EventEmitter {
         }
       } catch (error) {
         // Failed to load API profiles, continue to OAuth check
-        this.debugLog('[UsageMonitor:FETCH] Failed to load API profiles:', error);
+        this.traceLog('[UsageMonitor:FETCH] Failed to load API profiles:', error);
       }
     }
 
@@ -1500,7 +1753,7 @@ export class UsageMonitor extends EventEmitter {
         if (!profileEmail) {
           profileEmail = oauthProfile.email;
         }
-        this.debugLog('[UsageMonitor:FETCH] Found OAuth profile:', {
+        this.traceLog('[UsageMonitor:FETCH] Found OAuth profile:', {
           profileId,
           profileName,
           profileEmail
@@ -1510,11 +1763,11 @@ export class UsageMonitor extends EventEmitter {
 
     // If still not found, return null
     if (!profileName) {
-      this.debugLog('[UsageMonitor:FETCH] Profile not found in either API or OAuth profiles: ' + profileId);
+      this.traceLog('[UsageMonitor:FETCH] Profile not found in either API or OAuth profiles: ' + profileId);
       return null;
     }
 
-    this.debugLog('[UsageMonitor:FETCH] Starting usage fetch:', {
+    this.traceLog('[UsageMonitor:FETCH] Starting usage fetch:', {
       profileId,
       profileName,
       hasCredential: !!credential,
@@ -1524,11 +1777,11 @@ export class UsageMonitor extends EventEmitter {
     // Attempt 1: Direct API call (preferred)
     // Per-profile tracking: if API fails for one profile, it only affects that profile
     if (this.shouldUseApiMethod(profileId) && credential) {
-      this.debugLog('[UsageMonitor:FETCH] Attempting API fetch method');
+      this.traceLog('[UsageMonitor:FETCH] Attempting API fetch method');
       const apiUsage = await this.fetchUsageViaAPI(credential, profileId, profileName, profileEmail, activeProfile);
       if (apiUsage) {
-        this.debugLog('[UsageMonitor] Successfully fetched via API');
-        this.debugLog('[UsageMonitor:FETCH] API fetch successful:', {
+        this.traceLog('[UsageMonitor] Successfully fetched via API');
+        this.traceLog('[UsageMonitor:FETCH] API fetch successful:', {
           sessionPercent: apiUsage.sessionPercent,
           weeklyPercent: apiUsage.weeklyPercent
         });
@@ -1536,15 +1789,14 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // API failed - record timestamp for cooldown-based retry
-      this.debugLog('[UsageMonitor] API method failed, recording failure timestamp for cooldown retry');
-      this.debugLog('[UsageMonitor:FETCH] API fetch failed, will retry after cooldown');
+      this.traceLog('[UsageMonitor:FETCH] API fetch failed, will retry after cooldown');
       this.apiFailureTimestamps.set(profileId, Date.now());
     } else if (!credential) {
-      this.debugLog('[UsageMonitor:FETCH] No credential available, skipping API method');
+      this.traceLog('[UsageMonitor:FETCH] No credential available, skipping API method');
     }
 
     // Attempt 2: CLI /usage command (fallback)
-    this.debugLog('[UsageMonitor:FETCH] Attempting CLI fallback method');
+    this.traceLog('[UsageMonitor:FETCH] Attempting CLI fallback method');
     return await this.fetchUsageViaCLI(profileId, profileName);
   }
 
@@ -1573,7 +1825,7 @@ export class UsageMonitor extends EventEmitter {
     profileEmail?: string,
     activeProfile?: ActiveProfileResult
   ): Promise<ClaudeUsageSnapshot | null> {
-    this.debugLog('[UsageMonitor:API_FETCH] Starting API fetch for usage:', {
+    this.traceLog('[UsageMonitor:API_FETCH] Starting API fetch for usage:', {
       profileId,
       profileName,
       hasCredential: !!credential,
@@ -1613,7 +1865,7 @@ export class UsageMonitor extends EventEmitter {
       }
 
       const isAPIProfile = !!apiProfile;
-      this.debugLog('[UsageMonitor:TRACE] Fetching usage', {
+      this.traceLog('[UsageMonitor:TRACE] Fetching usage', {
         provider,
         baseUrl,
         isAPIProfile,
@@ -1631,13 +1883,13 @@ export class UsageMonitor extends EventEmitter {
         return null;
       }
 
-      this.debugLog('[UsageMonitor:API_FETCH] API request:', {
+      this.traceLog('[UsageMonitor:API_FETCH] API request:', {
         endpoint: usageEndpoint,
         profileId,
         credentialFingerprint: getCredentialFingerprint(credential)
       });
 
-      this.debugLog('[UsageMonitor:API_FETCH] Fetching from endpoint:', {
+      this.traceLog('[UsageMonitor:API_FETCH] Fetching from endpoint:', {
         provider,
         endpoint: usageEndpoint,
         hasCredential: !!credential
@@ -1715,7 +1967,7 @@ export class UsageMonitor extends EventEmitter {
           errorData = await response.json();
         } catch (parseError) {
           // If we can't parse the error response, just log it and continue
-          this.debugLog('[UsageMonitor:AUTH_DETECTION] Could not parse error response body:', {
+          this.traceLog('[UsageMonitor:AUTH_DETECTION] Could not parse error response body:', {
             provider,
             status: response.status,
             parseError
@@ -1725,7 +1977,7 @@ export class UsageMonitor extends EventEmitter {
           return null;
         }
 
-        this.debugLog('[UsageMonitor:AUTH_DETECTION] Checking error response for auth failure:', {
+        this.traceLog('[UsageMonitor:AUTH_DETECTION] Checking error response for auth failure:', {
           provider,
           status: response.status,
           errorData
@@ -1759,7 +2011,7 @@ export class UsageMonitor extends EventEmitter {
         return null;
       }
 
-      this.debugLog('[UsageMonitor:API_FETCH] API response received successfully:', {
+      this.traceLog('[UsageMonitor:API_FETCH] API response received successfully:', {
         provider,
         status: response.status,
         contentType: response.headers.get('content-type')
@@ -1768,7 +2020,7 @@ export class UsageMonitor extends EventEmitter {
       // Step 5: Parse and normalize response based on provider
       const rawData = await response.json();
 
-      this.debugLog('[UsageMonitor:PROVIDER] Raw response from ' + provider + ':', JSON.stringify(rawData, null, 2));
+      this.traceLog('[UsageMonitor:PROVIDER] Raw response from ' + provider + ':', JSON.stringify(rawData, null, 2));
 
       // Step 6: Extract data wrapper for z.ai and ZHIPU responses
       // These providers wrap the actual usage data in a 'data' field
@@ -1776,12 +2028,12 @@ export class UsageMonitor extends EventEmitter {
       if (provider === 'zai' || provider === 'zhipu') {
         if (rawData.data) {
           responseData = rawData.data;
-          this.debugLog('[UsageMonitor:PROVIDER] Extracted data field from response:', {
+          this.traceLog('[UsageMonitor:PROVIDER] Extracted data field from response:', {
             provider,
             extractedData: JSON.stringify(responseData, null, 2)
           });
         } else {
-          this.debugLog('[UsageMonitor:PROVIDER] No data field found in response, using raw response:', {
+          this.traceLog('[UsageMonitor:PROVIDER] No data field found in response, using raw response:', {
             provider,
             responseKeys: Object.keys(rawData)
           });
@@ -1791,7 +2043,7 @@ export class UsageMonitor extends EventEmitter {
       // Step 7: Normalize response based on provider type
       let normalizedUsage: ClaudeUsageSnapshot | null = null;
 
-      this.debugLog('[UsageMonitor:NORMALIZATION] Selecting normalization method:', {
+      this.traceLog('[UsageMonitor:NORMALIZATION] Selecting normalization method:', {
         provider,
         method: `normalize${provider.charAt(0).toUpperCase() + provider.slice(1)}Response`
       });
@@ -1810,18 +2062,18 @@ export class UsageMonitor extends EventEmitter {
           normalizedUsage = this.normalizeZhipuResponse(responseData, profileId, profileName, profileEmail);
           break;
         default:
-          this.debugLog('[UsageMonitor] Unsupported provider for usage normalization: ' + provider);
+          this.traceLog('[UsageMonitor:TRACE] Unsupported provider for usage normalization: ' + provider);
           return null;
       }
 
       if (!normalizedUsage) {
-        this.debugLog('[UsageMonitor] Failed to normalize response from ' + provider);
+        this.traceLog('[UsageMonitor:TRACE] Failed to normalize response from ' + provider);
         // Record failure timestamp for cooldown retry (normalization failure)
         this.apiFailureTimestamps.set(profileId, Date.now());
         return null;
       }
 
-      this.debugLog('[UsageMonitor:API_FETCH] Fetch completed - usage:', {
+      this.traceLog('[UsageMonitor:API_FETCH] Fetch completed - usage:', {
         profileId,
         profileName,
         email: normalizedUsage.profileEmail,
@@ -1830,7 +2082,7 @@ export class UsageMonitor extends EventEmitter {
         weeklyPercent: normalizedUsage.weeklyPercent,
         limitType: normalizedUsage.limitType
       });
-      this.debugLog('[UsageMonitor:API_FETCH] API fetch completed successfully');
+      this.traceLog('[UsageMonitor:API_FETCH] API fetch completed successfully');
 
       return normalizedUsage;
     } catch (error: any) {
@@ -1938,7 +2190,7 @@ export class UsageMonitor extends EventEmitter {
   ): ClaudeUsageSnapshot | null {
     const logPrefix = providerName.toUpperCase();
 
-    if (this.isDebug) {
+    if (this.isVerbose) {
       console.warn(`[UsageMonitor:${logPrefix}_NORMALIZATION] Starting normalization:`, {
         profileId,
         profileName,
@@ -1963,7 +2215,7 @@ export class UsageMonitor extends EventEmitter {
       const tokensLimit = data.limits.find((item: any) => item.type === 'TOKENS_LIMIT');
       const timeLimit = data.limits.find((item: any) => item.type === 'TIME_LIMIT');
 
-      if (this.isDebug) {
+      if (this.isVerbose) {
         console.warn(`[UsageMonitor:${logPrefix}_NORMALIZATION] Found limit types:`, {
           hasTokensLimit: !!tokensLimit,
           hasTimeLimit: !!timeLimit,
@@ -1996,7 +2248,7 @@ export class UsageMonitor extends EventEmitter {
         ? Math.round(timeLimit.percentage)
         : 0;
 
-      if (this.isDebug) {
+      if (this.isVerbose) {
         console.warn(`[UsageMonitor:${logPrefix}_NORMALIZATION] Extracted usage:`, {
           sessionPercent,
           weeklyPercent,

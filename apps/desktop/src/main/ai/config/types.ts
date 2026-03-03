@@ -172,3 +172,75 @@ export function resolveReasoningParams(config: ReasoningConfig): Record<string, 
       return {};
   }
 }
+
+/**
+ * Detect the provider name from a model ID using prefix matching.
+ * Uses MODEL_PROVIDER_MAP for lookup.
+ */
+function detectProviderFromModelId(modelId: string): SupportedProvider | undefined {
+  for (const [prefix, provider] of Object.entries(MODEL_PROVIDER_MAP)) {
+    if (modelId.startsWith(prefix)) {
+      return provider;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Build provider-specific providerOptions for thinking/reasoning tokens.
+ * Used by the runner to pass thinking configuration to streamText().
+ *
+ * @param modelId - Full model ID (e.g., 'claude-opus-4-6', 'o3-mini', 'gemini-2.5-pro')
+ * @param thinkingLevel - Configured thinking level
+ * @returns Provider-specific options object, or undefined if provider doesn't support thinking
+ */
+export function buildThinkingProviderOptions(
+  modelId: string,
+  thinkingLevel: ThinkingLevel,
+): Record<string, Record<string, unknown>> | undefined {
+  const provider = detectProviderFromModelId(modelId);
+  if (!provider) return undefined;
+
+  const budgetTokens = THINKING_BUDGET_MAP[thinkingLevel];
+
+  switch (provider) {
+    case 'anthropic': {
+      const base: Record<string, unknown> = {
+        thinking: { type: 'enabled', budgetTokens },
+      };
+      if (ADAPTIVE_THINKING_MODELS.has(modelId)) {
+        base.thinking = {
+          ...(base.thinking as Record<string, unknown>),
+          budgetTokens,
+        };
+      }
+      return { anthropic: base };
+    }
+
+    case 'openai': {
+      if (modelId.startsWith('o1-') || modelId.startsWith('o3-') || modelId.startsWith('o4-')) {
+        const effortMap: Record<ThinkingLevel, string> = {
+          low: 'low',
+          medium: 'medium',
+          high: 'high',
+          xhigh: 'high',
+        };
+        return { openai: { reasoningEffort: effortMap[thinkingLevel] } };
+      }
+      return undefined;
+    }
+
+    case 'google': {
+      return { google: { thinkingConfig: { thinkingBudget: budgetTokens } } };
+    }
+
+    case 'zai': {
+      // zhipu-ai-provider merges providerOptions.zhipu into the request body.
+      // Z.AI thinking config uses type: 'enabled'/'disabled' (no budget parameter).
+      return { zhipu: { thinking: { type: 'enabled' } } };
+    }
+
+    default:
+      return undefined;
+  }
+}

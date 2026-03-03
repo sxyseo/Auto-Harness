@@ -20,12 +20,15 @@ const mockSetupListeners = vi.hoisted(() => vi.fn(() => () => {}));
 const mockAuthState = vi.hoisted(() => ({
   hasToken: true as boolean | null,
   isLoading: false,
-  error: null as string | null,
-  checkAuth: vi.fn()
 }));
+const mockToast = vi.hoisted(() => vi.fn());
 
 vi.mock('../useIdeationAuth', () => ({
   useIdeationAuth: () => mockAuthState
+}));
+
+vi.mock('../../../../hooks/use-toast', () => ({
+  toast: mockToast
 }));
 
 vi.mock('../../../../stores/task-store', () => ({
@@ -83,7 +86,7 @@ describe('useIdeation', () => {
     expect(cleanupFn).toHaveBeenCalled();
   });
 
-  it('should prompt for env config when token is missing', () => {
+  it('should show a toast and not generate when no provider is configured', () => {
     mockAuthState.hasToken = false;
     mockAuthState.isLoading = false;
 
@@ -93,11 +96,13 @@ describe('useIdeation', () => {
       result.current.handleGenerate();
     });
 
-    expect(result.current.showEnvConfigModal).toBe(true);
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'destructive' })
+    );
     expect(mockGenerateIdeation).not.toHaveBeenCalled();
   });
 
-  it('should generate when token is present', () => {
+  it('should generate when provider is configured', () => {
     mockAuthState.hasToken = true;
     mockAuthState.isLoading = false;
 
@@ -107,29 +112,11 @@ describe('useIdeation', () => {
       result.current.handleGenerate();
     });
 
-    expect(result.current.showEnvConfigModal).toBe(false);
+    expect(mockToast).not.toHaveBeenCalled();
     expect(mockGenerateIdeation).toHaveBeenCalledWith('project-1');
   });
 
-  it('should retry generate after env is configured', () => {
-    mockAuthState.hasToken = false;
-    mockAuthState.isLoading = false;
-
-    const { result } = renderHook(() => useIdeation('project-1'));
-
-    act(() => {
-      result.current.handleGenerate();
-    });
-
-    act(() => {
-      result.current.handleEnvConfigured();
-    });
-
-    expect(mockAuthState.checkAuth).toHaveBeenCalled();
-    expect(mockGenerateIdeation).toHaveBeenCalledWith('project-1');
-  });
-
-  it('should retry refresh after env is configured', () => {
+  it('should show a toast and not refresh when no provider is configured', () => {
     mockAuthState.hasToken = false;
     mockAuthState.isLoading = false;
 
@@ -139,15 +126,27 @@ describe('useIdeation', () => {
       result.current.handleRefresh();
     });
 
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'destructive' })
+    );
+    expect(mockRefreshIdeation).not.toHaveBeenCalled();
+  });
+
+  it('should refresh when provider is configured', () => {
+    mockAuthState.hasToken = true;
+    mockAuthState.isLoading = false;
+
+    const { result } = renderHook(() => useIdeation('project-1'));
+
     act(() => {
-      result.current.handleEnvConfigured();
+      result.current.handleRefresh();
     });
 
-    expect(mockAuthState.checkAuth).toHaveBeenCalled();
+    expect(mockToast).not.toHaveBeenCalled();
     expect(mockRefreshIdeation).toHaveBeenCalledWith('project-1');
   });
 
-  it('should append ideas after env is configured', () => {
+  it('should show a toast and not append ideas when no provider is configured', () => {
     mockAuthState.hasToken = false;
     mockAuthState.isLoading = false;
 
@@ -162,12 +161,37 @@ describe('useIdeation', () => {
       result.current.handleAddMoreIdeas();
     });
 
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'destructive' })
+    );
+    expect(mockAppendIdeation).not.toHaveBeenCalled();
+  });
+
+  it('should append ideas when provider is configured', () => {
+    mockAuthState.hasToken = true;
+    mockAuthState.isLoading = false;
+
+    const { result } = renderHook(() => useIdeation('project-1'));
+    const typesToAdd = ['code_improvements'] as IdeationType[];
+
     act(() => {
-      result.current.handleEnvConfigured();
+      result.current.setTypesToAdd(typesToAdd);
     });
 
-    expect(mockAuthState.checkAuth).toHaveBeenCalled();
+    act(() => {
+      result.current.handleAddMoreIdeas();
+    });
+
+    expect(mockToast).not.toHaveBeenCalled();
     expect(mockAppendIdeation).toHaveBeenCalledWith('project-1', typesToAdd);
     expect(result.current.typesToAdd).toHaveLength(0);
+  });
+
+  it('should not expose showEnvConfigModal or handleEnvConfigured in return value', () => {
+    const { result } = renderHook(() => useIdeation('project-1'));
+
+    expect('showEnvConfigModal' in result.current).toBe(false);
+    expect('handleEnvConfigured' in result.current).toBe(false);
+    expect('setShowEnvConfigModal' in result.current).toBe(false);
   });
 });

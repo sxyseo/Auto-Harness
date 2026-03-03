@@ -337,8 +337,13 @@ async function syncPhasesToMain(
     mainPlan.updated_at = new Date().toISOString();
 
     await writeFile(mainPlanPath, JSON.stringify(mainPlan, null, 2));
-  } catch {
-    // Non-fatal: the exit handler will do a final definitive sync
+  } catch (err) {
+    // Non-fatal: the exit handler will do a final definitive sync.
+    // Log so we can diagnose subtask-status-not-updating issues.
+    console.warn(
+      `[syncPhasesToMain] Failed to sync phases from ${worktreeSpecDir} to ${mainSpecDir}:`,
+      err instanceof Error ? err.message : err,
+    );
   }
 }
 

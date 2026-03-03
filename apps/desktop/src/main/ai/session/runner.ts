@@ -23,6 +23,7 @@ import type { WorkerObserverProxy } from '../memory/ipc/worker-observer-proxy';
 import { StepMemoryState } from '../memory/injection/step-memory-state';
 import { buildMemoryAwareStopCondition } from '../memory/injection/memory-stop-condition';
 
+import { buildThinkingProviderOptions } from '../config/types';
 import { createStreamHandler } from './stream-handler';
 import type { FullStreamPart } from './stream-handler';
 import { classifyError, isAuthenticationError, isRateLimitError } from './error-classifier';
@@ -336,6 +337,12 @@ async function executeStream(
   // Pass system prompt via providerOptions and enable store for proper Codex API behavior.
   const modelId = typeof config.model === 'string' ? config.model : config.model.modelId;
   const isCodex = modelId?.includes('codex') ?? false;
+  const isAnthropicModel = modelId?.startsWith('claude-') ?? false;
+
+  // Compute thinking/reasoning provider options from session config
+  const thinkingOptions = config.thinkingLevel
+    ? buildThinkingProviderOptions(modelId, config.thinkingLevel)
+    : undefined;
 
   // Execute streamText — prepareStep is only added when memory context exists
   // When outputSchema is provided, use Output.object() for provider-agnostic
@@ -348,12 +355,19 @@ async function executeStream(
     ...(config.outputSchema ? { output: Output.object({ schema: config.outputSchema }) } : {}),
     stopWhen: stopCondition,
     abortSignal: mergedAbortSignal,
-    ...(isCodex ? {
+    ...((thinkingOptions || isCodex || (config.outputSchema && isAnthropicModel)) ? {
       providerOptions: {
-        openai: {
-          ...(config.systemPrompt ? { instructions: config.systemPrompt } : {}),
-          store: false,
-        },
+        ...(thinkingOptions ?? {}),
+        ...(isCodex ? {
+          openai: {
+            ...(thinkingOptions?.openai ?? {}),
+            ...(config.systemPrompt ? { instructions: config.systemPrompt } : {}),
+            store: false,
+          },
+        } : {}),
+        ...(config.outputSchema && isAnthropicModel ? {
+          anthropic: { structuredOutputMode: 'outputFormat' },
+        } : {}),
       },
     } : {}),
     prepareStep: async ({ stepNumber }) => {

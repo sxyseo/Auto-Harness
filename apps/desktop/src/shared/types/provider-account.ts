@@ -25,6 +25,8 @@ export interface ProviderAccount {
   authType: 'oauth' | 'api-key';
   billingModel: BillingModel;
   apiKey?: string;
+  /** Authenticated email (populated from OAuth keychain or provider API) */
+  email?: string;
   baseUrl?: string;
   region?: string;
   createdAt: number;

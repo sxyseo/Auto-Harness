@@ -72,11 +72,11 @@ export function IdeationEmptyState({
           Generate Ideas
         </Button>
 
-        {/* Show warning if token is missing */}
+        {/* Show warning if no provider is configured */}
         {hasToken === false && !isCheckingToken && (
           <p className="mt-3 text-sm text-muted-foreground">
             <AlertCircle className="h-4 w-4 inline-block mr-1 text-warning" />
-            Claude token not configured. You'll be prompted to enter it when generating.
+            No AI provider configured. Add a provider account in Settings to generate ideas.
           </p>
         )}
       </Card>

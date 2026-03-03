@@ -20,16 +20,9 @@ import { runContinuableSession } from '../session/continuation';
 import { createProviderFromModelId } from '../providers/factory';
 import { getModelContextWindow } from '../../../shared/constants/models';
 import { refreshOAuthTokenReactive } from '../auth/resolver';
-import { ToolRegistry } from '../tools/registry';
-import type { DefinedTool } from '../tools/define';
-import { readTool } from '../tools/builtin/read';
-import { writeTool } from '../tools/builtin/write';
-import { editTool } from '../tools/builtin/edit';
-import { bashTool } from '../tools/builtin/bash';
-import { globTool } from '../tools/builtin/glob';
-import { grepTool } from '../tools/builtin/grep';
-import { webFetchTool } from '../tools/builtin/web-fetch';
-import { webSearchTool } from '../tools/builtin/web-search';
+import { buildToolRegistry } from '../tools/build-registry';
+import type { ToolRegistry } from '../tools/registry';
+import { SubagentExecutorImpl } from '../orchestration/subagent-executor';
 import type { ToolContext } from '../tools/types';
 import type { SecurityProfile } from '../security/bash-validator';
 import type {
@@ -164,23 +157,6 @@ function buildToolContext(session: SerializableSessionConfig, securityProfile: S
   };
 }
 
-/**
- * Build and return a tool registry with all builtin tools registered.
- */
-function buildToolRegistry(): ToolRegistry {
-  const registry = new ToolRegistry();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const asDefined = (t: unknown): DefinedTool => t as DefinedTool;
-  registry.registerTool('Read', asDefined(readTool));
-  registry.registerTool('Write', asDefined(writeTool));
-  registry.registerTool('Edit', asDefined(editTool));
-  registry.registerTool('Bash', asDefined(bashTool));
-  registry.registerTool('Glob', asDefined(globTool));
-  registry.registerTool('Grep', asDefined(grepTool));
-  registry.registerTool('WebFetch', asDefined(webFetchTool));
-  registry.registerTool('WebSearch', asDefined(webSearchTool));
-  return registry;
-}
 
 /**
  * Load a prompt file from the prompts directory.
@@ -429,7 +405,11 @@ async function run(): Promise<void> {
 
     // Route to spec orchestrator for spec_orchestrator agent type
     if (session.agentType === 'spec_orchestrator') {
-      await runSpecOrchestrator(session, toolContext, registry);
+      if (session.useAgenticOrchestration) {
+        await runAgenticSpecOrchestrator(session, toolContext, registry);
+      } else {
+        await runSpecOrchestrator(session, toolContext, registry);
+      }
       return;
     }
 
@@ -836,7 +816,7 @@ async function runSpecOrchestrator(
     },
 
     runSession: async (runConfig) => {
-      postLog(`Running ${runConfig.agentType} session (spec phase=${runConfig.phase}, session=${runConfig.sessionNumber})`);
+      postLog(`Running ${runConfig.agentType} session (spec phase=${runConfig.specPhase ?? runConfig.phase}, session=${runConfig.sessionNumber})`);
       const kickoffMessage = buildSpecKickoffMessage(
         runConfig.agentType,
         runConfig.specDir,
@@ -844,7 +824,13 @@ async function runSpecOrchestrator(
         taskDescription,
         runConfig.priorPhaseOutputs,
         runConfig.projectIndex,
+        runConfig.specPhase,
       );
+      // Spec agents can only write to the spec directory
+      const specToolContext: ToolContext = {
+        ...toolContext,
+        allowedWritePaths: [session.specDir],
+      };
       return runSingleSession(
         runConfig.agentType,
         runConfig.phase,
@@ -854,7 +840,7 @@ async function runSpecOrchestrator(
         runConfig.sessionNumber,
         undefined,
         session,
-        toolContext,
+        specToolContext,
         registry,
         kickoffMessage,
         true, // skipPhaseLogging — orchestrator manages phase start/end
@@ -899,6 +885,12 @@ async function runSpecOrchestrator(
 
   const outcome = await orchestrator.run();
 
+  // Emit task event on failure so XState gets a specific signal
+  // instead of relying on the generic PROCESS_EXITED fallback.
+  if (!outcome.success) {
+    postTaskEvent('PLANNING_FAILED', { error: outcome.error });
+  }
+
   // Ensure any still-active log phase is closed and flushed
   if (logWriter) {
     const data = logWriter.getData();
@@ -926,6 +918,158 @@ async function runSpecOrchestrator(
     type: 'result',
     taskId: config.taskId,
     data: result,
+    projectId: config.projectId,
+  });
+}
+
+/**
+ * Run the spec creation pipeline using agentic orchestration.
+ * Instead of procedural phase routing, an AI orchestrator agent drives the
+ * entire pipeline using tools (including SpawnSubagent for specialist work).
+ */
+async function runAgenticSpecOrchestrator(
+  session: SerializableSessionConfig,
+  toolContext: ToolContext,
+  registry: ToolRegistry,
+): Promise<void> {
+  // Extract task description
+  const taskDescription = session.initialMessages?.[0]?.content
+    ? typeof session.initialMessages[0].content === 'string'
+      ? session.initialMessages[0].content
+      : 'Create the specification as described in your system prompt.'
+    : 'Create the specification as described in your system prompt.';
+
+  postLog('Starting Agentic SpecOrchestrator (AI-driven pipeline via SpawnSubagent)');
+
+  // Generate project index
+  let projectIndexContent: string | undefined;
+  try {
+    const indexOutputPath = join(session.specDir, 'project_index.json');
+    postLog('Generating project index...');
+    runProjectIndexer(session.projectDir, indexOutputPath);
+    projectIndexContent = readFileSync(indexOutputPath, 'utf-8');
+    postLog(`Project index generated (${(projectIndexContent.length / 1024).toFixed(1)}KB)`);
+  } catch (error) {
+    postLog(`Project index generation failed (non-fatal): ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  // Create the SubagentExecutor
+  const model = createProviderFromModelId(session.modelId, {
+    apiKey: session.apiKey,
+    baseURL: session.baseURL,
+    oauthTokenFilePath: session.oauthTokenFilePath,
+  });
+
+  const executor = new SubagentExecutorImpl({
+    model,
+    registry,
+    baseToolContext: {
+      ...toolContext,
+      allowedWritePaths: [session.specDir],
+    },
+    loadPrompt: async (promptName: string) => assemblePrompt(promptName, session),
+    abortSignal: abortController.signal,
+    onSubagentEvent: (agentType: string, event: string) => {
+      postLog(`Subagent ${agentType}: ${event}`);
+    },
+  });
+
+  // Create an extended tool context with the executor
+  const orchestratorToolContext: ToolContext & { subagentExecutor: SubagentExecutorImpl } = {
+    ...toolContext,
+    allowedWritePaths: [session.specDir],
+    subagentExecutor: executor,
+  };
+
+  // Load the agentic orchestrator prompt
+  const systemPrompt = await assemblePrompt('spec_orchestrator_agentic', session);
+
+  // Build the kickoff message
+  const kickoffParts = [
+    `Create a complete specification for the following task:\n\n${taskDescription}\n`,
+    `\nSpec directory: ${session.specDir}`,
+    `\nProject directory: ${session.projectDir}`,
+  ];
+
+  if (projectIndexContent) {
+    kickoffParts.push(`\n\n## PROJECT INDEX\n\n\`\`\`json\n${projectIndexContent}\n\`\`\``);
+  }
+
+  const kickoffMessage = kickoffParts.join('');
+
+  // Resolve context window and tools
+  const contextWindowLimit = getModelContextWindow(session.modelId);
+  const phaseThinking = await getPhaseThinking(session.specDir, 'spec');
+
+  // Get tools for the orchestrator (includes SpawnSubagent since it's in AGENT_CONFIGS)
+  const tools: Record<string, AITool> = {
+    ...registry.getToolsForAgent('spec_orchestrator', orchestratorToolContext),
+    ...(mergeMcpTools(mcpClients) as Record<string, AITool>),
+  };
+
+  const sessionConfig: SessionConfig = {
+    agentType: 'spec_orchestrator',
+    model,
+    systemPrompt,
+    initialMessages: [{ role: 'user' as const, content: kickoffMessage }],
+    toolContext: orchestratorToolContext,
+    maxSteps: session.maxSteps,
+    thinkingLevel: phaseThinking as SessionConfig['thinkingLevel'],
+    abortSignal: abortController.signal,
+    specDir: session.specDir,
+    projectDir: session.projectDir,
+    phase: 'spec',
+    sessionNumber: 1,
+    contextWindowLimit,
+  };
+
+  // Start phase logging
+  if (logWriter) {
+    logWriter.startPhase('spec', 'Agentic spec orchestration');
+  }
+
+  let result: SessionResult | undefined;
+  try {
+    result = await runContinuableSession(sessionConfig, {
+      tools,
+      onEvent: (event: StreamEvent) => {
+        if (logWriter) {
+          logWriter.processEvent(event, 'spec');
+        }
+        postMessage({
+          type: 'stream-event',
+          taskId: config.taskId,
+          data: event,
+          projectId: config.projectId,
+        });
+      },
+      onAuthRefresh: session.configDir
+        ? () => refreshOAuthTokenReactive(session.configDir as string)
+        : undefined,
+      onModelRefresh: session.configDir
+        ? (newToken: string) => createProviderFromModelId(session.modelId, {
+            apiKey: newToken,
+            baseURL: session.baseURL,
+          })
+        : undefined,
+    }, {
+      contextWindowLimit,
+      apiKey: session.apiKey,
+      baseURL: session.baseURL,
+      oauthTokenFilePath: session.oauthTokenFilePath,
+    });
+  } finally {
+    if (logWriter) {
+      const success = result?.outcome === 'completed' || result?.outcome === 'max_steps' || result?.outcome === 'context_window';
+      logWriter.endPhase('spec', success ?? false);
+      logWriter.flush();
+    }
+  }
+
+  postMessage({
+    type: 'result',
+    taskId: config.taskId,
+    data: result as SessionResult,
     projectId: config.projectId,
   });
 }
@@ -962,10 +1106,16 @@ function buildSpecKickoffMessage(
   taskDescription: string,
   priorPhaseOutputs?: Record<string, string>,
   projectIndex?: string,
+  specPhase?: string,
 ): string {
   // Build the base task-specific message
   let baseMessage: string;
-  switch (agentType) {
+
+  // Spec phase takes priority over agentType for kickoff routing
+  // (e.g., complexity_assessment uses spec_gatherer agentType but needs a different kickoff)
+  if (specPhase === 'complexity_assessment') {
+    baseMessage = `Assess the complexity of the following task and write your assessment to ${specDir}/complexity_assessment.json. Task: ${taskDescription}. Project root: ${projectDir}. Determine if this is a SIMPLE, STANDARD, or COMPLEX task based on the scope of changes required.`;
+  } else switch (agentType) {
     case 'spec_discovery':
       baseMessage = `Analyze the project structure at ${projectDir} to understand the codebase architecture, tech stack, and conventions. Write your findings to ${specDir}/context.json. Task context: ${taskDescription}`;
       break;

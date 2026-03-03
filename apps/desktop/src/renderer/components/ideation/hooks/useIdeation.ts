@@ -47,15 +47,13 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [showDismissed, setShowDismissed] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
-  const [showEnvConfigModal, setShowEnvConfigModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'generate' | 'refresh' | 'append' | null>(null);
   const [showAddMoreDialog, setShowAddMoreDialog] = useState(false);
   const [typesToAdd, setTypesToAdd] = useState<IdeationType[]>([]);
   const [convertingIdeas, setConvertingIdeas] = useState<Set<string>>(new Set());
   // Ref for synchronous tracking - prevents race condition from stale React state closure
   const convertingIdeaRef = useRef<Set<string>>(new Set());
 
-  const { hasToken, isLoading: isCheckingToken, checkAuth } = useIdeationAuth();
+  const { hasToken, isLoading: isCheckingToken } = useIdeationAuth();
 
   // Set up IPC listeners and load ideation on mount
   useEffect(() => {
@@ -66,8 +64,11 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
 
   const handleGenerate = async () => {
     if (hasToken === false) {
-      setPendingAction('generate');
-      setShowEnvConfigModal(true);
+      toast({
+        variant: 'destructive',
+        title: t('errors.noProviderConfigured', 'No AI provider configured'),
+        description: t('errors.configureProviderFirst', 'Please add a provider account in Settings to use AI features.'),
+      });
       return;
     }
     generateIdeation(projectId);
@@ -75,8 +76,11 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
 
   const handleRefresh = async () => {
     if (hasToken === false) {
-      setPendingAction('refresh');
-      setShowEnvConfigModal(true);
+      toast({
+        variant: 'destructive',
+        title: t('errors.noProviderConfigured', 'No AI provider configured'),
+        description: t('errors.configureProviderFirst', 'Please add a provider account in Settings to use AI features.'),
+      });
       return;
     }
     refreshIdeation(projectId);
@@ -88,19 +92,6 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
 
   const handleDismissAll = async () => {
     await dismissAllIdeasForProject(projectId);
-  };
-
-  const handleEnvConfigured = () => {
-    checkAuth();
-    if (pendingAction === 'generate') {
-      generateIdeation(projectId);
-    } else if (pendingAction === 'refresh') {
-      refreshIdeation(projectId);
-    } else if (pendingAction === 'append' && typesToAdd.length > 0) {
-      appendIdeation(projectId, typesToAdd);
-      setTypesToAdd([]);
-    }
-    setPendingAction(null);
   };
 
   const getAvailableTypesToAdd = (): IdeationType[] => {
@@ -119,8 +110,11 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     if (typesToAdd.length === 0) return;
 
     if (hasToken === false) {
-      setPendingAction('append');
-      setShowEnvConfigModal(true);
+      toast({
+        variant: 'destructive',
+        title: t('errors.noProviderConfigured', 'No AI provider configured'),
+        description: t('errors.configureProviderFirst', 'Please add a provider account in Settings to use AI features.'),
+      });
       return;
     }
 
@@ -256,7 +250,6 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     showDismissed,
     // Return the effective showArchived (external or internal) for consistent state reading
     showArchived: effectiveShowArchived,
-    showEnvConfigModal,
     showAddMoreDialog,
     typesToAdd,
     hasToken,
@@ -273,7 +266,6 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     setShowConfigDialog,
     setShowDismissed,
     setShowArchived,
-    setShowEnvConfigModal,
     setShowAddMoreDialog,
     setTypesToAdd,
     setConfig,
@@ -283,7 +275,6 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     handleDismissAll,
     handleDeleteSelected,
     handleSelectAll,
-    handleEnvConfigured,
     getAvailableTypesToAdd,
     handleAddMoreIdeas,
     toggleTypeToAdd,

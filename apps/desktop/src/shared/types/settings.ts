@@ -195,6 +195,7 @@ export interface FeatureModelConfig {
   githubIssues: string; // GitHub Issues automation
   githubPrs: string;    // GitHub PR review automation
   utility: string;      // Utility agents (commit message, merge resolver)
+  naming: string;       // AI naming (task titles, terminal names)
 }
 
 // Feature-specific thinking level configuration
@@ -205,6 +206,7 @@ export interface FeatureThinkingConfig {
   githubIssues: ThinkingLevel;
   githubPrs: ThinkingLevel;
   utility: ThinkingLevel;
+  naming: ThinkingLevel;
 }
 
 // Agent profile for preset model/thinking configurations
@@ -263,7 +265,6 @@ export interface AppSettings {
   autoNameTerminals: boolean;
   notifications: NotificationSettings;
   // Global API keys (used as defaults for all projects)
-  globalClaudeOAuthToken?: string;
   globalOpenAIApiKey?: string;
   globalAnthropicApiKey?: string;
   globalGoogleApiKey?: string;
@@ -351,19 +352,4 @@ export interface AppSettings {
 // GPU acceleration mode for terminal WebGL rendering
 export type GpuAcceleration = 'auto' | 'on' | 'off';
 
-// Auto-Claude Source Environment Configuration (for auto-claude repo .env)
-export interface SourceEnvConfig {
-  // Claude Authentication (required for ideation, roadmap generation, etc.)
-  hasClaudeToken: boolean;
-  claudeOAuthToken?: string;
 
-  // Source path info
-  sourcePath?: string;
-  envExists: boolean;
-}
-
-export interface SourceEnvCheckResult {
-  hasToken: boolean;
-  sourcePath?: string;
-  error?: string;
-}

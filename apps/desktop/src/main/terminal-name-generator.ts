@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { generateText } from 'ai';
 import { createSimpleClient } from './ai/client/factory';
+import { getActiveProviderFeatureSettings } from './ipc-handlers/feature-settings-helper';
 
 /**
  * Debug logging - only logs when DEBUG=true or in development mode
@@ -48,10 +49,13 @@ export class TerminalNameGenerator extends EventEmitter {
     debug('Generating terminal name for command:', command.substring(0, 100) + '...');
 
     try {
+      // Read the user's configured naming model for their active provider
+      const namingSettings = getActiveProviderFeatureSettings('naming');
+
       const client = await createSimpleClient({
         systemPrompt: SYSTEM_PROMPT,
-        modelShorthand: 'haiku',
-        thinkingLevel: 'low',
+        modelShorthand: namingSettings.model,
+        thinkingLevel: namingSettings.thinkingLevel as 'low' | 'medium' | 'high' | 'xhigh',
       });
 
       const result = await generateText({

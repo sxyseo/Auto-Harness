@@ -19,6 +19,7 @@ import type { IdeationType, IdeationStreamEvent } from '../ai/runners/ideation';
 import { runRoadmapGeneration } from '../ai/runners/roadmap';
 import type { RoadmapStreamEvent } from '../ai/runners/roadmap';
 import type { ModelShorthand, ThinkingLevel } from '../ai/config/types';
+import { resolvePromptsDir } from '../ai/prompts/prompt-loader';
 
 /**
  * Queue management for ideation and roadmap generation
@@ -220,11 +221,9 @@ export class AgentQueueManager {
       : [...IDEATION_TYPES];
     const totalTypes = enabledTypes.length;
 
-    // Resolve prompts directory
-    const autoBuildSource = this.processManager.getAutoBuildSourcePath();
-    const promptsDir = autoBuildSource
-      ? path.join(autoBuildSource, 'prompts')
-      : path.join(projectPath, '.auto-claude', 'prompts');
+    // Resolve prompts directory using the proper prompt-loader utility
+    // which handles both dev (apps/desktop/prompts/) and production (resourcesPath/prompts/)
+    const promptsDir = resolvePromptsDir();
 
     const outputDir = path.join(projectPath, '.auto-claude', 'ideation');
 

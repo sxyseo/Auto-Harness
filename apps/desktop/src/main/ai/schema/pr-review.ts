@@ -284,3 +284,46 @@ export const SpecialistOutputSchema = z.preprocess(
 );
 
 export type ValidatedSpecialistOutput = z.infer<typeof SpecialistOutputSchema>;
+
+// =============================================================================
+// FindingValidationResultSchema — Finding validator output per-finding
+// =============================================================================
+
+function coerceFindingValidationResult(input: unknown): unknown {
+  if (!input || typeof input !== 'object') return input;
+  const raw = input as Record<string, unknown>;
+  return {
+    ...raw,
+    findingId: raw.findingId ?? raw.finding_id ?? '',
+    validationStatus: raw.validationStatus ?? raw.validation_status ?? 'needs_human_review',
+    codeEvidence: raw.codeEvidence ?? raw.code_evidence ?? '',
+  };
+}
+
+export const FindingValidationResultSchema = z.preprocess(
+  coerceFindingValidationResult,
+  z.object({
+    findingId: z.string().default(''),
+    validationStatus: z.enum(['confirmed_valid', 'dismissed_false_positive', 'needs_human_review']).default('needs_human_review'),
+    codeEvidence: z.string().default(''),
+    explanation: z.string().default(''),
+  }).passthrough(),
+);
+
+export const FindingValidationArraySchema = z.preprocess(
+  (input: unknown) => {
+    if (Array.isArray(input)) return input;
+    if (input && typeof input === 'object') {
+      const raw = input as Record<string, unknown>;
+      if (Array.isArray(raw.validations)) return raw.validations;
+      if (Array.isArray(raw.results)) return raw.results;
+      if (Array.isArray(raw.findings)) return raw.findings;
+      return [input];
+    }
+    return [];
+  },
+  z.array(FindingValidationResultSchema).default([]),
+);
+
+export type ValidatedFindingValidation = z.infer<typeof FindingValidationResultSchema>;
+export type ValidatedFindingValidationArray = z.infer<typeof FindingValidationArraySchema>;

@@ -322,13 +322,14 @@ export async function ensureValidToken(
   onRefreshed?: OnTokenRefreshedCallback
 ): Promise<EnsureValidTokenResult> {
   const isDebug = process.env.DEBUG === 'true';
+  const isVerbose = process.env.VERBOSE === 'true';
 
   // Expand ~ in configDir if present
   const expandedConfigDir = configDir?.startsWith('~')
     ? configDir.replace(/^~/, homedir())
     : configDir;
 
-  if (isDebug) {
+  if (isVerbose) {
     console.warn('[TokenRefresh:ensureValidToken] Checking token validity', {
       configDir: expandedConfigDir || 'default'
     });
@@ -358,7 +359,7 @@ export async function ensureValidToken(
   const needsRefresh = isTokenExpiredOrNearExpiry(creds.expiresAt);
 
   if (!needsRefresh) {
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[TokenRefresh:ensureValidToken] Token is valid', {
         timeRemaining: formatTimeRemaining(getTimeUntilExpiry(creds.expiresAt))
       });

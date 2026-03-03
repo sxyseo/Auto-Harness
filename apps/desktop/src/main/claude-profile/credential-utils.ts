@@ -108,6 +108,8 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 // Cache for 10 seconds for error results (allows quick retry after unlock)
 const ERROR_CACHE_TTL_MS = 10 * 1000;
 
+const isVerbose = process.env.VERBOSE === 'true';
+
 // Timeouts for credential retrieval operations
 const MACOS_KEYCHAIN_TIMEOUT_MS = 5000;
 const WINDOWS_CREDMAN_TIMEOUT_MS = 10000;
@@ -193,7 +195,9 @@ export function getKeychainServiceName(configDir?: string): string {
   // No configDir provided - this should not happen with isolated profiles
   // Fall back to unhashed name for backwards compatibility during migration
   if (!configDir) {
-    console.warn('[CredentialUtils] getKeychainServiceName called without configDir - using legacy fallback');
+    if (isVerbose) {
+      console.warn('[CredentialUtils] getKeychainServiceName called without configDir - using legacy fallback');
+    }
     return 'Claude Code-credentials';
   }
 
@@ -437,7 +441,7 @@ function getCredentialsFromFile(
   if (!forceRefresh && cached) {
     const ttl = cached.credentials.error ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
     if ((now - cached.timestamp) < ttl) {
-      if (isDebug) {
+      if (isVerbose) {
         const cacheAge = now - cached.timestamp;
         console.warn(`[CredentialUtils:${logPrefix}:CACHE] Returning cached credentials:`, {
           credentialsPath,
@@ -505,7 +509,7 @@ function getCredentialsFromFile(
     const credentials = { token, email };
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
-    if (isDebug) {
+    if (isVerbose) {
       console.warn(`[CredentialUtils:${logPrefix}] Retrieved credentials from file:`, credentialsPath, {
         hasToken: !!token,
         hasEmail: !!email,
@@ -579,7 +583,7 @@ function getFullCredentialsFromFile(
       return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
-    if (isDebug) {
+    if (isVerbose) {
       console.warn(`[CredentialUtils:${logPrefix}] Retrieved full credentials from file:`, credentialsPath, {
         hasToken: !!token,
         hasEmail: !!email,
@@ -616,7 +620,7 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
   if (!forceRefresh && cached) {
     const ttl = cached.credentials.error ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
     if ((now - cached.timestamp) < ttl) {
-      if (isDebug) {
+      if (isVerbose) {
         const cacheAge = now - cached.timestamp;
         console.warn('[CredentialUtils:macOS:CACHE] Returning cached credentials:', {
           serviceName,
@@ -673,7 +677,7 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
     const credentials = { token, email };
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[CredentialUtils:macOS] Retrieved credentials from Keychain for service:', serviceName, {
         hasToken: !!token,
         hasEmail: !!email,
@@ -754,7 +758,7 @@ function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh =
   if (!forceRefresh && cached) {
     const ttl = cached.credentials.error ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
     if ((now - cached.timestamp) < ttl) {
-      if (isDebug) {
+      if (isVerbose) {
         const cacheAge = now - cached.timestamp;
         console.warn('[CredentialUtils:Linux:SecretService:CACHE] Returning cached credentials:', {
           attribute,
@@ -804,7 +808,7 @@ function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh =
     const credentials = { token, email };
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[CredentialUtils:Linux:SecretService] Retrieved credentials from Secret Service:', {
         attribute,
         hasToken: !!token,
@@ -892,7 +896,7 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
   if (!forceRefresh && cached) {
     const ttl = cached.credentials.error ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
     if ((now - cached.timestamp) < ttl) {
-      if (isDebug) {
+      if (isVerbose) {
         const cacheAge = now - cached.timestamp;
         console.warn('[CredentialUtils:Windows:CACHE] Returning cached credentials:', {
           targetName,
@@ -1026,7 +1030,7 @@ public static extern bool CredFree(IntPtr cred);
     const credentials = { token, email };
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[CredentialUtils:Windows] Retrieved credentials from Credential Manager for target:', targetName, {
         hasToken: !!token,
         hasEmail: !!email,
@@ -1246,7 +1250,7 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
       return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[CredentialUtils:macOS:Full] Retrieved full credentials from Keychain for service:', serviceName, {
         hasToken: !!token,
         hasEmail: !!email,
@@ -1303,7 +1307,7 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
       return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[CredentialUtils:Linux:SecretService:Full] Retrieved full credentials from Secret Service:', {
         attribute,
         hasToken: !!token,
@@ -1465,7 +1469,7 @@ public static extern bool CredFree(IntPtr cred);
       return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
-    if (isDebug) {
+    if (isVerbose) {
       console.warn('[CredentialUtils:Windows:Full] Retrieved full credentials from Credential Manager for target:', targetName, {
         hasToken: !!token,
         hasEmail: !!email,
