@@ -2,13 +2,15 @@
  * WebFetch Tool
  * =============
  *
- * Fetches content from a URL and processes it with an AI model prompt.
- * Converts HTML to markdown for analysis.
+ * Fetches content from a URL via a pluggable BrowseProvider.
+ * Default provider: Jina Reader (r.jina.ai) — returns clean markdown.
+ * Fallback: raw fetch if Jina is unavailable.
  */
 
 import { z } from 'zod/v3';
 
 import { Tool } from '../define';
+import { createBrowseProvider } from '../providers';
 import { DEFAULT_EXECUTION_OPTIONS, ToolPermission } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -16,7 +18,6 @@ import { DEFAULT_EXECUTION_OPTIONS, ToolPermission } from '../types';
 // ---------------------------------------------------------------------------
 
 const FETCH_TIMEOUT_MS = 30_000;
-const MAX_CONTENT_LENGTH = 100_000;
 
 // ---------------------------------------------------------------------------
 // Input Schema
@@ -37,7 +38,7 @@ export const webFetchTool = Tool.define({
   metadata: {
     name: 'WebFetch',
     description:
-      'Fetches content from a specified URL and processes it using an AI model. Takes a URL and a prompt as input, fetches the URL content, and returns processed results.',
+      'Fetches content from a specified URL and returns it as markdown. Takes a URL and a prompt as input, fetches the URL content, converts it to markdown, and returns the result for analysis.',
     permission: ToolPermission.ReadOnly,
     executionOptions: {
       ...DEFAULT_EXECUTION_OPTIONS,
@@ -49,31 +50,10 @@ export const webFetchTool = Tool.define({
     const { url, prompt } = input;
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      const provider = createBrowseProvider();
+      const result = await provider.browse(url, { timeout: FETCH_TIMEOUT_MS });
 
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'AutoClaude/1.0',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        return `Error: HTTP ${response.status} ${response.statusText} fetching ${url}`;
-      }
-
-      let content = await response.text();
-
-      if (content.length > MAX_CONTENT_LENGTH) {
-        content = `${content.slice(0, MAX_CONTENT_LENGTH)}\n\n[Content truncated — ${content.length} characters total]`;
-      }
-
-      // Return content with the prompt context for further processing
-      return `URL: ${url}\nPrompt: ${prompt}\n\n--- Fetched Content ---\n${content}`;
+      return `URL: ${url}\nPrompt: ${prompt}\n\n--- Fetched Content ---\n${result.content}`;
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         return `Error: Request timed out after ${FETCH_TIMEOUT_MS}ms fetching ${url}`;

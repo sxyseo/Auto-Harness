@@ -235,9 +235,9 @@ export function buildThinkingProviderOptions(
     }
 
     case 'zai': {
-      // zhipu-ai-provider merges providerOptions.zhipu into the request body.
+      // @ai-sdk/openai-compatible merges providerOptions.openaiCompatible into the request body.
       // Z.AI thinking config uses type: 'enabled'/'disabled' (no budget parameter).
-      return { zhipu: { thinking: { type: 'enabled' } } };
+      return { openaiCompatible: { thinking: { type: 'enabled', clear_thinking: false } } };
     }
 
     default:

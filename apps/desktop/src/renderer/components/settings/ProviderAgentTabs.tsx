@@ -20,7 +20,7 @@ import { saveSettings, useSettingsStore } from '../../stores/settings-store';
  */
 export function ProviderAgentTabs() {
   const { t } = useTranslation('settings');
-  const { connectedProviders } = useActiveProvider();
+  const { connectedProviders, provider: activeProvider } = useActiveProvider();
   const settings = useSettingsStore((s) => s.settings);
 
   const needsSetup = useCallback((provider: BuiltinProvider): boolean => {
@@ -49,7 +49,7 @@ export function ProviderAgentTabs() {
     return sorted;
   }, [connectedProviders]);
 
-  const [activeTab, setActiveTab] = useState<BuiltinProvider | 'cross-provider' | null>(null);
+  const [activeTab, setActiveTab] = useState<BuiltinProvider | 'cross-provider' | null>(activeProvider);
 
   // Keep active tab valid when providers change; fall back to first in list.
   // When cross-provider is active, resolvedTab is null (no provider selected).

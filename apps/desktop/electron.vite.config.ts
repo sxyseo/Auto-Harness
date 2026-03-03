@@ -7,7 +7,7 @@ import { config as dotenvConfig } from 'dotenv';
 dotenvConfig({ path: resolve(__dirname, '.env') });
 
 /**
- * Sentry configuration embedded at build time.
+ * Build-time constants embedded via Vite `define`.
  *
  * In CI builds, these come from GitHub secrets.
  * In local development, these come from apps/desktop/.env (loaded by dotenv).
@@ -21,9 +21,14 @@ const sentryDefines = {
   '__SENTRY_PROFILES_SAMPLE_RATE__': JSON.stringify(process.env.SENTRY_PROFILES_SAMPLE_RATE || '0.1'),
 };
 
+/** Embedded API keys — search works out of the box, no user config needed. */
+const embeddedKeys = {
+  '__SERPER_API_KEY__': JSON.stringify(process.env.SERPER_API_KEY || ''),
+};
+
 export default defineConfig({
   main: {
-    define: sentryDefines,
+    define: { ...sentryDefines, ...embeddedKeys },
     plugins: [externalizeDepsPlugin({
       // Bundle these packages into the main process (they won't be in node_modules in packaged app)
       exclude: [

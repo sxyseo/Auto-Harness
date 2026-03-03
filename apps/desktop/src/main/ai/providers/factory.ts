@@ -18,7 +18,6 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createXai } from '@ai-sdk/xai';
-import { createZhipu } from 'zhipu-ai-provider';
 import type { LanguageModel } from 'ai';
 
 import { MODEL_PROVIDER_MAP } from '../config/types';
@@ -135,7 +134,8 @@ function createProviderInstance(config: ProviderConfig) {
       });
 
     case SupportedProvider.ZAI:
-      return createZhipu({
+      return createOpenAICompatible({
+        name: 'zai',
         apiKey,
         baseURL: baseURL ?? 'https://api.z.ai/api/paas/v4',
         headers,
@@ -204,9 +204,12 @@ export function createProvider(options: CreateProviderOptions): LanguageModel {
     return (instance as ReturnType<typeof createAzure>).chat(deploymentName);
   }
 
-  // OpenAI: Codex models use Responses API, others use Chat Completions
+  // OpenAI: Codex OAuth accounts rewrite ALL URLs to the Codex Responses endpoint,
+  // so every model must use `.responses()` to avoid a format mismatch (Chat Completions
+  // format sent to Responses endpoint → 400). Regular API-key accounts use
+  // `.responses()` for Codex models and `.chat()` for everything else.
   if (config.provider === SupportedProvider.OpenAI) {
-    if (isCodexModel(modelId)) {
+    if (config.oauthTokenFilePath || isCodexModel(modelId)) {
       return (instance as ReturnType<typeof createOpenAI>).responses(modelId);
     }
     return (instance as ReturnType<typeof createOpenAI>).chat(modelId);

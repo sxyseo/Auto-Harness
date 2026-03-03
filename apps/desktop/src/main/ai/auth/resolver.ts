@@ -399,13 +399,9 @@ export async function resolveAuthFromQueue(
 
     const resolvedModelId = modelSpec?.modelId ?? requestedModel;
 
-    // Codex OAuth accounts only support Codex models (Responses API format).
-    // Non-Codex models use Chat Completions format, but the Codex OAuth fetch
-    // handler rewrites the URL to the Codex Responses endpoint, causing a
-    // format mismatch → 400 Bad Request. Skip to the next account.
-    if (account.provider === 'openai' && account.authType === 'oauth' && !resolvedModelId.includes('codex')) {
-      continue;
-    }
+    // Note: Codex OAuth accounts now use .responses() for ALL models (not just
+    // Codex-named ones) in the provider factory, so no format mismatch guard
+    // is needed here. All OpenAI models are eligible through Codex OAuth.
 
     // Resolve credentials for this account
     const auth = await resolveCredentialsForAccount(account, supportedProvider);

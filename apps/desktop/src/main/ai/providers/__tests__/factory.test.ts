@@ -79,13 +79,6 @@ vi.mock('@openrouter/ai-sdk-provider', () => ({
   }),
 }));
 
-vi.mock('zhipu-ai-provider', () => ({
-  createZhipu: vi.fn(() => {
-    const provider = vi.fn((modelId: string) => ({ modelId, provider: 'zai' }));
-    return provider;
-  }),
-}));
-
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createProvider, detectProviderFromModel, createProviderFromModelId } from '../factory';
 import { SupportedProvider } from '../types';

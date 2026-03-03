@@ -17,7 +17,6 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createXai } from '@ai-sdk/xai';
-import { createZhipu } from 'zhipu-ai-provider';
 import { createProviderRegistry } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { ProviderV3 } from '@ai-sdk/provider';
@@ -80,7 +79,8 @@ function createProviderSDKInstance(
       });
 
     case SupportedProvider.ZAI:
-      return createZhipu({
+      return createOpenAICompatible({
+        name: 'zai',
         apiKey,
         baseURL: baseURL ?? 'https://api.z.ai/api/paas/v4',
         headers,

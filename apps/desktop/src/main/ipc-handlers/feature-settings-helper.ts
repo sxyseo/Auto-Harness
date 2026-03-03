@@ -17,6 +17,7 @@ import { readSettingsFile } from '../settings-utils';
 import {
   DEFAULT_FEATURE_MODELS,
   DEFAULT_FEATURE_THINKING,
+  resolveModelEquivalent,
 } from '../../shared/constants/models';
 import type { FeatureModelConfig, FeatureThinkingConfig } from '../../shared/types/settings';
 import type { BuiltinProvider } from '../../shared/types/provider-account';
@@ -91,8 +92,18 @@ export function getActiveProviderFeatureSettings(featureKey: FeatureKey): Featur
   const globalModels = settings.featureModels as FeatureModelConfig | undefined;
   const globalThinking = settings.featureThinking as FeatureThinkingConfig | undefined;
 
-  return {
-    model: globalModels?.[featureKey] ?? DEFAULT_FEATURE_MODELS[featureKey],
-    thinkingLevel: globalThinking?.[featureKey] ?? DEFAULT_FEATURE_THINKING[featureKey],
-  };
+  const model = globalModels?.[featureKey] ?? DEFAULT_FEATURE_MODELS[featureKey];
+  const thinkingLevel = globalThinking?.[featureKey] ?? DEFAULT_FEATURE_THINKING[featureKey];
+
+  // If the resolved model is an Anthropic shorthand (e.g. 'haiku') but the active
+  // provider is non-Anthropic, resolve to the provider's equivalent model so we
+  // don't send Anthropic model IDs to OpenAI/Google/etc. endpoints.
+  if (activeProvider && activeProvider !== 'anthropic') {
+    const equiv = resolveModelEquivalent(model, activeProvider);
+    if (equiv) {
+      return { model: equiv.modelId, thinkingLevel };
+    }
+  }
+
+  return { model, thinkingLevel };
 }
