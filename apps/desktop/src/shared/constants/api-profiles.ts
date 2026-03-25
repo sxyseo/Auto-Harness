@@ -29,5 +29,10 @@ export const API_PROVIDER_PRESETS: readonly ApiProviderPreset[] = [
     id: 'zai-cn',
     baseUrl: 'https://open.bigmodel.cn/api/anthropic',
     labelKey: 'settings:apiProfiles.presets.zaiChina'
+  },
+  {
+    id: 'minimax',
+    baseUrl: 'https://api.minimaxi.com/anthropic',
+    labelKey: 'settings:apiProfiles.presets.minimax'
   }
 ];

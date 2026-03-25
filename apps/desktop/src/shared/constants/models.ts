@@ -71,6 +71,8 @@ export const ALL_AVAILABLE_MODELS: ModelOption[] = [
   { value: 'glm-4.7', label: 'GLM-4.7', provider: 'zai', description: 'Previous flagship', capabilities: { thinking: false, tools: true, vision: false, contextWindow: 128000 } },
   { value: 'glm-4.6v', label: 'GLM-4.6V', provider: 'zai', description: 'Multimodal', capabilities: { thinking: false, tools: true, vision: true, contextWindow: 128000 } },
   { value: 'glm-4.5-flash', label: 'GLM-4.5 Flash', provider: 'zai', description: 'Fast', capabilities: { thinking: false, tools: true, vision: false, contextWindow: 128000 } },
+  // MiniMax
+  { value: 'MiniMax-M2.7', label: 'MiniMax-M2.7', provider: 'minimax', description: 'Flagship', capabilities: { thinking: false, tools: true, vision: false, contextWindow: 1000000 } },
 ];
 
 // Maps model shorthand to actual Claude model IDs
@@ -315,6 +317,12 @@ export const PROVIDER_PRESET_DEFINITIONS: Partial<Record<BuiltinProvider, Record
     complex:  { primaryModel: 'glm-5',          primaryThinking: 'low', phaseModels: { spec: 'glm-5', planning: 'glm-5', coding: 'glm-5', qa: 'glm-5' },                         phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
     balanced: { primaryModel: 'glm-4.7',        primaryThinking: 'low', phaseModels: { spec: 'glm-4.7', planning: 'glm-4.7', coding: 'glm-4.7', qa: 'glm-4.7' },                 phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
     quick:    { primaryModel: 'glm-4.5-flash',  primaryThinking: 'low', phaseModels: { spec: 'glm-4.5-flash', planning: 'glm-4.5-flash', coding: 'glm-4.5-flash', qa: 'glm-4.5-flash' }, phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
+  },
+  minimax: {
+    auto:     { primaryModel: 'MiniMax-M2.7', primaryThinking: 'low', phaseModels: { spec: 'MiniMax-M2.7', planning: 'MiniMax-M2.7', coding: 'MiniMax-M2.7', qa: 'MiniMax-M2.7' }, phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
+    complex:  { primaryModel: 'MiniMax-M2.7', primaryThinking: 'low', phaseModels: { spec: 'MiniMax-M2.7', planning: 'MiniMax-M2.7', coding: 'MiniMax-M2.7', qa: 'MiniMax-M2.7' }, phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
+    balanced: { primaryModel: 'MiniMax-M2.7', primaryThinking: 'low', phaseModels: { spec: 'MiniMax-M2.7', planning: 'MiniMax-M2.7', coding: 'MiniMax-M2.7', qa: 'MiniMax-M2.7' }, phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
+    quick:    { primaryModel: 'MiniMax-M2.7', primaryThinking: 'low', phaseModels: { spec: 'MiniMax-M2.7', planning: 'MiniMax-M2.7', coding: 'MiniMax-M2.7', qa: 'MiniMax-M2.7' }, phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },
   },
   ollama: {
     auto:     { primaryModel: '', primaryThinking: 'low', phaseModels: { spec: '', planning: '', coding: '', qa: '' }, phaseThinking: { spec: 'low', planning: 'low', coding: 'low', qa: 'low' } },

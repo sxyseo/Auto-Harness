@@ -38,6 +38,12 @@ export const PROVIDER_REGISTRY: ProviderInfo[] = [
     configFields: [], website: 'https://console.x.ai',
   },
   {
+    id: 'minimax', name: 'MiniMax', description: 'MiniMax M2 models',
+    category: 'popular',
+    authMethods: ['api-key'], envVars: ['MINIMAX_API_KEY'],
+    configFields: ['baseUrl'], website: 'https://platform.minimaxi.com',
+  },
+  {
     id: 'mistral', name: 'Mistral', description: 'Mistral and Codestral models',
     category: 'infrastructure',
     authMethods: ['api-key'], envVars: ['MISTRAL_API_KEY'],
