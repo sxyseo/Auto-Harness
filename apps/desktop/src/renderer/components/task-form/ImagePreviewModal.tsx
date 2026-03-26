@@ -52,7 +52,7 @@ export function ImagePreviewModal({ open, onOpenChange, image }: ImagePreviewMod
                 'rounded-lg p-2',
                 'text-white/70 hover:text-white',
                 'hover:bg-white/10 transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-white/50',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black/80',
                 'disabled:pointer-events-none'
               )}
               aria-label={t('tasks:imagePreview.close')}
