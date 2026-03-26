@@ -1218,6 +1218,28 @@ input[type='range']:focus-visible {
     outline-style: solid;
     outline-color: CanvasText;
   }
+
+  /* Checkbox and radio inputs - enhanced visibility in high contrast */
+  input[type='checkbox']:focus-visible,
+  input[type='radio']:focus-visible {
+    outline-width: 3px;
+    outline-style: solid;
+    outline-color: CanvasText;
+  }
+
+  /* File input - enhanced visibility in high contrast */
+  input[type='file']:focus-visible {
+    outline-width: 3px;
+    outline-style: solid;
+    outline-color: CanvasText;
+  }
+
+  /* Range/slider inputs - enhanced visibility in high contrast */
+  input[type='range']:focus-visible {
+    outline-width: 3px;
+    outline-style: solid;
+    outline-color: CanvasText;
+  }
 }
 
 /* Column status colors for Kanban */

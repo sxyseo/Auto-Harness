@@ -303,6 +303,7 @@ export function Sidebar({
         className={cn(
           'flex w-full items-center rounded-lg text-sm transition-all duration-200',
           'hover:bg-accent hover:text-accent-foreground',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           'disabled:pointer-events-none disabled:opacity-50',
           isActive && 'bg-accent text-accent-foreground',
           isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'
@@ -458,6 +459,8 @@ export function Sidebar({
                 className={cn(
                   'flex w-full items-center text-xs transition-colors',
                   'text-amber-500/70 hover:text-amber-400',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  'rounded-md py-1.5',
                   isCollapsed ? 'justify-center' : 'gap-1.5 px-3'
                 )}
               >
