@@ -1146,8 +1146,19 @@ body {
 }
 
 .focus-ring:focus-visible {
-  outline: 2px solid var(--primary);
+  /* 3px minimum outline for strong keyboard visibility */
+  outline: 3px solid var(--ring, var(--primary, #A5A66A));
   outline-offset: 2px;
+  transition: outline-color 0.15s ease;
+}
+
+/* High contrast mode support for enhanced accessibility */
+@media (prefers-contrast: more) {
+  .focus-ring:focus-visible {
+    outline-width: 4px;
+    outline-style: solid;
+    outline-color: var(--ring, CanvasText);
+  }
 }
 
 /* Column status colors for Kanban */
