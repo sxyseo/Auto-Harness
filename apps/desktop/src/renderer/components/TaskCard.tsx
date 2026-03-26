@@ -332,12 +332,14 @@ export const TaskCard = memo(function TaskCard({
     <Card
       className={cn(
         'card-surface task-card-enhanced cursor-pointer',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         isRunning && !isStuck && 'ring-2 ring-primary border-primary task-running-pulse',
         isStuck && 'ring-2 ring-warning border-warning task-stuck-pulse',
         isArchived && 'opacity-60 hover:opacity-80',
         isSelectable && isSelected && 'ring-2 ring-ring border-ring bg-accent/10'
       )}
       onClick={onClick}
+      tabIndex={0}
     >
       <CardContent className="p-4">
         <div className={isSelectable ? 'flex gap-3' : undefined}>
