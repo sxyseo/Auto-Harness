@@ -1161,6 +1161,65 @@ body {
   }
 }
 
+/* ============================================
+   Global Focus-Visible Baseline Styles
+   Applies consistent focus indicators to all interactive elements
+   ============================================ */
+
+/* Base interactive elements - focus-visible baseline */
+button:focus-visible,
+a:focus-visible,
+[role='button']:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
+}
+
+/* Remove default browser outline for mouse users, keep for keyboard */
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+[role='button']:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Checkbox and radio inputs - custom focus handling */
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
+}
+
+/* File input focus */
+input[type='file']:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
+}
+
+/* Range/slider inputs - focus ring */
+input[type='range']:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 4px;
+}
+
+/* High contrast mode enhancement for global focus styles */
+@media (prefers-contrast: more) {
+  button:focus-visible,
+  a:focus-visible,
+  [role='button']:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline-width: 3px;
+    outline-style: solid;
+    outline-color: CanvasText;
+  }
+}
+
 /* Column status colors for Kanban */
 .column-backlog {
   border-top-color: var(--muted-foreground);
