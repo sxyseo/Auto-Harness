@@ -95,6 +95,11 @@
     0% { transform: translateX(-100%); }
     100% { transform: translateX(400%); }
   }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
 }
 
 /* Animation utility classes (outside @theme for Tailwind v4 compatibility) */
@@ -104,6 +109,18 @@
 
 .animate-indeterminate {
   animation: indeterminate 1.5s ease-in-out infinite;
+}
+
+/* Skeleton shimmer animation for loading states */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--secondary) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
 /* CSS variables for light mode (secondary consideration per design system) */
