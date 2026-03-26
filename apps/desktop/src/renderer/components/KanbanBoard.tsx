@@ -26,6 +26,7 @@ import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { TaskCard } from './TaskCard';
 import { SortableTaskCard } from './SortableTaskCard';
+import { TaskCardSkeleton } from './TaskCardSkeleton';
 import { QueueSettingsModal } from './QueueSettingsModal';
 import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants';
 import { cn } from '../lib/utils';
@@ -71,6 +72,8 @@ interface KanbanBoardProps {
   onNewTaskClick?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  /** When true, shows skeleton loading cards instead of task cards */
+  isLoading?: boolean;
 }
 
 interface DroppableColumnProps {
@@ -103,6 +106,8 @@ interface DroppableColumnProps {
   // Lock props
   isLocked?: boolean;
   onToggleLocked?: () => void;
+  // Loading state
+  isLoading?: boolean;
 }
 
 /**
@@ -160,6 +165,7 @@ function droppableColumnPropsAreEqual(
   if (prevProps.onResizeEnd !== nextProps.onResizeEnd) return false;
   if (prevProps.isLocked !== nextProps.isLocked) return false;
   if (prevProps.onToggleLocked !== nextProps.onToggleLocked) return false;
+  if (prevProps.isLoading !== nextProps.isLoading) return false;
 
   // Compare selection props
   const prevSelected = prevProps.selectedTaskIds;
@@ -230,7 +236,7 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, onQueueSettings, onQueueAll, maxParallelTasks, archivedCount, showArchived, onToggleArchived, selectedTaskIds, onSelectAll, onDeselectAll, onToggleSelect, isCollapsed, onToggleCollapsed, columnWidth, isResizing, onResizeStart, onResizeEnd, isLocked, onToggleLocked }: DroppableColumnProps) {
+const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, onQueueSettings, onQueueAll, maxParallelTasks, archivedCount, showArchived, onToggleArchived, selectedTaskIds, onSelectAll, onDeselectAll, onToggleSelect, isCollapsed, onToggleCollapsed, columnWidth, isResizing, onResizeStart, onResizeEnd, isLocked, onToggleLocked, isLoading }: DroppableColumnProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { setNodeRef } = useDroppable({
     id: status
@@ -291,6 +297,14 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
 
   // Memoize task card elements to prevent recreation on every render
   const taskCards = useMemo(() => {
+    // Show skeleton cards when loading
+    if (isLoading) {
+      // Show 3 skeleton cards per column during loading
+      return Array.from({ length: 3 }, (_, i) => (
+        <TaskCardSkeleton key={`skeleton-${i}`} />
+      ));
+    }
+
     if (tasks.length === 0) return null;
     const isSelectable = !!onToggleSelectHandlers;
     return tasks.map((task) => (
@@ -304,7 +318,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
         onToggleSelect={onToggleSelectHandlers?.get(task.id)}
       />
     ));
-  }, [tasks, onClickHandlers, onStatusChangeHandlers, onToggleSelectHandlers, selectedTaskIds]);
+  }, [isLoading, tasks, onClickHandlers, onStatusChangeHandlers, onToggleSelectHandlers, selectedTaskIds]);
 
   const getColumnBorderColor = (): string => {
     switch (status) {
@@ -562,7 +576,10 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-3 min-h-[120px]">
-              {tasks.length === 0 ? (
+              {isLoading ? (
+                // Show skeleton cards during loading
+                taskCards
+              ) : tasks.length === 0 ? (
                 <div
                   className={cn(
                     'empty-column-dropzone flex flex-col items-center justify-center py-6',
@@ -634,7 +651,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
   );
 }, droppableColumnPropsAreEqual);
 
-export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isRefreshing }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isRefreshing, isLoading }: KanbanBoardProps) {
   const { t } = useTranslation(['tasks', 'dialogs', 'common']);
   const { toast } = useToast();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -1503,6 +1520,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               onResizeEnd={handleResizeEnd}
               isLocked={columnPreferences?.[status]?.isLocked}
               onToggleLocked={() => handleToggleColumnLocked(status)}
+              isLoading={isLoading}
             />
           ))}
         </div>
