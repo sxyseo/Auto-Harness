@@ -353,5 +353,12 @@
   "referenceImages": {
     "title": "Images de référence (facultatif)",
     "description": "Ajoutez des références visuelles comme des captures d'écran ou des conceptions pour aider l'IA à comprendre vos exigences."
+  },
+  "skeleton": {
+    "loading": "Chargement...",
+    "taskCard": "Chargement de la carte de tâche",
+    "taskTitle": "Chargement du titre de la tâche",
+    "taskStatus": "Chargement du statut de la tâche",
+    "taskMeta": "Chargement des métadonnées de la tâche"
   }
 }
