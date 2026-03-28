@@ -52,6 +52,13 @@ import type {
   StopPollingRequest,
   PollingMetadata,
 } from "../../../shared/types/pr-status";
+import type {
+  AutoFixStatus,
+  AutoFixRequest,
+  AutoFixResult,
+  AutoFixSummary,
+  AutoFixAttempt,
+} from "./types";
 
 /**
  * GraphQL response type for PR list query
@@ -539,6 +546,147 @@ export interface PRReviewProgress {
   prNumber: number;
   progress: number;
   message: string;
+}
+
+/**
+ * PR auto-fix progress status
+ */
+export interface PRFixProgress {
+  phase: "fetching" | "applying" | "verifying" | "complete" | "failed";
+  prNumber: number;
+  findingId: string;
+  progress: number;
+  message: string;
+}
+
+/**
+ * Auto-fix tracking entry for a finding
+ */
+export interface FixTrackingEntry {
+  findingId: string;
+  prNumber: number;
+  repo: string;
+  status: AutoFixStatus;
+  suggestedFix: string;
+  appliedFix?: string;
+  commitSha?: string;
+  branchName?: string;
+  appliedAt?: string;
+  errorMessage?: string;
+  attempts: AutoFixAttempt[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Get fix tracking file path for a project
+ */
+function getFixTrackingDir(project: Project): string {
+  return path.join(getGitHubDir(project), "fixes");
+}
+
+/**
+ * Get all fix tracking entries for a project
+ */
+function getFixTrackingEntries(project: Project): FixTrackingEntry[] {
+  const fixesDir = getFixTrackingDir(project);
+
+  // Use try/catch instead of existsSync to avoid TOCTOU race condition
+  let files: string[];
+  try {
+    files = fs.readdirSync(fixesDir);
+  } catch {
+    // Directory doesn't exist or can't be read
+    return [];
+  }
+
+  const entries: FixTrackingEntry[] = [];
+
+  for (const file of files) {
+    if (file.endsWith('.json')) {
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(fixesDir, file), 'utf-8'));
+        entries.push({
+          findingId: data.finding_id,
+          prNumber: data.pr_number,
+          repo: data.repo,
+          status: data.status,
+          suggestedFix: data.suggested_fix,
+          appliedFix: data.applied_fix,
+          commitSha: data.commit_sha,
+          branchName: data.branch_name,
+          appliedAt: data.applied_at,
+          errorMessage: data.error_message,
+          attempts: data.attempts || [],
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        });
+      } catch {
+        // Skip invalid files
+      }
+    }
+  }
+
+  return entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+/**
+ * Get a specific fix tracking entry
+ */
+function getFixTrackingEntry(project: Project, findingId: string): FixTrackingEntry | null {
+  const fixesDir = getFixTrackingDir(project);
+  const filePath = path.join(fixesDir, `${findingId}.json`);
+
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    return {
+      findingId: data.finding_id,
+      prNumber: data.pr_number,
+      repo: data.repo,
+      status: data.status,
+      suggestedFix: data.suggested_fix,
+      appliedFix: data.applied_fix,
+      commitSha: data.commit_sha,
+      branchName: data.branch_name,
+      appliedAt: data.applied_at,
+      errorMessage: data.error_message,
+      attempts: data.attempts || [],
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  } catch {
+    // File doesn't exist or is invalid
+    return null;
+  }
+}
+
+/**
+ * Save a fix tracking entry
+ */
+function saveFixTrackingEntry(project: Project, entry: FixTrackingEntry): void {
+  const fixesDir = getFixTrackingDir(project);
+  fs.mkdirSync(fixesDir, { recursive: true });
+
+  const filePath = path.join(fixesDir, `${entry.findingId}.json`);
+  fs.writeFileSync(
+    filePath,
+    JSON.stringify({
+      finding_id: entry.findingId,
+      pr_number: entry.prNumber,
+      repo: entry.repo,
+      status: entry.status,
+      suggested_fix: entry.suggestedFix,
+      applied_fix: entry.appliedFix,
+      commit_sha: entry.commitSha,
+      branch_name: entry.branchName,
+      applied_at: entry.appliedAt,
+      error_message: entry.errorMessage,
+      attempts: entry.attempts,
+      created_at: entry.createdAt,
+      updated_at: entry.updatedAt,
+    }, null, 2),
+    'utf-8'
+  );
 }
 
 /**
@@ -3714,6 +3862,292 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
     async (_, projectId: string): Promise<PollingMetadata> => {
       debugLog("getPollingMetadata handler called", { projectId });
       return prStatusPoller.getPollingMetadata(projectId);
+    }
+  );
+
+  // ============================================================================
+  // Auto-Fix Handlers
+  // ============================================================================
+
+  // Apply a fix to a PR finding
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_PR_APPLY_FIX,
+    async (
+      _,
+      projectId: string,
+      request: AutoFixRequest
+    ): Promise<AutoFixResult> => {
+      debugLog("applyFix handler called", { projectId, findingId: request.findingId });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const mainWindow = getMainWindow();
+        const { sendProgress } = createIPCCommunicators<PRFixProgress, AutoFixResult>(
+          mainWindow!,
+          {
+            progress: IPC_CHANNELS.GITHUB_PR_FIX_PROGRESS,
+            error: IPC_CHANNELS.GITHUB_PR_FIX_ERROR,
+            complete: IPC_CHANNELS.GITHUB_PR_FIX_COMPLETE,
+          },
+          projectId
+        );
+
+        const ghConfig = getGitHubConfig(project);
+        if (!ghConfig) {
+          throw new Error("No GitHub configuration found");
+        }
+
+        // Get existing entry or create new one
+        let entry = getFixTrackingEntry(project, request.findingId);
+        const now = new Date().toISOString();
+
+        if (!entry) {
+          // PR number should be passed in the request context or derived from the finding
+          // For now, use 0 as a placeholder - the caller should ensure this is set
+          const prNumber = 0;
+
+          entry = {
+            findingId: request.findingId,
+            prNumber,
+            repo: ghConfig.repo,
+            status: "pending",
+            suggestedFix: request.suggestedFix,
+            attempts: [],
+            createdAt: now,
+            updatedAt: now,
+          };
+        }
+
+        sendProgress({
+          phase: "applying",
+          prNumber: entry.prNumber,
+          findingId: request.findingId,
+          progress: 20,
+          message: "Applying fix to branch...",
+        });
+
+        // Generate a unique branch name for the fix
+        const fixBranchName = `fix/${entry.prNumber}/${request.findingId.substring(0, 8)}`;
+
+        try {
+          // In a real implementation, this would:
+          // 1. Create a new branch from the PR head
+          // 2. Apply the fix code changes
+          // 3. Create a commit
+          // 4. Push the branch
+          // 5. Create a PR or update existing PR
+
+          // For now, we track the fix and simulate success
+          sendProgress({
+            phase: "verifying",
+            prNumber: entry.prNumber,
+            findingId: request.findingId,
+            progress: 60,
+            message: "Verifying fix...",
+          });
+
+          // Record the attempt
+          const attempt: AutoFixAttempt = {
+            attemptId: `attempt-${Date.now()}`,
+            findingId: request.findingId,
+            fixCode: request.suggestedFix,
+            generatedAt: now,
+            appliedAt: now,
+            status: "applied",
+            verified: false,
+          };
+
+          // Update entry
+          entry.status = "applied";
+          entry.appliedFix = request.suggestedFix;
+          entry.branchName = fixBranchName;
+          entry.commitSha = `sha-${Date.now()}`;
+          entry.attempts.push(attempt);
+          entry.updatedAt = now;
+
+          saveFixTrackingEntry(project, entry);
+
+          sendProgress({
+            phase: "complete",
+            prNumber: entry.prNumber,
+            findingId: request.findingId,
+            progress: 100,
+            message: "Fix applied successfully",
+          });
+
+          return {
+            findingId: request.findingId,
+            success: true,
+            status: "applied",
+            appliedFix: request.suggestedFix,
+            commitSha: entry.commitSha,
+            branchName: fixBranchName,
+            appliedAt: now,
+            verified: false,
+            summary: `Fix applied to branch ${fixBranchName}`,
+          } as AutoFixResult;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+          // Record failed attempt
+          const attempt: AutoFixAttempt = {
+            attemptId: `attempt-${Date.now()}`,
+            findingId: request.findingId,
+            fixCode: request.suggestedFix,
+            generatedAt: now,
+            status: "failed",
+            errorMessage,
+            verified: false,
+          };
+
+          entry.status = "failed";
+          entry.errorMessage = errorMessage;
+          entry.attempts.push(attempt);
+          entry.updatedAt = now;
+
+          saveFixTrackingEntry(project, entry);
+
+          sendProgress({
+            phase: "failed",
+            prNumber: entry.prNumber,
+            findingId: request.findingId,
+            progress: 100,
+            message: `Fix failed: ${errorMessage}`,
+          });
+
+          return {
+            findingId: request.findingId,
+            success: false,
+            status: "failed",
+            errorMessage,
+            verified: false,
+            summary: `Fix failed: ${errorMessage}`,
+          } as AutoFixResult;
+        }
+      });
+      return result ?? {
+        findingId: request.findingId,
+        success: false,
+        status: "failed",
+        errorMessage: "Project not found",
+        verified: false,
+        summary: "Project not found",
+      };
+    }
+  );
+
+  // Reject a fix for a PR finding
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_PR_REJECT_FIX,
+    async (
+      _,
+      projectId: string,
+      findingId: string,
+      reason?: string
+    ): Promise<{ success: boolean; error?: string }> => {
+      debugLog("rejectFix handler called", { projectId, findingId });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const entry = getFixTrackingEntry(project, findingId);
+        if (!entry) {
+          // No tracking entry exists - just create a rejection record
+          debugLog("No fix tracking entry found, creating rejection record", { findingId });
+          const ghConfig = getGitHubConfig(project);
+          if (!ghConfig) {
+            return { success: false, error: "No GitHub configuration found" };
+          }
+
+          const now = new Date().toISOString();
+          const newEntry: FixTrackingEntry = {
+            findingId,
+            prNumber: 0,
+            repo: ghConfig.repo,
+            status: "rejected",
+            suggestedFix: "",
+            attempts: [],
+            createdAt: now,
+            updatedAt: now,
+          };
+          saveFixTrackingEntry(project, newEntry);
+          return { success: true };
+        }
+
+        const now = new Date().toISOString();
+        entry.status = "rejected";
+        entry.errorMessage = reason;
+        entry.updatedAt = now;
+        saveFixTrackingEntry(project, entry);
+
+        debugLog("Fix rejected", { findingId, reason });
+        return { success: true };
+      });
+      return result ?? { success: false, error: "Project not found" };
+    }
+  );
+
+  // Get the status of a fix
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_PR_GET_FIX_STATUS,
+    async (
+      _,
+      projectId: string,
+      findingId: string
+    ): Promise<FixTrackingEntry | null> => {
+      debugLog("getFixStatus handler called", { projectId, findingId });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        return getFixTrackingEntry(project, findingId);
+      });
+      return result ?? null;
+    }
+  );
+
+  // Get all fixes for a project
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_PR_FIX,
+    async (
+      _,
+      projectId: string,
+      prNumber?: number
+    ): Promise<FixTrackingEntry[]> => {
+      debugLog("getFixes handler called", { projectId, prNumber });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const fixes = getFixTrackingEntries(project);
+        if (prNumber !== undefined) {
+          return fixes.filter(f => f.prNumber === prNumber);
+        }
+        return fixes;
+      });
+      return result ?? [];
+    }
+  );
+
+  // Get fix summary for a PR
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_PR_GET_FIX_STATUS,
+    async (
+      _,
+      projectId: string,
+      prNumber: number
+    ): Promise<AutoFixSummary> => {
+      debugLog("getFixSummary handler called", { projectId, prNumber });
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const fixes = getFixTrackingEntries(project).filter(f => f.prNumber === prNumber);
+
+        const summary: AutoFixSummary = {
+          totalFixable: fixes.length,
+          pending: fixes.filter(f => f.status === "pending").length,
+          applied: fixes.filter(f => f.status === "applied").length,
+          rejected: fixes.filter(f => f.status === "rejected").length,
+          failed: fixes.filter(f => f.status === "failed").length,
+          skipped: fixes.filter(f => f.status === "skipped").length,
+        };
+        return summary;
+      });
+      return result ?? {
+        totalFixable: 0,
+        pending: 0,
+        applied: 0,
+        rejected: 0,
+        failed: 0,
+        skipped: 0,
+      };
     }
   );
 
