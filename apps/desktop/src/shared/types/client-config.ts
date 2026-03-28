@@ -44,6 +44,7 @@ export interface ExternalClientConfig {
     supportsVision: boolean;
     maxTokens?: number;
   };
+  yoloMode?: boolean; // YOLO mode: skip all safety prompts
   description?: string;
 }
 

@@ -1238,6 +1238,10 @@
           "supportsVision": "Prise en charge de la vision",
           "maxTokens": "Jetons max"
         },
+        "yoloMode": {
+          "label": "Mode YOLO (Ignorer toutes les invites de sécurité)",
+          "description": "Contourner automatiquement toutes les invites de confirmation. À utiliser avec une extrême prudence - cela peut entraîner des modifications de fichiers involontaires."
+        },
         "validation": {
           "nameRequired": "Le nom du client est requis",
           "executableRequired": "Le chemin de l'exécutable est requis",

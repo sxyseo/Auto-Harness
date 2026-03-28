@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Edit, Trash2, CheckCircle2, AlertCircle, Loader2, Plug } from 'lucide-react';
+import { Edit, Trash2, CheckCircle2, AlertCircle, Loader2, Plug, Zap } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { useToast } from '../../hooks/use-toast';
@@ -111,6 +111,14 @@ export function ExternalClientCard({ client, onEdit, onDelete, onTestComplete }:
     }
     if (client.capabilities.supportsVision) {
       badges.push(<Badge key="vision" variant="secondary">Vision</Badge>);
+    }
+    if (client.yoloMode) {
+      badges.push(
+        <Badge key="yolo" variant="destructive" className="text-xs">
+          <Zap className="h-3 w-3 mr-1" />
+          YOLO
+        </Badge>
+      );
     }
     return badges;
   };

@@ -1238,6 +1238,10 @@
           "supportsVision": "Supports Vision",
           "maxTokens": "Max Tokens"
         },
+        "yoloMode": {
+          "label": "YOLO Mode (Skip All Safety Prompts)",
+          "description": "Automatically bypass all confirmation prompts. Use with extreme caution - this can lead to unintended file modifications."
+        },
         "validation": {
           "nameRequired": "Client name is required",
           "executableRequired": "Executable path is required",

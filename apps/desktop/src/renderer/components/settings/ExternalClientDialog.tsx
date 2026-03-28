@@ -77,6 +77,9 @@ export function ExternalClientDialog({
   const [supportsVision, setSupportsVision] = useState(false);
   const [maxTokens, setMaxTokens] = useState<number | undefined>(undefined);
 
+  // YOLO mode state
+  const [yoloMode, setYoloMode] = useState(false);
+
   // Validation state
   const [nameError, setNameError] = useState<string | null>(null);
   const [executableError, setExecutableError] = useState<string | null>(null);
@@ -108,6 +111,7 @@ export function ExternalClientDialog({
         setSupportsStreaming(client.capabilities.supportsStreaming);
         setSupportsVision(client.capabilities.supportsVision);
         setMaxTokens(client.capabilities.maxTokens);
+        setYoloMode(client.yoloMode || false);
       } else {
         // Create mode: reset form
         setName('');
@@ -121,6 +125,7 @@ export function ExternalClientDialog({
         setSupportsStreaming(true);
         setSupportsVision(false);
         setMaxTokens(undefined);
+        setYoloMode(false);
       }
       // Clear validation errors
       setNameError(null);
@@ -224,6 +229,7 @@ export function ExternalClientDialog({
         supportsVision,
         maxTokens,
       },
+      yoloMode,
     };
 
     setIsSaving(true);
@@ -472,6 +478,23 @@ export function ExternalClientDialog({
                   onChange={(e) => setMaxTokens(e.target.value ? parseInt(e.target.value) : undefined)}
                   placeholder="128000"
                 />
+              </div>
+
+              {/* YOLO Mode */}
+              <div className="flex items-start space-x-2 pt-2 border-t border-border">
+                <Checkbox
+                  id="yoloMode"
+                  checked={yoloMode}
+                  onCheckedChange={(c) => setYoloMode(!!c)}
+                />
+                <div className="flex-1">
+                  <Label htmlFor="yoloMode" className="cursor-pointer font-medium">
+                    {t('multiClient.dialog.yoloMode.label')}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('multiClient.dialog.yoloMode.description')}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
