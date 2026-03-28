@@ -212,6 +212,8 @@ export interface MultiPassReviewResult {
   structuralIssues: StructuralIssue[];
   aiTriages: AICommentTriage[];
   scanResult: ScanResult;
+  /** Summary of auto-fix operations for this review */
+  autoFixSummary?: AutoFixSummary;
 }
 
 // =============================================================================
@@ -845,6 +847,57 @@ export function deduplicateFindings(findings: PRReviewFinding[]): PRReviewFindin
 }
 
 /**
+ * Compute auto-fix summary from findings.
+ * Analyzes fixable findings and their current status.
+ */
+export function computeAutoFixSummary(findings: PRReviewFinding[]): AutoFixSummary {
+  const fixableFindings = findings.filter((f) => f.fixable);
+
+  let applied = 0;
+  let pending = 0;
+  let rejected = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  for (const finding of fixableFindings) {
+    switch (finding.autoFixStatus) {
+      case AutoFixStatus.APPLIED:
+        applied++;
+        break;
+      case AutoFixStatus.PENDING:
+        pending++;
+        break;
+      case AutoFixStatus.REJECTED:
+        rejected++;
+        break;
+      case AutoFixStatus.FAILED:
+        failed++;
+        break;
+      case AutoFixStatus.SKIPPED:
+        skipped++;
+        break;
+      default:
+        // No status means not yet attempted
+        pending++;
+        break;
+    }
+  }
+
+  const totalFixable = fixableFindings.length;
+  const successRate = totalFixable > 0 ? applied / totalFixable : 0;
+
+  return {
+    totalFixable,
+    applied,
+    pending,
+    rejected,
+    failed,
+    skipped,
+    successRate,
+  };
+}
+
+/**
  * Run a single review pass and return parsed results.
  */
 export async function runReviewPass(
@@ -1131,10 +1184,17 @@ export async function runMultiPassReview(
     reportProgress('dedup', 90, `Deduplication complete — removed ${removed} duplicate${removed !== 1 ? 's' : ''}, ${uniqueFindings.length} unique findings`);
   }
 
+  // Compute auto-fix summary from findings
+  const autoFixSummary = computeAutoFixSummary(uniqueFindings);
+  if (autoFixSummary.totalFixable > 0) {
+    reportProgress('fix_summary', 92, `Auto-fix summary: ${autoFixSummary.applied}/${autoFixSummary.totalFixable} fixes applied`);
+  }
+
   return {
     findings: uniqueFindings,
     structuralIssues,
     aiTriages,
     scanResult,
+    autoFixSummary,
   };
 }
