@@ -11,6 +11,23 @@ import type {
   MergeableState,
   PRStatusUpdate
 } from '../../../shared/types/pr-status';
+import type {
+  ReviewTemplateConfig,
+  AutoFixSummary,
+  AutoFixStatus
+} from '../../../main/ipc-handlers/github/types';
+
+/**
+ * Fix tracking state for a single finding
+ */
+export interface FixTrackingState {
+  findingId: string;
+  status: AutoFixStatus;
+  suggestedFix: string;
+  appliedAt?: string;
+  errorMessage?: string;
+  verified: boolean;
+}
 
 /**
  * PR review state for a single PR
@@ -38,6 +55,16 @@ interface PRReviewState {
   lastPolled: string | null;
   /** Whether this review was initiated externally (e.g., from PR list) rather than from detail view */
   isExternalReview: boolean;
+  /** Selected template configuration for this review */
+  selectedTemplate: ReviewTemplateConfig | null;
+  /** Fix tracking state for findings - keyed by findingId */
+  fixTracking: Record<string, FixTrackingState>;
+  /** Summary of auto-fix statistics from the last review */
+  fixSummary: AutoFixSummary | null;
+  /** Whether a fix is currently being applied */
+  isApplyingFix: boolean;
+  /** Current fix progress (if a fix is being applied) */
+  fixProgress: { findingId: string; phase: string; progress: number; message: string } | null;
 }
 
 interface PRReviewStoreState {
@@ -61,6 +88,16 @@ interface PRReviewStoreState {
   }) => void;
   /** Clear PR status fields for a specific PR */
   clearPRStatus: (projectId: string, prNumber: number) => void;
+  /** Set the selected template for a PR review */
+  setSelectedTemplate: (projectId: string, prNumber: number, template: ReviewTemplateConfig | null) => void;
+  /** Update fix tracking state for a finding */
+  updateFixTracking: (projectId: string, prNumber: number, findingId: string, state: Partial<FixTrackingState>) => void;
+  /** Set the fix summary from a review result */
+  setFixSummary: (projectId: string, prNumber: number, summary: AutoFixSummary) => void;
+  /** Set fix progress state (when a fix is being applied) */
+  setFixProgress: (projectId: string, prNumber: number, progress: { findingId: string; phase: string; progress: number; message: string } | null) => void;
+  /** Clear all fix-related state for a PR */
+  clearFixState: (projectId: string, prNumber: number) => void;
 
   // Selectors
   getPRReviewState: (projectId: string, prNumber: number) => PRReviewState | null;
@@ -102,6 +139,12 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
         lastPolled: existing?.lastPolled ?? null,
         // Preserve newCommitsCheck unless review completed (it was just reviewed)
         newCommitsCheck: isCompleted ? null : (existing?.newCommitsCheck ?? null),
+        // Preserve template and fix state
+        selectedTemplate: existing?.selectedTemplate ?? null,
+        fixTracking: existing?.fixTracking ?? {},
+        fixSummary: existing?.fixSummary ?? null,
+        isApplyingFix: existing?.isApplyingFix ?? false,
+        fixProgress: existing?.fixProgress ?? null,
       };
 
       return {
@@ -147,6 +190,11 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
           mergeableState: existing?.mergeableState ?? null,
           lastPolled: existing?.lastPolled ?? null,
           isExternalReview: false,
+          selectedTemplate: existing?.selectedTemplate ?? null,
+          fixTracking: existing?.fixTracking ?? {},
+          fixSummary: existing?.fixSummary ?? null,
+          isApplyingFix: existing?.isApplyingFix ?? false,
+          fixProgress: existing?.fixProgress ?? null,
         },
       },
     };
@@ -174,7 +222,12 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
             reviewsStatus: null,
             mergeableState: null,
             lastPolled: null,
-            isExternalReview: false
+            isExternalReview: false,
+            selectedTemplate: null,
+            fixTracking: {},
+            fixSummary: null,
+            isApplyingFix: false,
+            fixProgress: null,
           }
         }
       };
@@ -218,7 +271,12 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
             reviewsStatus: status.reviewsStatus,
             mergeableState: status.mergeableState,
             lastPolled: status.lastPolled,
-            isExternalReview: false
+            isExternalReview: false,
+            selectedTemplate: null,
+            fixTracking: {},
+            fixSummary: null,
+            isApplyingFix: false,
+            fixProgress: null,
           }
         }
       };
@@ -252,6 +310,107 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
           reviewsStatus: null,
           mergeableState: null,
           lastPolled: null
+        }
+      }
+    };
+  }),
+
+  setSelectedTemplate: (projectId: string, prNumber: number, template: ReviewTemplateConfig | null) => set((state) => {
+    const key = `${projectId}:${prNumber}`;
+    const existing = state.prReviews[key];
+    if (!existing) {
+      return state;
+    }
+    return {
+      prReviews: {
+        ...state.prReviews,
+        [key]: {
+          ...existing,
+          selectedTemplate: template
+        }
+      }
+    };
+  }),
+
+  updateFixTracking: (projectId: string, prNumber: number, findingId: string, update: Partial<FixTrackingState>) => set((state) => {
+    const key = `${projectId}:${prNumber}`;
+    const existing = state.prReviews[key];
+    if (!existing) {
+      return state;
+    }
+    const currentFix = existing.fixTracking[findingId];
+    return {
+      prReviews: {
+        ...state.prReviews,
+        [key]: {
+          ...existing,
+          fixTracking: {
+            ...existing.fixTracking,
+            [findingId]: {
+              findingId,
+              status: currentFix?.status ?? 'pending',
+              suggestedFix: currentFix?.suggestedFix ?? '',
+              appliedAt: currentFix?.appliedAt,
+              errorMessage: currentFix?.errorMessage,
+              verified: currentFix?.verified ?? false,
+              ...update
+            }
+          }
+        }
+      }
+    };
+  }),
+
+  setFixSummary: (projectId: string, prNumber: number, summary: AutoFixSummary) => set((state) => {
+    const key = `${projectId}:${prNumber}`;
+    const existing = state.prReviews[key];
+    if (!existing) {
+      return state;
+    }
+    return {
+      prReviews: {
+        ...state.prReviews,
+        [key]: {
+          ...existing,
+          fixSummary: summary
+        }
+      }
+    };
+  }),
+
+  setFixProgress: (projectId: string, prNumber: number, progress: { findingId: string; phase: string; progress: number; message: string } | null) => set((state) => {
+    const key = `${projectId}:${prNumber}`;
+    const existing = state.prReviews[key];
+    if (!existing) {
+      return state;
+    }
+    return {
+      prReviews: {
+        ...state.prReviews,
+        [key]: {
+          ...existing,
+          isApplyingFix: progress !== null,
+          fixProgress: progress
+        }
+      }
+    };
+  }),
+
+  clearFixState: (projectId: string, prNumber: number) => set((state) => {
+    const key = `${projectId}:${prNumber}`;
+    const existing = state.prReviews[key];
+    if (!existing) {
+      return state;
+    }
+    return {
+      prReviews: {
+        ...state.prReviews,
+        [key]: {
+          ...existing,
+          fixTracking: {},
+          fixSummary: null,
+          isApplyingFix: false,
+          fixProgress: null
         }
       }
     };
@@ -338,6 +497,61 @@ export function initializePRReviewListeners(): void {
     }
   );
   cleanupFunctions.push(cleanupStatusUpdate);
+
+  // Listen for PR fix progress updates
+  const cleanupFixProgress = window.electronAPI.github.onPRFixProgress?.(
+    (progress: { prNumber: number; findingId: string; phase: string; progress: number; message: string }) => {
+      store.setFixProgress(progress.prNumber > 0 ? store.prReviews[Object.keys(store.prReviews).find(k => {
+        const pr = store.prReviews[k];
+        return pr.prNumber === progress.prNumber;
+      }) ?? '']?.projectId ?? '' : '', progress.prNumber, {
+        findingId: progress.findingId,
+        phase: progress.phase,
+        progress: progress.progress,
+        message: progress.message
+      });
+    }
+  );
+  if (cleanupFixProgress) {
+    cleanupFunctions.push(cleanupFixProgress);
+  }
+
+  // Listen for PR fix complete updates
+  const cleanupFixComplete = window.electronAPI.github.onPRFixComplete?.(
+    (result: { prNumber: number; findingId: string; success: boolean; status: string; appliedAt?: string; errorMessage?: string }) => {
+      const prReview = Object.values(store.prReviews).find(pr => pr.prNumber === result.prNumber);
+      if (prReview) {
+        store.updateFixTracking(prReview.projectId, result.prNumber, result.findingId, {
+          status: result.status as 'applied' | 'rejected' | 'failed' | 'skipped',
+          appliedAt: result.appliedAt,
+          errorMessage: result.errorMessage,
+          verified: result.success
+        });
+        store.setFixProgress(prReview.projectId, result.prNumber, null);
+      }
+    }
+  );
+  if (cleanupFixComplete) {
+    cleanupFunctions.push(cleanupFixComplete);
+  }
+
+  // Listen for PR fix error updates
+  const cleanupFixError = window.electronAPI.github.onPRFixError?.(
+    (error: { prNumber: number; findingId: string; error: string }) => {
+      const prReview = Object.values(store.prReviews).find(pr => pr.prNumber === error.prNumber);
+      if (prReview) {
+        store.updateFixTracking(prReview.projectId, error.prNumber, error.findingId, {
+          status: 'failed',
+          errorMessage: error.error,
+          verified: false
+        });
+        store.setFixProgress(prReview.projectId, error.prNumber, null);
+      }
+    }
+  );
+  if (cleanupFixError) {
+    cleanupFunctions.push(cleanupFixError);
+  }
 
   prReviewListenersInitialized = true;
 }

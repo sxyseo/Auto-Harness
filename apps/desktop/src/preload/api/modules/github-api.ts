@@ -344,6 +344,20 @@ export interface GitHubAPI {
   onPRStatusUpdate: (
     callback: (update: PRStatusUpdate) => void
   ) => IpcListenerCleanup;
+
+  // PR auto-fix event listeners
+  /** Subscribe to PR fix progress updates */
+  onPRFixProgress: (
+    callback: (progress: { prNumber: number; findingId: string; phase: string; progress: number; message: string }) => void
+  ) => IpcListenerCleanup;
+  /** Subscribe to PR fix complete updates */
+  onPRFixComplete: (
+    callback: (result: { prNumber: number; findingId: string; success: boolean; status: string; appliedAt?: string; errorMessage?: string }) => void
+  ) => IpcListenerCleanup;
+  /** Subscribe to PR fix error updates */
+  onPRFixError: (
+    callback: (error: { prNumber: number; findingId: string; error: string }) => void
+  ) => IpcListenerCleanup;
 }
 
 /**
@@ -844,5 +858,21 @@ export const createGitHubAPI = (): GitHubAPI => ({
   onPRStatusUpdate: (
     callback: (update: PRStatusUpdate) => void
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.GITHUB_PR_STATUS_UPDATE, callback)
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_STATUS_UPDATE, callback),
+
+  // PR auto-fix event listeners
+  onPRFixProgress: (
+    callback: (progress: { prNumber: number; findingId: string; phase: string; progress: number; message: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_FIX_PROGRESS, callback),
+
+  onPRFixComplete: (
+    callback: (result: { prNumber: number; findingId: string; success: boolean; status: string; appliedAt?: string; errorMessage?: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_FIX_COMPLETE, callback),
+
+  onPRFixError: (
+    callback: (error: { prNumber: number; findingId: string; error: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_FIX_ERROR, callback)
 });
