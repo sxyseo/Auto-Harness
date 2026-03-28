@@ -104,6 +104,10 @@ export interface PRReviewFinding {
   sourceAgents?: string[];
   /** Whether multiple specialists flagged the same location */
   crossValidated?: boolean;
+  /** Current status of any auto-fix for this finding */
+  autoFixStatus?: AutoFixStatus;
+  /** ID of the auto-fix attempt for this finding */
+  autoFixAttemptId?: string;
 }
 
 /** Triage result for an AI tool comment. */
@@ -208,6 +212,110 @@ export interface MultiPassReviewResult {
   structuralIssues: StructuralIssue[];
   aiTriages: AICommentTriage[];
   scanResult: ScanResult;
+}
+
+// =============================================================================
+// Auto-Fix Types
+// =============================================================================
+
+/** Status of an auto-fix for a finding. */
+export const AutoFixStatus = {
+  /** Fix has not been applied yet */
+  PENDING: 'pending',
+  /** Fix was applied successfully */
+  APPLIED: 'applied',
+  /** Fix was rejected by user */
+  REJECTED: 'rejected',
+  /** Fix was attempted but failed */
+  FAILED: 'failed',
+  /** Fix was skipped */
+  SKIPPED: 'skipped',
+} as const;
+
+export type AutoFixStatus = (typeof AutoFixStatus)[keyof typeof AutoFixStatus];
+
+/** Represents a single attempt to apply a fix to a finding. */
+export interface AutoFixAttempt {
+  /** Unique identifier for this attempt */
+  attemptId: string;
+  /** ID of the finding this fix is for */
+  findingId: string;
+  /** The generated fix code/patch */
+  fixCode: string;
+  /** When the fix was generated */
+  generatedAt: string;
+  /** When the fix was applied (if applied) */
+  appliedAt?: string;
+  /** Status of the fix attempt */
+  status: AutoFixStatus;
+  /** Error message if the fix failed */
+  errorMessage?: string;
+  /** Whether the fix was verified after application */
+  verified: boolean;
+  /** Notes from verification */
+  verificationNote?: string;
+}
+
+/** Result of applying an auto-fix to a finding. */
+export interface AutoFixResult {
+  /** ID of the finding that was fixed */
+  findingId: string;
+  /** Whether the fix was successful */
+  success: boolean;
+  /** Status of the fix */
+  status: AutoFixStatus;
+  /** The applied fix code */
+  appliedFix?: string;
+  /** Git commit SHA if fix was committed */
+  commitSha?: string;
+  /** Error message if the fix failed */
+  errorMessage?: string;
+  /** Branch name where fix was applied */
+  branchName?: string;
+  /** Timestamp when fix was applied */
+  appliedAt?: string;
+  /** Verification status */
+  verified: boolean;
+  /** Human-readable explanation of what was done */
+  summary: string;
+}
+
+/** Request to apply an auto-fix to a finding. */
+export interface AutoFixRequest {
+  /** ID of the finding to fix */
+  findingId: string;
+  /** The suggested fix from the review */
+  suggestedFix: string;
+  /** File path to apply the fix to */
+  file: string;
+  /** Line number where the fix should be applied */
+  line: number;
+  /** End line if the fix spans multiple lines */
+  endLine?: number;
+  /** Optional: specific code context for the fix */
+  context?: string;
+  /** Whether to create a commit for this fix */
+  createCommit?: boolean;
+  /** Optional: branch name for the fix (defaults to creating a new branch) */
+  branchName?: string;
+}
+
+/** Summary of auto-fix operations for a review. */
+export interface AutoFixSummary {
+  /** Total fixable findings */
+  totalFixable: number;
+  /** Fixes that have been applied */
+  applied: number;
+  /** Fixes that are still pending */
+  pending: number;
+  /** Fixes that were rejected */
+  rejected: number;
+  /** Fixes that failed */
+  failed: number;
+  /** Fixes that were skipped */
+  skipped: number;
+  /** Overall success rate */
+  successRate: number;
 }
 
 // =============================================================================
