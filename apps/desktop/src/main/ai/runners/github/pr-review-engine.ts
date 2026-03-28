@@ -211,6 +211,71 @@ export interface MultiPassReviewResult {
 }
 
 // =============================================================================
+// Review Template Types
+// =============================================================================
+
+/** Types of review templates available. */
+export const ReviewTemplateType = {
+  /** Full comprehensive review covering all aspects */
+  COMPREHENSIVE: 'comprehensive',
+  /** Quick review for small, low-risk changes */
+  QUICK: 'quick',
+  /** Security-focused review */
+  SECURITY: 'security',
+  /** Quality and maintainability focused review */
+  QUALITY: 'quality',
+  /** Architecture and structural review */
+  ARCHITECTURE: 'architecture',
+  /** Review focused on test coverage */
+  TEST_COVERAGE: 'test_coverage',
+  /** Review for documentation changes */
+  DOCUMENTATION: 'documentation',
+} as const;
+
+export type ReviewTemplateType = (typeof ReviewTemplateType)[keyof typeof ReviewTemplateType];
+
+/** A single pass configuration within a template. */
+export interface TemplatePassConfig {
+  pass: ReviewPass;
+  enabled: boolean;
+  weight?: number;
+  maxFindings?: number;
+  timeoutMs?: number;
+}
+
+/** Review template definition with configuration. */
+export interface ReviewTemplate {
+  id: string;
+  name: string;
+  description: string;
+  type: ReviewTemplateType;
+  /** Which passes to run and their configuration */
+  passes: TemplatePassConfig[];
+  /** Whether to enable parallel execution */
+  parallel: boolean;
+  /** Priority threshold for including findings */
+  minSeverity?: ReviewSeverity;
+  /** Maximum total findings to report */
+  maxTotalFindings?: number;
+  /** Whether to include structural analysis */
+  includeStructural?: boolean;
+  /** Whether to include AI comment triage */
+  includeAITriage?: boolean;
+  /** Tags for categorization */
+  tags?: string[];
+  /** Is this a built-in template or user-defined */
+  builtin: boolean;
+}
+
+/** Configuration for applying a template. */
+export interface ReviewTemplateConfig {
+  templateType?: ReviewTemplateType;
+  customTemplate?: ReviewTemplate;
+  overrides?: Partial<TemplatePassConfig>;
+  skipPasses?: ReviewPass[];
+}
+
+// =============================================================================
 // Review Pass Prompts
 // =============================================================================
 
