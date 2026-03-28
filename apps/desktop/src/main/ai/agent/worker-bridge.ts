@@ -14,7 +14,6 @@ import { Worker } from 'worker_threads';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
-import { app } from 'electron';
 
 import type { AgentManagerEvents, ExecutionProgressData, ProcessType } from '../../agent/types';
 import type { TaskEventPayload } from '../../agent/task-event-schema';
@@ -37,9 +36,18 @@ const __dirname = path.dirname(__filename);
 /**
  * Resolve the path to the worker entry point.
  * Handles both dev (source via electron-vite) and production (bundled) paths.
+ *
+ * NOTE: Cannot use 'app.isPackaged' here because Worker threads may not have
+ * access to all Electron APIs. Use process.resourcesPath as a heuristic instead.
  */
 function resolveWorkerPath(): string {
-  if (app.isPackaged) {
+  // In production, process.resourcesPath points to the app's resources directory
+  // In dev, it typically points to a different location
+  const isProduction = process.resourcesPath.includes('app.asar') ||
+                       process.resourcesPath.includes('electron-app.asar') ||
+                       !process.resourcesPath.includes('node_modules');
+
+  if (isProduction) {
     // Production: worker is inside app.asar at out/main/ai/agent/worker.js
     return path.join(process.resourcesPath, 'app.asar', 'out', 'main', 'ai', 'agent', 'worker.js');
   }
