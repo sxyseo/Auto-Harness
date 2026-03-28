@@ -276,6 +276,195 @@ export interface ReviewTemplateConfig {
 }
 
 // =============================================================================
+// Built-in Template Definitions
+// =============================================================================
+
+/** Built-in review templates for different review scenarios */
+export const BUILT_IN_TEMPLATES: Record<ReviewTemplateType, ReviewTemplate> = {
+  [ReviewTemplateType.COMPREHENSIVE]: {
+    id: 'comprehensive',
+    name: 'Comprehensive Review',
+    description: 'Full review covering all aspects: security, quality, architecture, and deep analysis',
+    type: ReviewTemplateType.COMPREHENSIVE,
+    passes: [
+      { pass: ReviewPass.QUICK_SCAN, enabled: true },
+      { pass: ReviewPass.SECURITY, enabled: true },
+      { pass: ReviewPass.QUALITY, enabled: true },
+      { pass: ReviewPass.DEEP_ANALYSIS, enabled: true },
+      { pass: ReviewPass.STRUCTURAL, enabled: true },
+      { pass: ReviewPass.AI_COMMENT_TRIAGE, enabled: true },
+    ],
+    parallel: true,
+    minSeverity: ReviewSeverity.LOW,
+    includeStructural: true,
+    includeAITriage: true,
+    tags: ['security', 'quality', 'architecture'],
+    builtin: true,
+  },
+  [ReviewTemplateType.QUICK]: {
+    id: 'quick',
+    name: 'Quick Review',
+    description: 'Fast review for small, low-risk changes with minimal passes',
+    type: ReviewTemplateType.QUICK,
+    passes: [
+      { pass: ReviewPass.QUICK_SCAN, enabled: true },
+      { pass: ReviewPass.SECURITY, enabled: false },
+      { pass: ReviewPass.QUALITY, enabled: true },
+      { pass: ReviewPass.DEEP_ANALYSIS, enabled: false },
+      { pass: ReviewPass.STRUCTURAL, enabled: false },
+      { pass: ReviewPass.AI_COMMENT_TRIAGE, enabled: false },
+    ],
+    parallel: true,
+    minSeverity: ReviewSeverity.MEDIUM,
+    includeStructural: false,
+    includeAITriage: false,
+    tags: ['quick', 'low-risk'],
+    builtin: true,
+  },
+  [ReviewTemplateType.SECURITY]: {
+    id: 'security',
+    name: 'Security Review',
+    description: 'Focused security review covering OWASP Top 10 and language-specific security checks',
+    type: ReviewTemplateType.SECURITY,
+    passes: [
+      { pass: ReviewPass.QUICK_SCAN, enabled: true },
+      { pass: ReviewPass.SECURITY, enabled: true, weight: 2 },
+      { pass: ReviewPass.QUALITY, enabled: true },
+      { pass: ReviewPass.DEEP_ANALYSIS, enabled: false },
+      { pass: ReviewPass.STRUCTURAL, enabled: true },
+      { pass: ReviewPass.AI_COMMENT_TRIAGE, enabled: false },
+    ],
+    parallel: true,
+    minSeverity: ReviewSeverity.LOW,
+    includeStructural: true,
+    includeAITriage: false,
+    tags: ['security', 'owasp'],
+    builtin: true,
+  },
+  [ReviewTemplateType.QUALITY]: {
+    id: 'quality',
+    name: 'Quality & Maintainability Review',
+    description: 'Code quality and maintainability review focusing on best practices',
+    type: ReviewTemplateType.QUALITY,
+    passes: [
+      { pass: ReviewPass.QUICK_SCAN, enabled: true },
+      { pass: ReviewPass.SECURITY, enabled: false },
+      { pass: ReviewPass.QUALITY, enabled: true, weight: 2 },
+      { pass: ReviewPass.DEEP_ANALYSIS, enabled: true },
+      { pass: ReviewPass.STRUCTURAL, enabled: true },
+      { pass: ReviewPass.AI_COMMENT_TRIAGE, enabled: false },
+    ],
+    parallel: true,
+    minSeverity: ReviewSeverity.LOW,
+    includeStructural: true,
+    includeAITriage: false,
+    tags: ['quality', 'maintainability'],
+    builtin: true,
+  },
+  [ReviewTemplateType.ARCHITECTURE]: {
+    id: 'architecture',
+    name: 'Architecture Review',
+    description: 'Focus on architectural decisions, design patterns, and system design',
+    type: ReviewTemplateType.ARCHITECTURE,
+    passes: [
+      { pass: ReviewPass.QUICK_SCAN, enabled: true },
+      { pass: ReviewPass.SECURITY, enabled: false },
+      { pass: ReviewPass.QUALITY, enabled: false },
+      { pass: ReviewPass.DEEP_ANALYSIS, enabled: true },
+      { pass: ReviewPass.STRUCTURAL, enabled: true, weight: 2 },
+      { pass: ReviewPass.AI_COMMENT_TRIAGE, enabled: false },
+    ],
+    parallel: true,
+    minSeverity: ReviewSeverity.MEDIUM,
+    includeStructural: true,
+    includeAITriage: false,
+    tags: ['architecture', 'design'],
+    builtin: true,
+  },
+  [ReviewTemplateType.TEST_COVERAGE]: {
+    id: 'test_coverage',
+    name: 'Test Coverage Review',
+    description: 'Review focused on test coverage and testing best practices',
+    type: ReviewTemplateType.TEST_COVERAGE,
+    passes: [
+      { pass: ReviewPass.QUICK_SCAN, enabled: true },
+      { pass: ReviewPass.SECURITY, enabled: false },
+      { pass: ReviewPass.QUALITY, enabled: true },
+      { pass: ReviewPass.DEEP_ANALYSIS, enabled: false },
+      { pass: ReviewPass.STRUCTURAL, enabled: false },
+      { pass: ReviewPass.AI_COMMENT_TRIAGE, enabled: false },
+    ],
+    parallel: true,
+    minSeverity: ReviewSeverity.LOW,
+    includeStructural: false,
+    includeAITriage: false,
+    tags: ['testing', 'coverage'],
+    builtin: true,
+  },
+  [ReviewTemplateType.DOCUMENTATION]: {
+    id: 'documentation',
+    name: 'Documentation Review',
+    description: 'Review for documentation completeness and clarity',
+    type: ReviewTemplateType.DOCUMENTATION,
+    passes: [
+      { pass: ReviewPass.QUICK_SCAN, enabled: true },
+      { pass: ReviewPass.SECURITY, enabled: false },
+      { pass: ReviewPass.QUALITY, enabled: true },
+      { pass: ReviewPass.DEEP_ANALYSIS, enabled: false },
+      { pass: ReviewPass.STRUCTURAL, enabled: false },
+      { pass: ReviewPass.AI_COMMENT_TRIAGE, enabled: false },
+    ],
+    parallel: true,
+    minSeverity: ReviewSeverity.LOW,
+    includeStructural: false,
+    includeAITriage: false,
+    tags: ['docs', 'documentation'],
+    builtin: true,
+  },
+};
+
+/**
+ * Get the effective template configuration based on the provided config.
+ * Resolves template type to built-in template or uses custom template.
+ */
+export function getEffectiveTemplate(templateConfig?: ReviewTemplateConfig): ReviewTemplate {
+  if (templateConfig?.customTemplate) {
+    return templateConfig.customTemplate;
+  }
+
+  const templateType = templateConfig?.templateType ?? ReviewTemplateType.COMPREHENSIVE;
+  return BUILT_IN_TEMPLATES[templateType];
+}
+
+/**
+ * Get enabled passes from a template configuration.
+ * Respects skipPasses and applies any overrides.
+ */
+export function getEnabledPasses(
+  template: ReviewTemplate,
+  templateConfig?: ReviewTemplateConfig,
+): ReviewPass[] {
+  const skipPasses = new Set(templateConfig?.skipPasses ?? []);
+  const overrides = templateConfig?.overrides ?? {};
+
+  return template.passes
+    .filter((p) => {
+      if (p.pass === ReviewPass.QUICK_SCAN) return true;
+      if (!p.enabled) return false;
+      if (skipPasses.has(p.pass)) return false;
+      return true;
+    })
+    .map((p) => {
+      if (overrides.enabled !== undefined) {
+        return { ...p, enabled: overrides.enabled };
+      }
+      return p;
+    })
+    .filter((p) => p.enabled || p.pass === ReviewPass.QUICK_SCAN)
+    .map((p) => p.pass);
+}
+
+// =============================================================================
 // Review Pass Prompts
 // =============================================================================
 
@@ -688,58 +877,103 @@ async function runAITriagePass(
  * Run multi-pass PR review for comprehensive analysis.
  *
  * Pass 1 (quick scan) runs first to determine complexity,
- * then remaining passes run in parallel.
+ * then remaining passes run in parallel based on template configuration.
+ *
+ * @param context - PR context with all review information
+ * @param config - Base engine configuration
+ * @param progressCallback - Optional callback for progress updates
+ * @param templateConfig - Optional template configuration to select which passes to run
  */
 export async function runMultiPassReview(
   context: PRContext,
   config: PRReviewEngineConfig,
   progressCallback?: ProgressCallback,
+  templateConfig?: ReviewTemplateConfig,
 ): Promise<MultiPassReviewResult> {
   const reportProgress = (phase: string, progress: number, message: string) => {
     progressCallback?.({ phase, progress, message, prNumber: context.prNumber });
   };
 
-  // Pass 1: Quick Scan
-  reportProgress('quick_scan', 35, 'Pass 1/6: Quick Scan...');
+  // Get effective template configuration
+  const template = getEffectiveTemplate(templateConfig);
+  const enabledPasses = getEnabledPasses(template, templateConfig);
+
+  // Quick scan is always run first regardless of template
+  reportProgress('quick_scan', 35, `Quick Scan (using ${template.name})...`);
   const scanResult = (await runReviewPass(ReviewPass.QUICK_SCAN, context, config)) as ScanResult;
   const quickVerdict = scanResult.verdict ?? 'no issues';
   reportProgress('quick_scan', 40, `Quick Scan complete — verdict: ${quickVerdict}`);
 
   const needsDeep = needsDeepAnalysis(scanResult, context);
-  const hasAIComments = context.aiBotComments.length > 0;
+  const hasAIComments = context.aiBotComments.length > 0 && enabledPasses.includes(ReviewPass.AI_COMMENT_TRIAGE);
 
-  // Determine which parallel passes will run
-  const passNames = ['Security', 'Quality', 'Structural'];
-  if (hasAIComments) passNames.push('AI Triage');
-  if (needsDeep) passNames.push('Deep Analysis');
+  // Filter enabled passes based on template (excluding quick scan which already ran)
+  const analysisPasses = enabledPasses.filter((p) => p !== ReviewPass.QUICK_SCAN);
+
+  // Add deep analysis if needed and not explicitly disabled by template
+  const shouldRunDeep = needsDeep && !template.passes.find((p) => p.pass === ReviewPass.DEEP_ANALYSIS && !p.enabled);
+
+  // Build human-readable pass names for progress reporting
+  const passNameMap: Record<ReviewPass, string> = {
+    [ReviewPass.SECURITY]: 'Security',
+    [ReviewPass.QUALITY]: 'Quality',
+    [ReviewPass.DEEP_ANALYSIS]: 'Deep Analysis',
+    [ReviewPass.STRUCTURAL]: 'Structural',
+    [ReviewPass.AI_COMMENT_TRIAGE]: 'AI Triage',
+    [ReviewPass.QUICK_SCAN]: 'Quick Scan',
+  };
+
+  const passNames = analysisPasses.map((p) => passNameMap[p]);
+  if (shouldRunDeep && !passNames.includes('Deep Analysis')) {
+    passNames.push('Deep Analysis');
+  }
+
   reportProgress('analyzing', 45, `Running ${passNames.join(', ')} in parallel...`);
 
-  // Build parallel tasks — each reports its own start/completion
-  const tasks: Array<Promise<{ type: string; data: unknown }>> = [
-    (async () => {
-      reportProgress('security', 50, 'Security analysis started...');
-      const data = await runReviewPass(ReviewPass.SECURITY, context, config);
-      const count = (data as PRReviewFinding[]).length;
-      reportProgress('security', 60, `Security analysis complete — ${count} finding${count !== 1 ? 's' : ''}`);
-      return { type: 'findings', data };
-    })(),
-    (async () => {
-      reportProgress('quality', 50, 'Quality analysis started...');
-      const data = await runReviewPass(ReviewPass.QUALITY, context, config);
-      const count = (data as PRReviewFinding[]).length;
-      reportProgress('quality', 60, `Quality analysis complete — ${count} finding${count !== 1 ? 's' : ''}`);
-      return { type: 'findings', data };
-    })(),
-    (async () => {
-      reportProgress('structural', 50, 'Structural analysis started...');
-      const data = await runStructuralPass(context, config);
-      const count = (data as StructuralIssue[]).length;
-      reportProgress('structural', 60, `Structural analysis complete — ${count} issue${count !== 1 ? 's' : ''}`);
-      return { type: 'structural', data };
-    })(),
-  ];
+  // Build parallel tasks based on enabled passes
+  const tasks: Array<Promise<{ type: string; data: unknown }>> = [];
 
-  if (hasAIComments) {
+  // Security pass
+  if (analysisPasses.includes(ReviewPass.SECURITY)) {
+    tasks.push(
+      (async () => {
+        reportProgress('security', 50, 'Security analysis started...');
+        const data = await runReviewPass(ReviewPass.SECURITY, context, config);
+        const count = (data as PRReviewFinding[]).length;
+        reportProgress('security', 60, `Security analysis complete — ${count} finding${count !== 1 ? 's' : ''}`);
+        return { type: 'findings', data };
+      })(),
+    );
+  }
+
+  // Quality pass
+  if (analysisPasses.includes(ReviewPass.QUALITY)) {
+    tasks.push(
+      (async () => {
+        reportProgress('quality', 50, 'Quality analysis started...');
+        const data = await runReviewPass(ReviewPass.QUALITY, context, config);
+        const count = (data as PRReviewFinding[]).length;
+        reportProgress('quality', 60, `Quality analysis complete — ${count} finding${count !== 1 ? 's' : ''}`);
+        return { type: 'findings', data };
+      })(),
+    );
+  }
+
+  // Structural pass
+  if (analysisPasses.includes(ReviewPass.STRUCTURAL) || template.includeStructural) {
+    tasks.push(
+      (async () => {
+        reportProgress('structural', 50, 'Structural analysis started...');
+        const data = await runStructuralPass(context, config);
+        const count = (data as StructuralIssue[]).length;
+        reportProgress('structural', 60, `Structural analysis complete — ${count} issue${count !== 1 ? 's' : ''}`);
+        return { type: 'structural', data };
+      })(),
+    );
+  }
+
+  // AI Comment Triage pass
+  if (hasAIComments && (analysisPasses.includes(ReviewPass.AI_COMMENT_TRIAGE) || template.includeAITriage)) {
     tasks.push(
       (async () => {
         reportProgress('analyzing', 50, `AI Comment Triage started (${context.aiBotComments.length} comments)...`);
@@ -751,7 +985,8 @@ export async function runMultiPassReview(
     );
   }
 
-  if (needsDeep) {
+  // Deep analysis pass (conditionally added if needed)
+  if (shouldRunDeep || analysisPasses.includes(ReviewPass.DEEP_ANALYSIS)) {
     tasks.push(
       (async () => {
         reportProgress('deep_analysis', 50, 'Deep analysis started...');
