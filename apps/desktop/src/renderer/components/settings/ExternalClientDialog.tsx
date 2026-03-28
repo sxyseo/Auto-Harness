@@ -139,9 +139,15 @@ export function ExternalClientDialog({
     const timer = setTimeout(async () => {
       setIsValidatingPath(true);
       try {
-        // TODO: Add IPC handler for path validation
-        // For now, just check if path is not empty
-        setPathValid(executable.length > 0);
+        const result = await window.electronAPI.validateExecutablePath(executable);
+        if (result.success && result.data) {
+          setPathValid(result.data.valid);
+          if (!result.data.valid) {
+            setExecutableError(result.data.error || null);
+          }
+        } else {
+          setPathValid(false);
+        }
       } catch {
         setPathValid(false);
       } finally {
@@ -251,13 +257,12 @@ export function ExternalClientDialog({
    */
   const handleBrowse = async () => {
     try {
-      // TODO: Add IPC handler for file picker
-      // For now, user must type path manually
-      toast({
-        title: 'File picker',
-        description: 'Please enter the executable path manually',
-      });
+      const result = await window.electronAPI.selectExecutableFile();
+      if (result.success && result.data) {
+        setExecutable(result.data);
+      }
     } catch {
+      // User cancelled or error
       // Ignore
     }
   };

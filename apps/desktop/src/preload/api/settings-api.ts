@@ -45,6 +45,11 @@ export interface SettingsAPI {
   testProviderConnection: (provider: string, config: any) => Promise<IPCResult<{ success: boolean; error?: string }>>;
   checkEnvCredentials: () => Promise<IPCResult<Record<string, boolean>>>;
 
+  // External CLI Client management (multi-client orchestration)
+  selectExecutableFile: () => Promise<IPCResult<string | null>>;
+  validateExecutablePath: (path: string) => Promise<IPCResult<{ valid: boolean; error?: string }>>;
+  testExternalClientConnection: (config: { executable: string; args?: string[]; env?: Record<string, string> }) => Promise<IPCResult<{ success: boolean; error?: string; version?: string }>>;
+
   // Codex OAuth authentication
   codexAuthLogin: () => Promise<{ success: boolean; data?: { accessToken: string; refreshToken: string; expiresAt: number; email?: string }; error?: string }>;
   codexAuthStatus: () => Promise<{ success: boolean; data?: { isAuthenticated: boolean; expiresAt?: number }; error?: string }>;
@@ -111,6 +116,14 @@ export const createSettingsAPI = (): SettingsAPI => ({
     ipcRenderer.invoke(IPC_CHANNELS.PROVIDER_ACCOUNTS_TEST_CONNECTION, provider, config),
   checkEnvCredentials: (): Promise<IPCResult<Record<string, boolean>>> =>
     ipcRenderer.invoke(IPC_CHANNELS.PROVIDER_ACCOUNTS_CHECK_ENV),
+
+  // External CLI Client management (multi-client orchestration)
+  selectExecutableFile: (): Promise<IPCResult<string | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXTERNAL_CLIENT_SELECT_FILE),
+  validateExecutablePath: (path: string): Promise<IPCResult<{ valid: boolean; error?: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXTERNAL_CLIENT_VALIDATE_PATH, path),
+  testExternalClientConnection: (config: { executable: string; args?: string[]; env?: Record<string, string> }): Promise<IPCResult<{ success: boolean; error?: string; version?: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXTERNAL_CLIENT_TEST_CONNECTION, config),
 
   // Codex OAuth authentication
   codexAuthLogin: () =>

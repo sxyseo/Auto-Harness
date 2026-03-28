@@ -1306,6 +1306,13 @@
         "allPhasesAssigned": "Toutes les phases ont des clients assignés",
         "missingAssignments": "Assignations manquantes : {{phases}}",
         "invalidReferences": "Références de client invalides détectées"
+      },
+      "connectionTest": {
+        "title": "Tester la connexion",
+        "testing": "Test en cours...",
+        "success": "Connexion réussie",
+        "failed": "Échec de la connexion",
+        "version": "Version"
       }
     }
   }

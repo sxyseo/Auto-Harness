@@ -175,6 +175,11 @@ export const IPC_CHANNELS = {
   PROVIDER_ACCOUNTS_CHECK_ENV: 'provider-accounts:check-env',
   MODEL_OVERRIDES_SAVE: 'model-overrides:save',
 
+  // External CLI Client management (multi-client orchestration)
+  EXTERNAL_CLIENT_SELECT_FILE: 'external-client:selectFile',
+  EXTERNAL_CLIENT_VALIDATE_PATH: 'external-client:validatePath',
+  EXTERNAL_CLIENT_TEST_CONNECTION: 'external-client:test-connection',
+
   // Dialogs
   DIALOG_SELECT_DIRECTORY: 'dialog:selectDirectory',
   DIALOG_CREATE_PROJECT_FOLDER: 'dialog:createProjectFolder',

@@ -7,6 +7,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Badge } from '../ui/badge';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { ClientReference } from '@shared/types/client-config';
 
@@ -27,7 +28,7 @@ interface ClientSelectorProps {
  */
 export function ClientSelector({ value, onChange, phase }: ClientSelectorProps) {
   const { t } = useTranslation('settings');
-  const { providerAccounts } = useSettingsStore();
+  const { providerAccounts, externalCliClients } = useSettingsStore();
 
   // Group provider accounts by provider
   const groupedProviders = providerAccounts.reduce((acc, account) => {
@@ -43,7 +44,11 @@ export function ClientSelector({ value, onChange, phase }: ClientSelectorProps) 
    */
   const getClientLabel = (clientRef: ClientReference): string => {
     if (clientRef.type === 'cli') {
-      // TODO: Look up CLI client name
+      // Look up CLI client name
+      const client = externalCliClients.find((c) => c.id === clientRef.cliId);
+      if (client) {
+        return client.name;
+      }
       return `CLI: ${clientRef.cliId}`;
     }
     return `${clientRef.provider} - ${clientRef.modelId}`;
@@ -113,10 +118,26 @@ export function ClientSelector({ value, onChange, phase }: ClientSelectorProps) 
           {t('multiClient.phaseMapping.clientSelector.cliSection')}
         </div>
 
-        {/* TODO: Add external CLI clients */}
-        <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-          External CLI clients will appear here
-        </div>
+        {externalCliClients.length === 0 ? (
+          <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+            {t('multiClient.phaseMapping.clientSelector.noCliClients')}
+          </div>
+        ) : (
+          externalCliClients.map((client) => (
+            <SelectItem key={client.id} value={`cli:${client.id}`}>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{client.name}</span>
+                <Badge variant="outline" className="text-xs">
+                  {client.type === 'codex'
+                    ? t('multiClient.externalClients.types.codex')
+                    : client.type === 'claude-code'
+                      ? t('multiClient.externalClients.types.claude-code')
+                      : t('multiClient.externalClients.types.custom')}
+                </Badge>
+              </div>
+            </SelectItem>
+          ))
+        )}
       </SelectContent>
     </Select>
   );

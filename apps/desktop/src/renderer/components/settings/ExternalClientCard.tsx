@@ -5,10 +5,12 @@
  * Follows the pattern of ProviderAccountCard.
  */
 
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Edit, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Edit, Trash2, CheckCircle2, AlertCircle, Loader2, Plug } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { useToast } from '../../hooks/use-toast';
 import type { ExternalClientConfig } from '@shared/types/client-config';
 
 interface ExternalClientCardProps {
@@ -18,16 +20,23 @@ interface ExternalClientCardProps {
   onEdit: () => void;
   /** Callback when delete button is clicked */
   onDelete: () => void;
+  /** Optional callback when test connection completes */
+  onTestComplete?: (success: boolean) => void;
 }
 
 /**
  * ExternalClientCard component
  *
  * Displays client name, type, executable path, and capabilities.
- * Provides quick access to edit and delete actions.
+ * Provides quick access to edit, delete, and test connection actions.
  */
-export function ExternalClientCard({ client, onEdit, onDelete }: ExternalClientCardProps) {
+export function ExternalClientCard({ client, onEdit, onDelete, onTestComplete }: ExternalClientCardProps) {
   const { t } = useTranslation('settings');
+  const { toast } = useToast();
+
+  // Connection test state
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; version?: string } | null>(null);
 
   // Get CLI type display name
   const getTypeLabel = () => {
@@ -40,6 +49,51 @@ export function ExternalClientCard({ client, onEdit, onDelete }: ExternalClientC
         return t('multiClient.externalClients.types.custom');
       default:
         return client.type;
+    }
+  };
+
+  /**
+   * Handle test connection button click
+   */
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      const result = await window.electronAPI.testExternalClientConnection({
+        executable: client.executable,
+        args: client.args,
+        env: client.env,
+      });
+
+      if (result.success && result.data) {
+        const success = result.data.success;
+        setTestResult({ success, version: result.data.version });
+
+        if (success) {
+          toast({
+            title: t('multiClient.clientCard.valid'),
+            description: result.data.version ? `Version: ${result.data.version}` : undefined,
+          });
+        } else {
+          toast({
+            title: t('multiClient.clientCard.invalid'),
+            description: result.data.error,
+            variant: 'destructive',
+          });
+        }
+
+        onTestComplete?.(success);
+      }
+    } catch {
+      toast({
+        title: t('multiClient.clientCard.invalid'),
+        description: 'Failed to test connection',
+        variant: 'destructive',
+      });
+      setTestResult({ success: false });
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -69,12 +123,41 @@ export function ExternalClientCard({ client, onEdit, onDelete }: ExternalClientC
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-semibold text-foreground">{client.name}</h4>
             <Badge variant="outline">{getTypeLabel()}</Badge>
+            {testResult && (
+              <Badge variant={testResult.success ? 'default' : 'destructive'} className="text-xs">
+                {testResult.success ? (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    {testResult.version || 'Connected'}
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Failed
+                  </>
+                )}
+              </Badge>
+            )}
           </div>
           {client.description && (
             <p className="text-xs text-muted-foreground mt-1">{client.description}</p>
           )}
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleTestConnection}
+            disabled={isTesting}
+            aria-label={t('multiClient.clientCard.validate')}
+          >
+            {isTesting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plug className="h-4 w-4" />
+            )}
+          </Button>
           <Button
             type="button"
             variant="ghost"
