@@ -48,6 +48,10 @@
     "terminal-fonts": {
       "title": "Terminal Fonts",
       "description": "Customize terminal font appearance"
+    },
+    "multiClient": {
+      "title": "Multi-Client Orchestration",
+      "description": "Configure different AI clients for each pipeline phase"
     }
   },
   "apiProfiles": {
@@ -1183,6 +1187,125 @@
       "error": {
         "title": "Failed to save provider settings",
         "description": "An error occurred while saving your provider configuration."
+      }
+    },
+    "multiClient": {
+      "toggle": {
+        "label": "Enable Multi-Client Mode",
+        "description": "Use different AI clients for each phase of the pipeline"
+      },
+      "externalClients": {
+        "title": "External CLI Clients",
+        "description": "Configure external CLI tools like CodeX or custom CLIs",
+        "addButton": "Add CLI Client",
+        "empty": "No external CLI clients configured",
+        "emptyDescription": "Add external CLI tools to use them in your pipeline phases",
+        "types": {
+          "codex": "OpenAI Codex",
+          "claude-code": "Claude Code CLI",
+          "custom": "Custom CLI"
+        }
+      },
+      "clientCard": {
+        "edit": "Edit client",
+        "delete": "Delete client",
+        "validate": "Validate executable",
+        "validating": "Checking...",
+        "valid": "Executable found",
+        "invalid": "Executable not found"
+      },
+      "dialog": {
+        "addTitle": "Add External CLI Client",
+        "editTitle": "Edit CLI Client",
+        "description": "Configure an external CLI tool to use in your pipeline",
+        "fields": {
+          "name": "Client Name",
+          "namePlaceholder": "My CodeX CLI",
+          "type": "CLI Type",
+          "executable": "Executable Path",
+          "executablePlaceholder": "/usr/local/bin/codex",
+          "args": "Arguments",
+          "argsPlaceholder": "--arg1 --arg2",
+          "envVars": "Environment Variables",
+          "description": "Description",
+          "descriptionPlaceholder": "Optional description"
+        },
+        "capabilities": {
+          "title": "Capabilities",
+          "supportsTools": "Supports Tool Use",
+          "supportsThinking": "Supports Thinking Tokens",
+          "supportsStreaming": "Supports Streaming",
+          "supportsVision": "Supports Vision",
+          "maxTokens": "Max Tokens"
+        },
+        "validation": {
+          "nameRequired": "Client name is required",
+          "executableRequired": "Executable path is required",
+          "executableNotFound": "Executable not found at specified path",
+          "duplicateName": "A client with this name already exists"
+        },
+        "actions": {
+          "save": "Save Client",
+          "cancel": "Cancel",
+          "browse": "Browse..."
+        },
+        "delete": {
+          "title": "Delete CLI Client?",
+          "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+          "inUseWarning": "This client is assigned to the following phases: {{phases}}. Those phases will be reset to use the default provider.",
+          "confirm": "Delete",
+          "cancel": "Cancel"
+        },
+        "toast": {
+          "created": "CLI client created",
+          "updated": "CLI client updated",
+          "deleted": "CLI client deleted",
+          "error": "Failed to save CLI client"
+        }
+      },
+      "phaseMapping": {
+        "title": "Phase Client Assignment",
+        "description": "Choose which client handles each pipeline phase",
+        "phases": {
+          "spec": {
+            "label": "Spec Creation",
+            "description": "Discovery, requirements, context gathering"
+          },
+          "planning": {
+            "label": "Planning",
+            "description": "Implementation planning and architecture"
+          },
+          "coding": {
+            "label": "Coding",
+            "description": "Code implementation"
+          },
+          "qa": {
+            "label": "QA Review",
+            "description": "Quality assurance and validation"
+          }
+        },
+        "clientSelector": {
+          "placeholder": "Select a client",
+          "providerSection": "Provider Accounts",
+          "cliSection": "External CLI Clients",
+          "selectProvider": "Select provider...",
+          "selectModel": "Select model...",
+          "noProviders": "No provider accounts configured",
+          "noCliClients": "No external CLI clients configured"
+        },
+        "badges": {
+          "provider": "Provider",
+          "cli": "CLI"
+        },
+        "warnings": {
+          "clientNotConfigured": "Client not configured",
+          "invalidReference": "Invalid client reference"
+        }
+      },
+      "validation": {
+        "allPhasesAssigned": "All phases have clients assigned",
+        "missingAssignments": "Missing assignments: {{phases}}",
+        "invalidReferences": "Invalid client references detected"
       }
     }
   }

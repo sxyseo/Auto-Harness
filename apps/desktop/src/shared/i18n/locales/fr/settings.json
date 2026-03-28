@@ -48,6 +48,10 @@
     "terminal-fonts": {
       "title": "Polices de terminal",
       "description": "Personnaliser l'apparence des polices de terminal"
+    },
+    "multiClient": {
+      "title": "Orchestration Multi-Clients",
+      "description": "Configurer différents clients IA pour chaque phase du pipeline"
     }
   },
   "apiProfiles": {
@@ -1183,6 +1187,125 @@
       "error": {
         "title": "Échec de l'enregistrement des paramètres du fournisseur",
         "description": "Une erreur s'est produite lors de l'enregistrement de la configuration du fournisseur."
+      }
+    },
+    "multiClient": {
+      "toggle": {
+        "label": "Activer le mode multi-clients",
+        "description": "Utiliser différents clients IA pour chaque phase du pipeline"
+      },
+      "externalClients": {
+        "title": "Clients CLI externes",
+        "description": "Configurer des outils CLI externes comme CodeX ou des CLI personnalisés",
+        "addButton": "Ajouter un client CLI",
+        "empty": "Aucun client CLI externe configuré",
+        "emptyDescription": "Ajoutez des outils CLI externes pour les utiliser dans vos phases de pipeline",
+        "types": {
+          "codex": "OpenAI Codex",
+          "claude-code": "Claude Code CLI",
+          "custom": "CLI personnalisé"
+        }
+      },
+      "clientCard": {
+        "edit": "Modifier le client",
+        "delete": "Supprimer le client",
+        "validate": "Valider l'exécutable",
+        "validating": "Vérification...",
+        "valid": "Exécutable trouvé",
+        "invalid": "Exécutable non trouvé"
+      },
+      "dialog": {
+        "addTitle": "Ajouter un client CLI externe",
+        "editTitle": "Modifier le client CLI",
+        "description": "Configurer un outil CLI externe à utiliser dans votre pipeline",
+        "fields": {
+          "name": "Nom du client",
+          "namePlaceholder": "Mon CodeX CLI",
+          "type": "Type de CLI",
+          "executable": "Chemin de l'exécutable",
+          "executablePlaceholder": "/usr/local/bin/codex",
+          "args": "Arguments",
+          "argsPlaceholder": "--arg1 --arg2",
+          "envVars": "Variables d'environnement",
+          "description": "Description",
+          "descriptionPlaceholder": "Description facultative"
+        },
+        "capabilities": {
+          "title": "Capacités",
+          "supportsTools": "Prise en charge des outils",
+          "supportsThinking": "Prise en charge des jetons de raisonnement",
+          "supportsStreaming": "Prise en charge du streaming",
+          "supportsVision": "Prise en charge de la vision",
+          "maxTokens": "Jetons max"
+        },
+        "validation": {
+          "nameRequired": "Le nom du client est requis",
+          "executableRequired": "Le chemin de l'exécutable est requis",
+          "executableNotFound": "Exécutable non trouvé au chemin spécifié",
+          "duplicateName": "Un client avec ce nom existe déjà"
+        },
+        "actions": {
+          "save": "Enregistrer le client",
+          "cancel": "Annuler",
+          "browse": "Parcourir..."
+        },
+        "delete": {
+          "title": "Supprimer le client CLI ?",
+          "description": "Êtes-vous sûr de vouloir supprimer \"{{name}}\" ? Cette action ne peut pas être annulée.",
+          "inUseWarning": "Ce client est assigné aux phases suivantes : {{phases}}. Ces phases seront réinitialisées pour utiliser le fournisseur par défaut.",
+          "confirm": "Supprimer",
+          "cancel": "Annuler"
+        },
+        "toast": {
+          "created": "Client CLI créé",
+          "updated": "Client CLI mis à jour",
+          "deleted": "Client CLI supprimé",
+          "error": "Échec de l'enregistrement du client CLI"
+        }
+      },
+      "phaseMapping": {
+        "title": "Assignation des clients aux phases",
+        "description": "Choisir quel client gère chaque phase du pipeline",
+        "phases": {
+          "spec": {
+            "label": "Création de spec",
+            "description": "Découverte, exigences, collecte de contexte"
+          },
+          "planning": {
+            "label": "Planification",
+            "description": "Planification de l'implémentation et architecture"
+          },
+          "coding": {
+            "label": "Codage",
+            "description": "Implémentation du code"
+          },
+          "qa": {
+            "label": "Revue QA",
+            "description": "Assurance qualité et validation"
+          }
+        },
+        "clientSelector": {
+          "placeholder": "Sélectionner un client",
+          "providerSection": "Comptes fournisseurs",
+          "cliSection": "Clients CLI externes",
+          "selectProvider": "Sélectionner un fournisseur...",
+          "selectModel": "Sélectionner un modèle...",
+          "noProviders": "Aucun compte fournisseur configuré",
+          "noCliClients": "Aucun client CLI externe configuré"
+        },
+        "badges": {
+          "provider": "Fournisseur",
+          "cli": "CLI"
+        },
+        "warnings": {
+          "clientNotConfigured": "Client non configuré",
+          "invalidReference": "Référence de client invalide"
+        }
+      },
+      "validation": {
+        "allPhasesAssigned": "Toutes les phases ont des clients assignés",
+        "missingAssignments": "Assignations manquantes : {{phases}}",
+        "invalidReferences": "Références de client invalides détectées"
       }
     }
   }
