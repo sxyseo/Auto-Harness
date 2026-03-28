@@ -8,6 +8,13 @@ import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 import { markSettingsLoaded } from '../lib/sentry';
 
+/**
+ * Generate a unique ID for external CLI clients
+ */
+function generateClientId(): string {
+  return `external-cli-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
 interface SettingsState {
   settings: AppSettings;
   isLoading: boolean;
@@ -437,6 +444,91 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     }
     return result;
   },
+
+  // ============================================================
+  // Multi-client orchestration actions
+  // ============================================================
+
+  setMultiClientEnabled: async (enabled: boolean): Promise<boolean> => {
+    try {
+      const result = await window.electronAPI.saveSettings({ multiClientEnabled: enabled });
+      if (result.success) {
+        set({ multiClientEnabled: enabled });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  setPhaseClientMapping: async (mapping: PhaseClientMapping): Promise<boolean> => {
+    try {
+      const result = await window.electronAPI.saveSettings({ phaseClientMapping: mapping });
+      if (result.success) {
+        set({ phaseClientMapping: mapping });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  addExternalClient: async (client: Omit<ExternalClientConfig, 'id'>): Promise<boolean> => {
+    try {
+      const newClient: ExternalClientConfig = {
+        ...client,
+        id: generateClientId(),
+      };
+      const result = await window.electronAPI.saveSettings({
+        externalCliClients: [...useSettingsStore.getState().externalCliClients, newClient]
+      });
+      if (result.success) {
+        set((state) => ({
+          externalCliClients: [...state.externalCliClients, newClient]
+        }));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  updateExternalClient: async (id: string, updates: Partial<ExternalClientConfig>): Promise<boolean> => {
+    try {
+      const updatedClients = useSettingsStore.getState().externalCliClients.map((client) =>
+        client.id === id ? { ...client, ...updates } : client
+      );
+      const result = await window.electronAPI.saveSettings({
+        externalCliClients: updatedClients
+      });
+      if (result.success) {
+        set({ externalCliClients: updatedClients });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  deleteExternalClient: async (id: string): Promise<boolean> => {
+    try {
+      const updatedClients = useSettingsStore.getState().externalCliClients.filter((client) => client.id !== id);
+      const result = await window.electronAPI.saveSettings({
+        externalCliClients: updatedClients
+      });
+      if (result.success) {
+        set({ externalCliClients: updatedClients });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
 }));
 
 /**
@@ -577,106 +669,3 @@ export async function loadProfiles(): Promise<void> {
     store.setProfilesLoading(false);
   }
 }
-
-/**
- * Generate unique ID for external CLI clients
- */
-function generateClientId(): string {
-  return `cli-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
-
-/**
- * Multi-client orchestration: Set multi-client enabled/disabled
- */
-setMultiClientEnabled: async (enabled: boolean): Promise<boolean> => {
-  try {
-    const result = await window.electronAPI.saveSettings({ multiClientEnabled: enabled });
-    if (result.success) {
-      set({ multiClientEnabled: enabled });
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-},
-
-/**
- * Multi-client orchestration: Set phase-to-client mapping
- */
-setPhaseClientMapping: async (mapping: PhaseClientMapping): Promise<boolean> => {
-  try {
-    const result = await window.electronAPI.saveSettings({ phaseClientMapping: mapping });
-    if (result.success) {
-      set({ phaseClientMapping: mapping });
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-},
-
-/**
- * Multi-client orchestration: Add external CLI client
- */
-addExternalClient: async (client: Omit<ExternalClientConfig, 'id'>): Promise<boolean> => {
-  try {
-    const newClient: ExternalClientConfig = {
-      ...client,
-      id: generateClientId(),
-    };
-    const result = await window.electronAPI.saveSettings({
-      externalCliClients: [...useSettingsStore.getState().externalCliClients, newClient]
-    });
-    if (result.success) {
-      set((state) => ({
-        externalCliClients: [...state.externalCliClients, newClient]
-      }));
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-},
-
-/**
- * Multi-client orchestration: Update external CLI client
- */
-updateExternalClient: async (id: string, updates: Partial<ExternalClientConfig>): Promise<boolean> => {
-  try {
-    const updatedClients = useSettingsStore.getState().externalCliClients.map((client) =>
-      client.id === id ? { ...client, ...updates } : client
-    );
-    const result = await window.electronAPI.saveSettings({
-      externalCliClients: updatedClients
-    });
-    if (result.success) {
-      set({ externalCliClients: updatedClients });
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-},
-
-/**
- * Multi-client orchestration: Delete external CLI client
- */
-deleteExternalClient: async (id: string): Promise<boolean> => {
-  try {
-    const updatedClients = useSettingsStore.getState().externalCliClients.filter((client) => client.id !== id);
-    const result = await window.electronAPI.saveSettings({
-      externalCliClients: updatedClients
-    });
-    if (result.success) {
-      set({ externalCliClients: updatedClients });
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-},

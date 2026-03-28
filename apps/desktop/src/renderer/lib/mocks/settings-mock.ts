@@ -40,6 +40,20 @@ export const settingsMock = {
     data: { hasCompletedOnboarding: false }
   }),
 
+  // External CLI Client management (no-op in browser mode)
+  selectExecutableFile: async () => ({
+    success: true,
+    data: null
+  }),
+  validateExecutablePath: async () => ({
+    success: true,
+    data: { valid: false, error: 'Not available in browser mode' }
+  }),
+  testExternalClientConnection: async () => ({
+    success: true,
+    data: { success: false, error: 'Not available in browser mode' }
+  }),
+
   // App Info
   getAppVersion: async () => '0.1.0-browser',
 
