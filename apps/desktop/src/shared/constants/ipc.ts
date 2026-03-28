@@ -597,5 +597,27 @@ export const IPC_CHANNELS = {
   // Queue routing events (main -> renderer)
   QUEUE_PROFILE_SWAPPED: 'queue:profileSwapped',      // Task switched to different profile
   QUEUE_SESSION_CAPTURED: 'queue:sessionCaptured',    // Session ID captured from running task
+  QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles', // All profiles unavailable
+
+  // External API (for OpenCLaw and other external tools)
+  EXTERNAL_API_PROJECT_LIST: 'external-api:project:list',
+  EXTERNAL_API_PROJECT_GET: 'external-api:project:get',
+  EXTERNAL_API_TASK_LIST: 'external-api:task:list',
+  EXTERNAL_API_TASK_CREATE: 'external-api:task:create',
+  EXTERNAL_API_TASK_UPDATE: 'external-api:task:update',
+  EXTERNAL_API_TASK_REORDER: 'external-api:task:reorder',
+  EXTERNAL_API_TASK_BATCH: 'external-api:task:batch',
+  EXTERNAL_API_ROADMAP_GET: 'external-api:roadmap:get',
+  EXTERNAL_API_ROADMAP_GENERATE: 'external-api:roadmap:generate',
+  EXTERNAL_API_ROADMAP_UPDATE: 'external-api:roadmap:update',
+  EXTERNAL_API_IDEATION_GET: 'external-api:ideation:get',
+  EXTERNAL_API_IDEATION_GENERATE: 'external-api:ideation:generate',
+  EXTERNAL_API_IDEATION_CONVERT: 'external-api:ideation:convert',
+  EXTERNAL_API_PROGRESS_GET: 'external-api:progress:get',
+  EXTERNAL_API_WEBHOOK_REGISTER: 'external-api:webhook:register',
+  EXTERNAL_API_WEBHOOK_UNREGISTER: 'external-api:webhook:unregister',
+  EXTERNAL_API_WEBHOOK_LIST: 'external-api:webhook:list',
+
+} as const;
   QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles' // All profiles unavailable
 } as const;
