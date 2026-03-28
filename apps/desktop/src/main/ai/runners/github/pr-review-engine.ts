@@ -27,6 +27,8 @@ import {
   StructuralIssuesOutputSchema,
   AICommentTriagesOutputSchema,
 } from '../../schema/output/pr-review.output';
+import type { MemoryContext } from '../../schemas/advanced-review';
+import type { MemoryIntegrationMode } from '../../schemas/advanced-review';
 
 // =============================================================================
 // Enums & Types
@@ -164,6 +166,8 @@ export interface PRContext {
   totalAdditions: number;
   totalDeletions: number;
   aiBotComments: AIBotComment[];
+  /** Optional memory context for architectural awareness */
+  memoryContext?: MemoryContext;
 }
 
 /** Quick scan result. */
@@ -192,6 +196,10 @@ export interface PRReviewEngineConfig {
   thinkingLevel?: ThinkingLevel;
   fastMode?: boolean;
   useParallelOrchestrator?: boolean;
+  /** Memory integration mode for architectural context */
+  memoryIntegrationMode?: MemoryIntegrationMode;
+  /** Project ID for memory lookup */
+  projectId?: string;
 }
 
 /** Result of multi-pass review. */
