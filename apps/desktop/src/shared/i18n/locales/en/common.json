@@ -322,6 +322,41 @@
     "previousReview": "Previous Review ({{count}} findings)",
     "findingsPosted": "{{count}} Posted",
     "followupInProgress": "Follow-up Analysis in Progress...",
+    "template": {
+      "label": "Review Template",
+      "tooltip": "Select a review template to customize the type of analysis performed.",
+      "selected": "Selected:"
+    },
+    "templates": {
+      "comprehensive": {
+        "label": "Comprehensive",
+        "description": "Full comprehensive review covering all aspects of the code changes."
+      },
+      "quick": {
+        "label": "Quick",
+        "description": "Quick review for small, low-risk changes with minimal analysis."
+      },
+      "security": {
+        "label": "Security",
+        "description": "Security-focused review checking for vulnerabilities and secure coding practices."
+      },
+      "quality": {
+        "label": "Quality",
+        "description": "Quality and maintainability focused review for code quality improvements."
+      },
+      "architecture": {
+        "label": "Architecture",
+        "description": "Architecture and structural review for design patterns and system design."
+      },
+      "testCoverage": {
+        "label": "Test Coverage",
+        "description": "Review focused on test coverage and testing best practices."
+      },
+      "documentation": {
+        "label": "Documentation",
+        "description": "Review for documentation changes and docstring quality."
+      }
+    },
     "severity": {
       "critical": "Blocker",
       "high": "Required",
