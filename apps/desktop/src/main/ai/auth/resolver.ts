@@ -29,6 +29,9 @@ import type { BuiltinProvider } from '../../../shared/types/provider-account';
 import { resolveModelEquivalent } from '../../../shared/constants/models';
 import { scoreProviderAccount } from '../../claude-profile/profile-scorer';
 import type { ClaudeAutoSwitchSettings } from '../../../shared/types/agent';
+import { createDebugLogger } from '../../debug/debug-logger';
+
+const log = createDebugLogger('auth-resolver');
 
 // ============================================
 // Z.AI Endpoint Routing
@@ -70,62 +73,111 @@ export function registerSettingsAccessor(accessor: SettingsAccessor): void {
  * This is the highest priority stage — checks providerAccounts array.
  */
 async function resolveFromProviderAccount(ctx: AuthResolverContext): Promise<ResolvedAuth | null> {
-  if (!_getSettingsValue) return null;
+  log.enter('resolveFromProviderAccount', { provider: ctx.provider, profileId: ctx.profileId });
 
-  // Read providerAccounts from settings
-  const accountsRaw = _getSettingsValue('providerAccounts');
-  if (!accountsRaw) return null;
-
-  let accounts: Array<{ provider: string; isActive: boolean; authType: string; apiKey?: string; baseUrl?: string; claudeProfileId?: string; billingModel?: string }>;
-  try {
-    accounts = typeof accountsRaw === 'string' ? JSON.parse(accountsRaw) : (accountsRaw as any);
-  } catch {
+  if (!_getSettingsValue) {
+    log.debug('PROVIDER_ACCOUNT', 'Settings accessor not registered');
     return null;
   }
 
-  if (!Array.isArray(accounts)) return null;
+  // Read providerAccounts from settings
+  const accountsRaw = _getSettingsValue('providerAccounts');
+  if (!accountsRaw) {
+    log.debug('PROVIDER_ACCOUNT', 'No provider accounts found in settings');
+    return null;
+  }
 
-  // Find active account for this provider
-  const account = accounts.find(a => a.provider === ctx.provider && a.isActive);
-  if (!account) return null;
+  let accounts: Array<{ provider: string; id: string; authType: string; apiKey?: string; baseUrl?: string; claudeProfileId?: string; billingModel?: string }>;
+  try {
+    accounts = typeof accountsRaw === 'string' ? JSON.parse(accountsRaw) : (accountsRaw as any);
+  } catch (error) {
+    log.error('PROVIDER_ACCOUNT', 'Failed to parse provider accounts', { error });
+    return null;
+  }
+
+  if (!Array.isArray(accounts)) {
+    log.debug('PROVIDER_ACCOUNT', 'Provider accounts is not an array');
+    return null;
+  }
+
+  log.debug('PROVIDER_ACCOUNT', 'Found accounts', { count: accounts.length });
+
+  // Read globalPriorityOrder to determine active account
+  // The first account in the priority order for this provider is considered active
+  const priorityOrderRaw = _getSettingsValue('globalPriorityOrder');
+  const priorityOrder: string[] = priorityOrderRaw
+    ? (typeof priorityOrderRaw === 'string' ? JSON.parse(priorityOrderRaw) : priorityOrderRaw as string[])
+    : [];
+
+  log.debug('PROVIDER_ACCOUNT', 'Priority order', { priorityOrder });
+
+  // Find the first account for this provider in priority order
+  const accountId = priorityOrder.find(id => {
+    const account = accounts.find(a => a.id === id);
+    return account?.provider === ctx.provider;
+  });
+
+  log.debug('PROVIDER_ACCOUNT', 'Selected account ID', { accountId, provider: ctx.provider });
+
+  const account = accountId ? accounts.find(a => a.id === accountId) : null;
+  if (!account) {
+    log.debug('PROVIDER_ACCOUNT', 'No matching account found');
+    return null;
+  }
+
+  log.info('PROVIDER_ACCOUNT', 'Using account', {
+    id: account.id,
+    provider: account.provider,
+    authType: account.authType,
+    billingModel: account.billingModel
+  });
 
   // File-based OAuth accounts (e.g., OpenAI Codex)
   if (account.authType === 'oauth' && account.provider === 'openai') {
+    log.debug('PROVIDER_ACCOUNT', 'Resolving Codex OAuth token');
     // Resolve token file path on main thread (has electron.app access)
     const { app } = await import('electron');
     const tokenFilePath = path.join(app.getPath('userData'), 'codex-auth.json');
     const { ensureValidOAuthToken } = await import('../providers/oauth-fetch');
     const token = await ensureValidOAuthToken(tokenFilePath, 'openai');
     if (token) {
-      return {
+      const result = {
         apiKey: 'codex-oauth-placeholder', // Dummy key; real token injected via custom fetch
-        source: 'codex-oauth',
+        source: 'codex-oauth' as const,
         oauthTokenFilePath: tokenFilePath,
       };
+      log.exit('resolveFromProviderAccount', { source: result.source, hasTokenFile: !!result.oauthTokenFilePath });
+      return result;
     }
+    log.debug('PROVIDER_ACCOUNT', 'Codex OAuth token not found');
     return null;
   }
 
   // OAuth accounts — delegate to profile OAuth flow
   if (account.authType === 'oauth' && account.claudeProfileId) {
+    log.debug('PROVIDER_ACCOUNT', 'Delegating to profile OAuth flow', { claudeProfileId: account.claudeProfileId });
     // Let the existing OAuth stage handle it
     return null;
   }
 
   // API key accounts
   if (account.authType === 'api-key' && account.apiKey) {
+    log.debug('PROVIDER_ACCOUNT', 'Resolving API key credentials', { hasApiKey: !!account.apiKey });
     // Z.AI: route to correct endpoint based on billing model
     const baseURL = account.provider === 'zai'
       ? (account.baseUrl || (account.billingModel === 'subscription' ? ZAI_CODING_API : ZAI_GENERAL_API))
       : account.baseUrl;
 
-    return {
+    const result = {
       apiKey: account.apiKey,
-      source: 'profile-api-key',
+      source: 'profile-api-key' as const,
       baseURL,
     };
+    log.exit('resolveFromProviderAccount', { source: result.source, hasBaseURL: !!result.baseURL });
+    return result;
   }
 
+  log.debug('PROVIDER_ACCOUNT', 'Account auth type not handled', { authType: account.authType });
   return null;
 }
 
@@ -142,11 +194,18 @@ async function resolveFromProviderAccount(ctx: AuthResolverContext): Promise<Res
  * @returns Resolved auth or null if not available
  */
 async function resolveFromProfileOAuth(ctx: AuthResolverContext): Promise<ResolvedAuth | null> {
-  if (ctx.provider !== 'anthropic') return null;
+  log.enter('resolveFromProfileOAuth', { provider: ctx.provider, hasConfigDir: !!ctx.configDir });
+
+  if (ctx.provider !== 'anthropic') {
+    log.debug('PROFILE_OAUTH', 'Skipping - not Anthropic provider');
+    return null;
+  }
 
   try {
+    log.debug('PROFILE_OAUTH', 'Calling ensureValidToken');
     const tokenResult = await ensureValidToken(ctx.configDir);
     if (tokenResult.token) {
+      log.debug('PROFILE_OAUTH', 'Token obtained', { hasToken: !!tokenResult.token });
       const resolved: ResolvedAuth = {
         apiKey: tokenResult.token,
         source: 'profile-oauth',
@@ -161,12 +220,15 @@ async function resolveFromProfileOAuth(ctx: AuthResolverContext): Promise<Resolv
         if (baseURL) resolved.baseURL = baseURL;
       }
 
+      log.exit('resolveFromProfileOAuth', { source: resolved.source });
       return resolved;
     }
-  } catch {
+  } catch (error) {
+    log.error('PROFILE_OAUTH', 'Token refresh failed', { error });
     // Token refresh failed (network, keychain locked, etc.) — fall through
   }
 
+  log.debug('PROFILE_OAUTH', 'No token available');
   return null;
 }
 
@@ -197,13 +259,25 @@ export async function refreshOAuthTokenReactive(configDir: string | undefined): 
  * @returns Resolved auth or null if not available
  */
 function resolveFromProfileApiKey(ctx: AuthResolverContext): ResolvedAuth | null {
-  if (!_getSettingsValue) return null;
+  log.enter('resolveFromProfileApiKey', { provider: ctx.provider });
+
+  if (!_getSettingsValue) {
+    log.debug('PROFILE_API_KEY', 'Settings accessor not registered');
+    return null;
+  }
 
   const settingsKey = PROVIDER_SETTINGS_KEY[ctx.provider];
-  if (!settingsKey) return null;
+  if (!settingsKey) {
+    log.debug('PROFILE_API_KEY', 'No settings key for provider', { provider: ctx.provider });
+    return null;
+  }
 
+  log.debug('PROFILE_API_KEY', `Checking settings key: ${settingsKey}`);
   const apiKey = _getSettingsValue(settingsKey);
-  if (!apiKey) return null;
+  if (!apiKey) {
+    log.debug('PROFILE_API_KEY', 'No API key found in settings');
+    return null;
+  }
 
   const resolved: ResolvedAuth = {
     apiKey,
@@ -216,6 +290,7 @@ function resolveFromProfileApiKey(ctx: AuthResolverContext): ResolvedAuth | null
     if (baseURL) resolved.baseURL = baseURL;
   }
 
+  log.exit('resolveFromProfileApiKey', { source: resolved.source });
   return resolved;
 }
 
@@ -230,11 +305,20 @@ function resolveFromProfileApiKey(ctx: AuthResolverContext): ResolvedAuth | null
  * @returns Resolved auth or null if not available
  */
 function resolveFromEnvironment(ctx: AuthResolverContext): ResolvedAuth | null {
-  const envVar = PROVIDER_ENV_VARS[ctx.provider];
-  if (!envVar) return null;
+  log.enter('resolveFromEnvironment', { provider: ctx.provider });
 
+  const envVar = PROVIDER_ENV_VARS[ctx.provider];
+  if (!envVar) {
+    log.debug('ENVIRONMENT', 'No env var for provider', { provider: ctx.provider });
+    return null;
+  }
+
+  log.debug('ENVIRONMENT', `Checking env var: ${envVar}`);
   const apiKey = process.env[envVar];
-  if (!apiKey) return null;
+  if (!apiKey) {
+    log.debug('ENVIRONMENT', 'Env var not set');
+    return null;
+  }
 
   const resolved: ResolvedAuth = {
     apiKey,
@@ -247,6 +331,7 @@ function resolveFromEnvironment(ctx: AuthResolverContext): ResolvedAuth | null {
     if (baseURL) resolved.baseURL = baseURL;
   }
 
+  log.exit('resolveFromEnvironment', { source: resolved.source });
   return resolved;
 }
 
@@ -266,12 +351,21 @@ const NO_AUTH_PROVIDERS = new Set<SupportedProvider>([
  * @returns Resolved auth or null if provider requires auth
  */
 function resolveDefaultCredentials(ctx: AuthResolverContext): ResolvedAuth | null {
-  if (!NO_AUTH_PROVIDERS.has(ctx.provider)) return null;
+  log.enter('resolveDefaultCredentials', { provider: ctx.provider });
 
-  return {
+  if (!NO_AUTH_PROVIDERS.has(ctx.provider)) {
+    log.debug('DEFAULT', 'Provider requires auth', { provider: ctx.provider });
+    return null;
+  }
+
+  log.debug('DEFAULT', 'Using no-auth credentials');
+  const result = {
     apiKey: '',
-    source: 'default',
+    source: 'default' as const,
   };
+
+  log.exit('resolveDefaultCredentials', { source: result.source });
+  return result;
 }
 
 // ============================================
@@ -291,7 +385,9 @@ function resolveDefaultCredentials(ctx: AuthResolverContext): ResolvedAuth | nul
  * @returns Resolved auth credentials, or null if no credentials found
  */
 export async function resolveAuth(ctx: AuthResolverContext): Promise<ResolvedAuth | null> {
-  return (
+  log.enter('resolveAuth', { provider: ctx.provider, profileId: ctx.profileId });
+
+  const result = (
     (await resolveFromProviderAccount(ctx)) ??
     (await resolveFromProfileOAuth(ctx)) ??
     resolveFromProfileApiKey(ctx) ??
@@ -299,6 +395,14 @@ export async function resolveAuth(ctx: AuthResolverContext): Promise<ResolvedAut
     resolveDefaultCredentials(ctx) ??
     null
   );
+
+  if (result) {
+    log.exit('resolveAuth', { source: result.source, hasBaseURL: !!result.baseURL });
+  } else {
+    log.exitWithError('resolveAuth', 'All auth stages failed');
+  }
+
+  return result;
 }
 
 /**
@@ -332,6 +436,8 @@ const BUILTIN_TO_SUPPORTED: Record<string, SupportedProvider> = {
   openrouter: 'openrouter',
   zai: 'zai',
   ollama: 'ollama',
+  'openai-compatible': 'zai',
+  minimax: 'minimax',
 };
 
 /**
@@ -354,6 +460,12 @@ export async function resolveAuthFromQueue(
     autoSwitchSettings?: ClaudeAutoSwitchSettings;
   }
 ): Promise<QueueResolvedAuth | null> {
+  log.enter('resolveAuthFromQueue', {
+    requestedModel,
+    queueLength: queue.length,
+    excludeAccountIds: options?.excludeAccountIds
+  });
+
   const excludeSet = new Set(options?.excludeAccountIds ?? []);
   const defaultSettings: ClaudeAutoSwitchSettings = {
     enabled: true,
@@ -366,17 +478,38 @@ export async function resolveAuthFromQueue(
   };
   const settings = options?.autoSwitchSettings ?? defaultSettings;
 
+  log.info('QUEUE', 'Starting queue resolution', {
+    queueSize: queue.length,
+    excluded: options?.excludeAccountIds?.length ?? 0
+  });
+
   for (const account of queue) {
     // Skip excluded accounts
-    if (excludeSet.has(account.id)) continue;
+    if (excludeSet.has(account.id)) {
+      log.debug('QUEUE', `Skipping excluded account: ${account.id}`);
+      continue;
+    }
+
+    log.debug('QUEUE', `Trying account: ${account.id}`, {
+      provider: account.provider,
+      authType: account.authType
+    });
 
     // Score account availability
     const { available } = scoreProviderAccount(account, settings);
-    if (!available) continue;
+    if (!available) {
+      log.debug('QUEUE', `Account not available: ${account.id}`);
+      continue;
+    }
 
     // Map BuiltinProvider to SupportedProvider
     const supportedProvider = BUILTIN_TO_SUPPORTED[account.provider];
-    if (!supportedProvider) continue;
+    if (!supportedProvider) {
+      log.debug('QUEUE', `No supported provider mapping for: ${account.provider}`);
+      continue;
+    }
+
+    log.debug('QUEUE', `Mapped provider: ${account.provider} -> ${supportedProvider}`);
 
     // Resolve which model to use on this account.
     // First try the equivalence table (maps shorthands like 'sonnet' across providers).
@@ -399,12 +532,29 @@ export async function resolveAuthFromQueue(
       // the user explicitly configured it. When the account is NOT Ollama, skip
       // if the model can't be identified as native.
       const nativeProvider = detectProviderFromModel(requestedModel);
-      if (nativeProvider !== supportedProvider && supportedProvider !== 'ollama') continue;
+      if (nativeProvider !== supportedProvider && supportedProvider !== 'ollama') {
+        log.debug('QUEUE', `Model not native to provider`, {
+          model: requestedModel,
+          nativeProvider,
+          accountProvider: supportedProvider
+        });
+        continue;
+      }
       // If nativeProvider is defined but doesn't match Ollama, skip (e.g., 'claude-*' on Ollama)
-      if (supportedProvider === 'ollama' && nativeProvider && nativeProvider !== 'ollama') continue;
+      if (supportedProvider === 'ollama' && nativeProvider && nativeProvider !== 'ollama') {
+        log.debug('QUEUE', `Model not compatible with Ollama`, { model: requestedModel, nativeProvider });
+        continue;
+      }
     }
 
     const resolvedModelId = modelSpec?.modelId ?? requestedModel;
+
+    log.debug('QUEUE', `Resolved model`, {
+      accountId: account.id,
+      requestedModel,
+      resolvedModelId,
+      hasModelSpec: !!modelSpec
+    });
 
     // Note: Codex OAuth accounts now use .responses() for ALL models (not just
     // Codex-named ones) in the provider factory, so no format mismatch guard
@@ -412,18 +562,30 @@ export async function resolveAuthFromQueue(
 
     // Resolve credentials for this account
     const auth = await resolveCredentialsForAccount(account, supportedProvider);
-    if (!auth) continue;
+    if (!auth) {
+      log.debug('QUEUE', `Failed to resolve credentials for account: ${account.id}`);
+      continue;
+    }
 
     // Success — return the fully resolved auth
-    return {
+    const result = {
       ...auth,
       accountId: account.id,
       resolvedProvider: supportedProvider,
       resolvedModelId,
       reasoningConfig: modelSpec?.reasoning ?? { type: 'none' },
     };
+
+    log.exit('resolveAuthFromQueue', {
+      accountId: result.accountId,
+      provider: result.resolvedProvider,
+      model: result.resolvedModelId,
+      source: result.source
+    });
+    return result;
   }
 
+  log.error('QUEUE', 'No available accounts in queue');
   return null;
 }
 
@@ -496,56 +658,86 @@ async function resolveCredentialsForAccount(
   account: ProviderAccount,
   provider: SupportedProvider,
 ): Promise<ResolvedAuth | null> {
+  log.enter('resolveCredentialsForAccount', {
+    accountId: account.id,
+    provider: account.provider,
+    authType: account.authType,
+    supportedProvider: provider
+  });
+
   // No-auth providers (e.g., Ollama) — no API key required
   if (NO_AUTH_PROVIDERS.has(provider)) {
-    return {
+    log.debug('CREDENTIALS', 'No-auth provider, using default credentials');
+    const result = {
       apiKey: '',
-      source: 'default',
+      source: 'default' as const,
       baseURL: account.baseUrl,
     };
+    log.exit('resolveCredentialsForAccount', { source: result.source });
+    return result;
   }
 
   // File-based OAuth (e.g., OpenAI Codex subscription)
   if (account.authType === 'oauth' && account.provider === 'openai') {
+    log.debug('CREDENTIALS', 'Resolving Codex OAuth token');
     try {
       const { app } = await import('electron');
       const tokenFilePath = path.join(app.getPath('userData'), 'codex-auth.json');
       const { ensureValidOAuthToken } = await import('../providers/oauth-fetch');
       const token = await ensureValidOAuthToken(tokenFilePath, 'openai');
       if (token) {
-        return {
+        const result = {
           apiKey: 'codex-oauth-placeholder',
-          source: 'codex-oauth',
+          source: 'codex-oauth' as const,
           oauthTokenFilePath: tokenFilePath,
         };
+        log.exit('resolveCredentialsForAccount', { source: result.source });
+        return result;
       }
-    } catch { /* fall through */ }
+    } catch (error) {
+      log.error('CREDENTIALS', 'Failed to resolve Codex OAuth token', { error });
+    }
     return null;
   }
 
   // Anthropic OAuth — refresh token via existing claude-profile system
   if (account.authType === 'oauth' && account.provider === 'anthropic') {
     if (account.claudeProfileId) {
+      log.debug('CREDENTIALS', 'Delegating to Anthropic OAuth flow', { claudeProfileId: account.claudeProfileId });
       // Delegate to profile OAuth resolution
       const ctx: AuthResolverContext = { provider, profileId: account.claudeProfileId };
-      return resolveAuth(ctx);
+      const result = await resolveAuth(ctx);
+      log.exit('resolveCredentialsForAccount', result ? { source: result.source } : null);
+      return result;
     }
+    log.debug('CREDENTIALS', 'Anthropic OAuth but no claudeProfileId');
     return null;
   }
 
   // API key accounts
   if (account.authType === 'api-key' && account.apiKey) {
-    // Z.AI: route to correct endpoint based on billing model
-    const baseURL = account.provider === 'zai'
-      ? resolveZaiBaseUrl(account)
+    log.debug('CREDENTIALS', 'Resolving API key', {
+      provider: account.provider,
+      hasApiKey: !!account.apiKey
+    });
+    // Z.AI and openai-compatible: route to correct endpoint based on billing model
+    // Note: openai-compatible is used for z.AI and MiniMax custom endpoints
+    const baseURL = (account.provider === 'zai' || account.provider === 'openai-compatible' || account.provider === 'minimax')
+      ? (account.provider === 'zai' ? resolveZaiBaseUrl(account) : account.baseUrl)
       : account.baseUrl;
 
-    return {
+    const result = {
       apiKey: account.apiKey,
-      source: 'profile-api-key',
+      source: 'profile-api-key' as const,
       baseURL,
     };
+    log.exit('resolveCredentialsForAccount', {
+      source: result.source,
+      hasBaseURL: !!result.baseURL
+    });
+    return result;
   }
 
+  log.debug('CREDENTIALS', 'Auth type not handled', { authType: account.authType });
   return null;
 }
