@@ -13,7 +13,6 @@
  */
 
 import { EventEmitter } from 'events';
-import { app } from 'electron';
 import path from 'path';
 import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
 import { safeSendToRenderer } from './ipc-handlers/utils';
@@ -56,6 +55,7 @@ class AgentDebugLogger extends EventEmitter {
   private readonly MAX_BUFFER_SIZE = 1000;
   private getMainWindow: (() => BrowserWindow | null) | null = null;
   private agentStates: Map<string, { lastActivity: string; status: string }> = new Map();
+  private logDirectory: string | null = null; // Configurable log directory
 
   constructor() {
     super();
@@ -84,6 +84,14 @@ class AgentDebugLogger extends EventEmitter {
    */
   setConsoleEnabled(enabled: boolean): void {
     this.config.enableConsole = enabled;
+  }
+
+  /**
+   * Set the log directory path (for main process initialization)
+   * Call this from the main process with app.getPath('userData')
+   */
+  setLogDirectory(logDir: string): void {
+    this.logDirectory = logDir;
   }
 
   /**
@@ -362,7 +370,8 @@ class AgentDebugLogger extends EventEmitter {
 
   private logToFile(event: AgentDebugEvent): void {
     try {
-      const logDir = path.join(app.getPath('userData'), 'logs');
+      // Use configured log directory, or fallback to current working directory
+      const logDir = this.logDirectory || path.join(process.cwd(), 'logs');
       if (!existsSync(logDir)) {
         mkdirSync(logDir, { recursive: true });
       }
