@@ -7,15 +7,55 @@
  * Only active when:
  * - Beta version is detected, OR
  * - DEBUG environment variable is set
+ *
+ * Worker Thread Compatible:
+ * - Detects if running in worker thread and uses console.log instead of electron-log
+ * - Prevents "The requested module 'electron' does not provide an export named 'app'" error
  */
 
-import { app } from 'electron';
-import log from 'electron-log/main.js';
-import path from 'path';
+// Detect if we're in a worker thread by checking for Worker thread globals
+const isWorkerThread = typeof (globalThis as any).WorkerInfo !== 'undefined' ||
+                       process.argv.some(arg => arg.includes('worker.js'));
+
+// Dynamic import for electron to avoid bundling into worker threads
+let electronLog: typeof import('electron-log/main.js') | null = null;
+let electronApp: typeof import('electron')['app'] | null = null;
+
+if (!isWorkerThread) {
+  try {
+    const electron = require('electron');
+    electronApp = electron.app;
+    electronLog = require('electron-log/main.js');
+  } catch {
+    // Electron not available (running in worker thread or test environment)
+  }
+}
+
+// Simple logger fallback for worker threads
+const simpleLog = {
+  info: (...args: unknown[]) => console.log('[INFO]', ...args),
+  warn: (...args: unknown[]) => console.warn('[WARN]', ...args),
+  error: (...args: unknown[]) => console.error('[ERROR]', ...args),
+  debug: (...args: unknown[]) => console.debug('[DEBUG]', ...args)
+};
+
+// Use electron-log if available, otherwise fallback to console.log
+const log = electronLog || simpleLog;
 
 // Check if debug logging is enabled
 const isDebugEnabled = (): boolean => {
-  return process.env.DEBUG === 'true' || app.getVersion().includes('-beta');
+  if (isWorkerThread) {
+    return process.env.DEBUG === 'true';
+  }
+  // In main thread, check if beta version (if electron.app is available)
+  if (electronApp) {
+    try {
+      return process.env.DEBUG === 'true' || electronApp.getVersion().includes('-beta');
+    } catch {
+      return process.env.DEBUG === 'true';
+    }
+  }
+  return process.env.DEBUG === 'true';
 };
 
 // Safe stringify that handles circular references and large objects
