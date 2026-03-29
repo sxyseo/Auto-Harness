@@ -17,19 +17,9 @@
 const isWorkerThread = typeof (globalThis as any).WorkerInfo !== 'undefined' ||
                        process.argv.some(arg => arg.includes('worker.js'));
 
-// Dynamic import for electron to avoid bundling into worker threads
-let electronLog: typeof import('electron-log/main.js') | null = null;
-let electronApp: typeof import('electron')['app'] | null = null;
-
-if (!isWorkerThread) {
-  try {
-    const electron = require('electron');
-    electronApp = electron.app;
-    electronLog = require('electron-log/main.js');
-  } catch {
-    // Electron not available (running in worker thread or test environment)
-  }
-}
+// Cache electron-log to prevent multiple initialization
+// This prevents "Attempted to register a second handler for '__ELECTRON_LOG__'" error
+let cachedLog: any = null;
 
 // Simple logger fallback for worker threads
 const simpleLog = {
@@ -39,8 +29,31 @@ const simpleLog = {
   debug: (...args: unknown[]) => console.debug('[DEBUG]', ...args)
 };
 
+// Get or create logger instance (singleton pattern)
+function getLogger() {
+  if (cachedLog) {
+    return cachedLog;
+  }
+
+  if (isWorkerThread) {
+    cachedLog = simpleLog;
+    return cachedLog;
+  }
+
+  try {
+    const electron = require('electron');
+    const electronLog = require('electron-log/main.js');
+    cachedLog = electronLog;
+    return cachedLog;
+  } catch {
+    // Electron not available (running in worker thread or test environment)
+    cachedLog = simpleLog;
+    return cachedLog;
+  }
+}
+
 // Use electron-log if available, otherwise fallback to console.log
-const log = electronLog || simpleLog;
+const log = getLogger();
 
 // Check if debug logging is enabled
 const isDebugEnabled = (): boolean => {
@@ -48,14 +61,12 @@ const isDebugEnabled = (): boolean => {
     return process.env.DEBUG === 'true';
   }
   // In main thread, check if beta version (if electron.app is available)
-  if (electronApp) {
-    try {
-      return process.env.DEBUG === 'true' || electronApp.getVersion().includes('-beta');
-    } catch {
-      return process.env.DEBUG === 'true';
-    }
+  try {
+    const electron = require('electron');
+    return process.env.DEBUG === 'true' || electron.app.getVersion().includes('-beta');
+  } catch {
+    return process.env.DEBUG === 'true';
   }
-  return process.env.DEBUG === 'true';
 };
 
 // Safe stringify that handles circular references and large objects
