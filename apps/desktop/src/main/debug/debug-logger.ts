@@ -8,20 +8,12 @@
  * - Beta version is detected, OR
  * - DEBUG environment variable is set
  *
- * Worker Thread Compatible:
- * - Detects if running in worker thread and uses console.log instead of electron-log
- * - Prevents "The requested module 'electron' does not provide an export named 'app'" error
+ * NOTE: This logger uses console.log instead of electron-log to avoid
+ * conflicts with app-logger.ts which already initializes electron-log.
+ * This prevents "Attempted to register a second handler for '__ELECTRON_LOG__'" error.
  */
 
-// Detect if we're in a worker thread by checking for Worker thread globals
-const isWorkerThread = typeof (globalThis as any).WorkerInfo !== 'undefined' ||
-                       process.argv.some(arg => arg.includes('worker.js'));
-
-// Cache electron-log to prevent multiple initialization
-// This prevents "Attempted to register a second handler for '__ELECTRON_LOG__'" error
-let cachedLog: any = null;
-
-// Simple logger fallback for worker threads
+// Simple logger using console (no electron-log dependency)
 const simpleLog = {
   info: (...args: unknown[]) => console.log('[INFO]', ...args),
   warn: (...args: unknown[]) => console.warn('[WARN]', ...args),
@@ -29,41 +21,15 @@ const simpleLog = {
   debug: (...args: unknown[]) => console.debug('[DEBUG]', ...args)
 };
 
-// Get or create logger instance (singleton pattern)
-function getLogger() {
-  if (cachedLog) {
-    return cachedLog;
-  }
-
-  if (isWorkerThread) {
-    cachedLog = simpleLog;
-    return cachedLog;
-  }
-
-  try {
-    const electron = require('electron');
-    const electronLog = require('electron-log/main.js');
-    cachedLog = electronLog;
-    return cachedLog;
-  } catch {
-    // Electron not available (running in worker thread or test environment)
-    cachedLog = simpleLog;
-    return cachedLog;
-  }
-}
-
-// Use electron-log if available, otherwise fallback to console.log
-const log = getLogger();
+const log = simpleLog;
 
 // Check if debug logging is enabled
 const isDebugEnabled = (): boolean => {
-  if (isWorkerThread) {
-    return process.env.DEBUG === 'true';
-  }
-  // In main thread, check if beta version (if electron.app is available)
+  // Check if this is a beta version by inspecting package.json
   try {
-    const electron = require('electron');
-    return process.env.DEBUG === 'true' || electron.app.getVersion().includes('-beta');
+    const packagePath = require('../../package.json');
+    return process.env.DEBUG === 'true' ||
+           (packagePath.version && packagePath.version.includes('-beta'));
   } catch {
     return process.env.DEBUG === 'true';
   }
