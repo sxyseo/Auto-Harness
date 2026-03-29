@@ -59,8 +59,25 @@ import { getUsageMonitor } from './claude-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
 import { initializeAppUpdater, stopPeriodicUpdates } from './app-updater';
 import { DEFAULT_APP_SETTINGS, IPC_CHANNELS, SPELL_CHECK_LANGUAGE_MAP, DEFAULT_SPELL_CHECK_LANGUAGE, ADD_TO_DICTIONARY_LABELS } from '../shared/constants';
-import { getAppLanguage } from './app-language';
 import { readSettingsFile } from './settings-utils';
+
+// =============================================================================
+// App Language (inlined to avoid bundling issues)
+// =============================================================================
+
+let currentAppLanguage = 'en';
+
+export function getAppLanguage(): string {
+  return currentAppLanguage;
+}
+
+export function setAppLanguage(language: string): void {
+  currentAppLanguage = language;
+}
+
+function initAppLanguageInline(): void {
+  currentAppLanguage = 'en';
+}
 import { registerSettingsAccessor } from './ai/auth/resolver';
 import { appLog, setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
@@ -421,11 +438,9 @@ app.whenReady().then(() => {
     const osLocale = app.getLocale();
     // Extract base language (e.g., 'en-US' -> 'en')
     const baseLanguage = osLocale.split('-')[0] || 'en';
-    const { setAppLanguage } = require('./app-language');
     setAppLanguage(baseLanguage);
   } catch {
     // Fall back to 'en' if locale detection fails
-    const { setAppLanguage } = require('./app-language');
     setAppLanguage('en');
   }
 
