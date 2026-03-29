@@ -106,9 +106,23 @@ export class WorkerBridge extends EventEmitter {
 
     const workerPath = resolveWorkerPath();
 
+    console.log(`[WorkerBridge] Spawning worker for task ${config.taskId}`);
+    console.log(`[WorkerBridge] Worker path: ${workerPath}`);
+    console.log(`[WorkerBridge] Worker config:`, {
+      taskId: config.taskId,
+      agentType: config.session?.agentType,
+      specDir: config.session?.specDir,
+      hasApiKey: !!config.session?.apiKey,
+      apiKeyLength: config.session?.apiKey?.length || 0,
+      provider: config.session?.provider,
+      modelId: config.session?.modelId
+    });
+
     this.worker = new Worker(workerPath, {
       workerData: workerConfig,
     });
+
+    console.log(`[WorkerBridge] Worker thread created successfully for task ${config.taskId}`);
 
     this.worker.on('message', (message: WorkerMessage) => {
       // Update last heartbeat timestamp for health monitoring
@@ -124,6 +138,7 @@ export class WorkerBridge extends EventEmitter {
       const errorDetails = `[Worker Error] Task: ${this.taskId}, Type: ${this.processType}, Error: ${error.message}`;
       console.error('[WorkerBridge]', errorDetails);
       console.error('[WorkerBridge] Stack:', error.stack);
+      console.error('[WorkerBridge] Worker config:', JSON.stringify(workerConfig, null, 2));
       this.emitTyped('error', this.taskId, `${errorDetails}\nStack: ${error.stack}`, this.projectId);
       this.cleanup();
     });
