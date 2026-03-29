@@ -1238,7 +1238,6 @@ export function registerSettingsHandlers(
           } catch (error) {
             lastError = error as Error;
             // Try next version argument
-            continue;
           }
         }
 

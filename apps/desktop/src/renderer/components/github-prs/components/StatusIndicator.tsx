@@ -24,7 +24,6 @@ function CIStatusIcon({ status, className }: CIStatusIconProps) {
     case 'failure':
       return <XCircle className={cn(baseClasses, 'text-red-400', className)} />;
     case 'none':
-    default:
       return <Circle className={cn(baseClasses, 'text-muted-foreground/50', className)} />;
   }
 }
@@ -64,7 +63,6 @@ function ReviewStatusBadge({ status, className }: ReviewStatusBadgeProps) {
         </Badge>
       );
     case 'none':
-    default:
       return null;
   }
 }
@@ -89,7 +87,6 @@ function MergeReadinessIcon({ state, className }: MergeReadinessIconProps) {
     case 'blocked':
       return <Ban className={cn(baseClasses, 'text-red-400', className)} />;
     case 'unknown':
-    default:
       return <HelpCircle className={cn(baseClasses, 'text-muted-foreground/50', className)} />;
   }
 }
