@@ -112,6 +112,7 @@ export class WorkerBridge extends EventEmitter {
 
     this.worker.on('message', (message: WorkerMessage) => {
       // Update last heartbeat timestamp for health monitoring
+      // @ts-expect-error - heartbeat is a custom message type not in WorkerMessage
       if (message.type === 'heartbeat') {
         this.lastHeartbeat = Date.now();
         return; // Don't emit heartbeat to main event emitter
