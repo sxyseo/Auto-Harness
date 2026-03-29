@@ -15,12 +15,14 @@
 import { EventEmitter } from 'events';
 import path from 'path';
 import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
-import { safeSendToRenderer } from './ipc-handlers/utils';
 import { IPC_CHANNELS } from '../shared/constants';
 
 // Use a generic type for BrowserWindow to avoid importing electron in worker threads
 type BrowserWindowLike = {
   isDestroyed?: () => boolean;
+  webContents?: {
+    send: (channel: string, ...args: unknown[]) => void;
+  };
 };
 
 // =============================================================================
@@ -393,13 +395,15 @@ class AgentDebugLogger extends EventEmitter {
     if (!this.getMainWindow) return;
 
     const mainWindow = this.getMainWindow();
-    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (!mainWindow || mainWindow.isDestroyed?.()) return;
 
-    safeSendToRenderer(
-      this.getMainWindow,
-      IPC_CHANNELS.AGENT_DEBUG_EVENT,
-      event
-    );
+    // Send directly to webContents to avoid importing utils.ts which depends on electron
+    try {
+      mainWindow.webContents?.send(IPC_CHANNELS.AGENT_DEBUG_EVENT, event);
+    } catch (error) {
+      // Silently fail if window is destroyed
+      console.error('[AgentDebugLogger] Failed to send to UI:', error);
+    }
   }
 
   /**

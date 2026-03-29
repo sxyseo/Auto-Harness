@@ -87,15 +87,10 @@ export default defineConfig({
           // spawned via `new Worker(path)` from WorkerBridge
           'ai/agent/worker': resolve(__dirname, 'src/main/ai/agent/worker.ts'),
         },
-        // Force electron to be external in ALL contexts (main + worker threads)
-        // This prevents electron from being bundled into worker threads where it's not available
-        external: ['@lydell/node-pty', 'electron'],
-        output: {
-          // Ensure electron imports are preserved as external references
-          globals: {
-            electron: 'require("electron")'
-          }
-        }
+        // Native modules that must remain external (loaded from disk, not bundled).
+        // @libsql/client is loaded lazily via globalThis.require() and resolved
+        // from extraResources/node_modules via Module.globalPaths (see index.ts).
+        external: ['@lydell/node-pty']
       }
     }
   },
