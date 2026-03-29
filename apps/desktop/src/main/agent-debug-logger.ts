@@ -82,7 +82,7 @@ class AgentDebugLogger extends EventEmitter {
    */
   setLogLevel(level: LogLevel): void {
     this.config.minLevel = level;
-    this.info('system', 'logger', `Log level changed to: ${level}`, {}, undefined, undefined);
+    this.info('system', 'logger', 'system', `Log level changed to: ${level}`, {}, undefined, undefined);
   }
 
   /**
@@ -436,7 +436,7 @@ class AgentDebugLogger extends EventEmitter {
    */
   clearLogs(): void {
     this.logBuffer = [];
-    this.info('system', 'logger', 'Log buffer cleared', {}, undefined, undefined);
+    this.info('system', 'logger', 'system', 'Log buffer cleared', {}, undefined, undefined);
   }
 }
 

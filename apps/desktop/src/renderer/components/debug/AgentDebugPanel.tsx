@@ -6,7 +6,8 @@
  * Shows all agent events, errors, and status in one place.
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
