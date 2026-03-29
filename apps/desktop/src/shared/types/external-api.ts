@@ -34,12 +34,14 @@ export type ApiAuthMethod = 'none' | 'api-key' | 'oauth' | 'token';
  * API authentication configuration
  */
 export interface ExternalApiConfig {
-  /** Authentication method */
-  authMethod: ApiAuthMethod;
+  /** Whether the external API server is enabled */
+  enabled: boolean;
+  /** Port number for the API server */
+  port: number;
   /** API key for authentication (if using api-key method) */
   apiKey?: string;
   /** Allowed origins for web API (CORS) */
-  allowedOrigins?: string[];
+  allowedOrigins?: string;
   /** Rate limiting (requests per minute) */
   rateLimit?: number;
   /** Enable write operations (false = read-only) */
@@ -121,12 +123,14 @@ export interface CreateTaskRequest {
  * Task update request
  */
 export interface UpdateTaskRequest {
+  projectId: string;
   taskId: string;
   title?: string;
   description?: string;
   status?: TaskStatus;
   priority?: 'low' | 'medium' | 'high' | 'critical';
   phase?: string;
+  metadata?: Partial<TaskMetadata>;
 }
 
 /**

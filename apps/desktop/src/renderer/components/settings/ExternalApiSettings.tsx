@@ -17,16 +17,7 @@ import { Badge } from '../ui/badge';
 import { Loader2, Server, Key, Shield, AlertTriangle } from 'lucide-react';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useToast } from '../../hooks/use-toast';
-
-interface ExternalApiConfig {
-  enabled: boolean;
-  port: number;
-  apiKey: string;
-  allowedOrigins: string;
-  rateLimit: number;
-  allowWrite: boolean;
-  allowDangerousOps: boolean;
-}
+import type { ExternalApiConfig } from '@shared/types/external-api';
 
 const DEFAULT_CONFIG: ExternalApiConfig = {
   enabled: false,

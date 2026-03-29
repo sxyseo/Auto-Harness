@@ -52,6 +52,10 @@
     "multiClient": {
       "title": "Multi-Client Orchestration",
       "description": "Configure different AI clients for each pipeline phase"
+    },
+    "external-api": {
+      "title": "External API",
+      "description": "External API access for automation tools"
     }
   },
   "apiProfiles": {
@@ -1319,5 +1323,46 @@
         "version": "Version"
       }
     }
+  },
+  "externalApi": {
+    "title": "External API",
+    "description": "Configure external API access for automation tools like OpenCLaw",
+    "enable": {
+      "label": "Enable External API",
+      "description": "Allow external tools to control Auto-Harness via REST API"
+    },
+    "warning": {
+      "title": "Security Warning",
+      "description": "External API allows full control of your projects. Only enable on trusted networks and use a strong API key."
+    },
+    "server": {
+      "title": "Server Configuration",
+      "port": "API Port",
+      "rateLimit": "Rate Limit (requests/minute)",
+      "rateLimitDescription": "Maximum requests per minute per client"
+    },
+    "auth": {
+      "title": "Authentication",
+      "apiKeyPlaceholder": "Enter API key or leave empty for no auth",
+      "generate": "Generate",
+      "apiKeyDescription": "Secure key for API authentication",
+      "allowedOrigins": "Allowed Origins",
+      "allowedOriginsDescription": "CORS allowed origins (use * for any origin)"
+    },
+    "permissions": {
+      "title": "Permissions",
+      "allowWrite": {
+        "label": "Allow Write Operations",
+        "description": "Allow creating and updating projects and tasks"
+      },
+      "allowDangerousOps": {
+        "label": "Allow Dangerous Operations",
+        "description": "Allow deleting projects and tasks (irreversible)"
+      }
+    },
+    "testing": "Testing...",
+    "testConnection": "Test Connection",
+    "saving": "Saving...",
+    "save": "Save Configuration"
   }
 }

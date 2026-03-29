@@ -31,8 +31,8 @@ import type {
   ApiError,
   PaginatedResponse,
   WebhookConfig,
-} from '../../../shared/types/external-api';
-import type { ExternalApiConfig } from '../../../shared/types/external-api';
+  ExternalApiConfig,
+} from '../../shared/types/external-api';
 
 // =============================================================================
 // Configuration
@@ -201,11 +201,8 @@ export class ExternalApiServer {
    * Authenticate request
    */
   private authenticateRequest(req: http.IncomingMessage, res: http.ServerResponse): boolean {
-    if (this.config.authMethod === 'none') {
-      return true;
-    }
-
-    if (this.config.authMethod === 'api-key') {
+    // If API key is configured, require authentication
+    if (this.config.apiKey) {
       const apiKey = req.headers['x-api-key'] as string;
 
       if (!apiKey) {
@@ -221,7 +218,7 @@ export class ExternalApiServer {
       return true;
     }
 
-    // Add other auth methods as needed
+    // No API key configured - allow access
     return true;
   }
 

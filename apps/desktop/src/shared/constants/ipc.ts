@@ -602,6 +602,9 @@ export const IPC_CHANNELS = {
   // External API (for OpenCLaw and other external tools)
   EXTERNAL_API_PROJECT_LIST: 'external-api:project:list',
   EXTERNAL_API_PROJECT_GET: 'external-api:project:get',
+  EXTERNAL_API_PROJECT_CREATE: 'external-api:project:create',
+  EXTERNAL_API_PROJECT_UPDATE: 'external-api:project:update',
+  EXTERNAL_API_PROJECT_DELETE: 'external-api:project:delete',
   EXTERNAL_API_TASK_LIST: 'external-api:task:list',
   EXTERNAL_API_TASK_CREATE: 'external-api:task:create',
   EXTERNAL_API_TASK_UPDATE: 'external-api:task:update',
@@ -618,6 +621,4 @@ export const IPC_CHANNELS = {
   EXTERNAL_API_WEBHOOK_UNREGISTER: 'external-api:webhook:unregister',
   EXTERNAL_API_WEBHOOK_LIST: 'external-api:webhook:list',
 
-} as const;
-  QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles' // All profiles unavailable
 } as const;
