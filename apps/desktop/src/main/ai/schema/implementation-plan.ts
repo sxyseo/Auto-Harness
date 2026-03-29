@@ -184,21 +184,25 @@ function coercePlan(input: unknown): unknown {
   // Many models produce a flat array of steps rather than the nested
   // phases[].subtasks[] structure our schema requires.
   // The quick_spec agent commonly writes "implementation_steps" as well.
+  // Treat empty array as missing (coerce to undefined) to trigger fallback logic.
   let phases = raw.phases;
-  if (!phases && (raw.steps || raw.tasks || raw.implementation_steps)) {
-    const items = (raw.steps ?? raw.tasks ?? raw.implementation_steps) as unknown[];
-    phases = [{
-      id: '1',
-      name: raw.feature ?? raw.title ?? raw.name ?? 'Implementation',
-      subtasks: items,
-    }];
+  if (!phases || (Array.isArray(phases) && phases.length === 0)) {
+    // Empty or missing phases - check for alternative formats
+    if (raw.steps || raw.tasks || raw.implementation_steps) {
+      const items = (raw.steps ?? raw.tasks ?? raw.implementation_steps) as unknown[];
+      phases = [{
+        id: '1',
+        name: raw.feature ?? raw.title ?? raw.name ?? 'Implementation',
+        subtasks: items,
+      }];
+    }
   }
 
   // Handle flat files_to_modify / implementation_order format.
   // Some models (especially for simple tasks) write a flat structure:
   //   { "files_to_modify": [{ "path": "...", "changes": [...] }], "implementation_order": ["..."] }
   // instead of the nested phases[].subtasks[] structure. Convert to canonical form.
-  if (!phases && Array.isArray(raw.files_to_modify)) {
+  if ((!phases || (Array.isArray(phases) && phases.length === 0)) && Array.isArray(raw.files_to_modify)) {
     const subtasks: unknown[] = [];
 
     if (Array.isArray(raw.implementation_order) && raw.implementation_order.length > 0) {
