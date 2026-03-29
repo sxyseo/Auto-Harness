@@ -29,6 +29,7 @@ import { registerMemoryHandlers } from './memory-handlers';
 import { registerAppUpdateHandlers } from './app-update-handlers';
 import { registerDebugHandlers } from './debug-handlers';
 import { registerClaudeCodeHandlers } from './claude-code-handlers';
+import { registerAgentDebugHandlers } from './agent-debug-handlers';
 import { registerMcpHandlers } from './mcp-handlers';
 import { registerProfileHandlers } from './profile-handlers';
 import { registerScreenshotHandlers } from './screenshot-handlers';
@@ -111,6 +112,9 @@ export function setupIpcHandlers(
 
   // Debug handlers (logs, debug info, etc.)
   registerDebugHandlers();
+
+  // Agent debug logging handlers (real-time agent activity monitoring)
+  registerAgentDebugHandlers(getMainWindow);
 
   // Claude Code CLI handlers (version checking, installation)
   registerClaudeCodeHandlers();

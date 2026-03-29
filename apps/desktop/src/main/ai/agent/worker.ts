@@ -48,6 +48,7 @@ import { loadProjectInstructions, injectContext } from '../prompts/prompt-loader
 import { createMcpClientsForAgent, mergeMcpTools, closeAllMcpClients } from '../mcp/client';
 import type { McpClientResult } from '../mcp/types';
 import { runProjectIndexer } from '../project/project-indexer';
+import { agentDebugLogger } from '../../agent-debug-logger';
 
 // =============================================================================
 // Validation
@@ -77,13 +78,28 @@ const logWriter = config.session.specDir
 // =============================================================================
 
 // Log worker startup immediately for diagnostics
-postLog(`[INIT] Worker thread initialized at ${new Date().toISOString()}`);
+const initTimestamp = new Date().toISOString();
+postLog(`[INIT] Worker thread initialized at ${initTimestamp}`);
 postLog(`[INIT] Task ID: ${config.taskId}`);
 postLog(`[INIT] Process Type: ${config.processType}`);
 postLog(`[INIT] Spec Dir: ${config.session.specDir || 'not set'}`);
 postLog(`[INIT] Project Dir: ${config.session.projectDir || 'not set'}`);
 postLog(`[INIT] Agent Type: ${config.session.agentType || 'not set'}`);
 postLog(`[INIT] Model: ${config.session.modelId || 'not set'}`);
+
+// Log to agent debug logger
+agentDebugLogger.lifecycle(
+  config.session.agentType || 'unknown',
+  config.taskId,
+  `Worker initialized at ${initTimestamp}`,
+  {
+    processType: config.processType,
+    specDir: config.session.specDir,
+    projectDir: config.session.projectDir,
+    modelId: config.session.modelId,
+    timestamp: initTimestamp
+  }
+);
 
 // =============================================================================
 // Messaging Helpers
@@ -276,6 +292,21 @@ async function runSingleSession(
   const phaseModelId = baseSession.modelId;
   const phaseThinking = await getPhaseThinking(specDir, phase);
 
+  // Log session start
+  const sessionId = `${config.taskId}-session${sessionNumber}`;
+  agentDebugLogger.lifecycle(
+    agentType,
+    sessionId,
+    `Starting ${agentType} session (phase: ${phase})`,
+    {
+      phase,
+      sessionNumber,
+      subtaskId,
+      modelId: phaseModelId,
+      specDir
+    }
+  );
+
   const model = createProvider({
     config: {
       provider: baseSession.provider as SupportedProvider,
@@ -329,6 +360,45 @@ async function runSingleSession(
   const runnerOptions = {
     tools,
     onEvent: (event: StreamEvent) => {
+      // Debug logging for tool calls
+      if (event.type === 'tool-call') {
+        agentDebugLogger.toolCall(
+          agentType,
+          sessionId,
+          event.toolName,
+          event.args,
+          config.taskId,
+          config.projectId
+        );
+      } else if (event.type === 'tool-result') {
+        // Tool result doesn't have duration in args, use a placeholder
+        agentDebugLogger.toolResult(
+          agentType,
+          sessionId,
+          event.toolName,
+          !event.isError,
+          undefined, // Duration not available in tool-result event
+          config.taskId
+        );
+      } else if (event.type === 'text-delta') {
+        // Log thinking/content (sample to avoid spam)
+        if (event.text.length > 50) {
+          agentDebugLogger.thinking(
+            agentType,
+            sessionId,
+            event.text.substring(0, 100),
+            config.taskId
+          );
+        }
+      } else if (event.type === 'error') {
+        agentDebugLogger.error(
+          agentType,
+          sessionId,
+          `Session error: ${event.error.message}`,
+          { error: event.error, taskId: config.taskId }
+        );
+      }
+
       // Write stream events to task_logs.json for UI log display
       if (logWriter) {
         logWriter.processEvent(event, phase);

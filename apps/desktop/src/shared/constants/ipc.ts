@@ -65,6 +65,13 @@ export const IPC_CHANNELS = {
   TASK_LOGS_UNWATCH: 'task:logsUnwatch',   // Stop watching for log changes
   TASK_LOGS_CHANGED: 'task:logsChanged',   // Event: logs changed (main -> renderer)
   TASK_LOGS_STREAM: 'task:logsStream',     // Event: streaming log chunk (main -> renderer)
+
+  // Agent Debug Logging
+  AGENT_DEBUG_EVENT: 'agent:debugEvent',             // Event: real-time agent debug event (main -> renderer)
+  AGENT_DEBUG_GET_LOGS: 'agent:debugGetLogs',        // Get recent debug logs
+  AGENT_DEBUG_GET_STATES: 'agent:debugGetStates',    // Get all agent states
+  AGENT_DEBUG_SET_LEVEL: 'agent:debugSetLevel',      // Set debug log level
+  AGENT_DEBUG_CLEAR: 'agent:debugClear',             // Clear debug log buffer
   TASK_MERGE_PROGRESS: 'task:mergeProgress',  // Event: merge progress update (main -> renderer)
 
   // Terminal operations
