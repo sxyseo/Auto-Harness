@@ -524,7 +524,7 @@ export class OpenClawWebSocketClient {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    const delay = Math.min(1000 * (2 ** this.reconnectAttempts), 30000);
 
     setTimeout(() => {
       console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
