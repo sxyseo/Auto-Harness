@@ -6,9 +6,9 @@
  */
 
 import { ipcRenderer } from 'electron';
-import { IPC_CHANNELS } from '@shared/constants';
-import type { AgentDebugEvent, LogLevel } from '@shared/types';
-import type { IPCResult } from '@shared/types';
+import { IPC_CHANNELS } from '../../../shared/constants';
+import type { AgentDebugEvent, LogLevel } from '../../../shared/types';
+import type { IPCResult } from '../../../shared/types';
 
 export const agentDebugAPI = {
   /**
