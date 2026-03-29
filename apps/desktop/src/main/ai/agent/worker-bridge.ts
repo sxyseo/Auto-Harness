@@ -78,6 +78,8 @@ export class WorkerBridge extends EventEmitter {
   private taskId: string = '';
   private projectId: string | undefined;
   private processType: ProcessType = 'task-execution';
+  private lastHeartbeat: number = Date.now();
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   /**
    * Spawn a worker thread with the given configuration.
@@ -109,11 +111,19 @@ export class WorkerBridge extends EventEmitter {
     });
 
     this.worker.on('message', (message: WorkerMessage) => {
+      // Update last heartbeat timestamp for health monitoring
+      if (message.type === 'heartbeat') {
+        this.lastHeartbeat = Date.now();
+        return; // Don't emit heartbeat to main event emitter
+      }
       this.handleWorkerMessage(message);
     });
 
     this.worker.on('error', (error: Error) => {
-      this.emitTyped('error', this.taskId, error.message, this.projectId);
+      const errorDetails = `[Worker Error] Task: ${this.taskId}, Type: ${this.processType}, Error: ${error.message}`;
+      console.error('[WorkerBridge]', errorDetails);
+      console.error('[WorkerBridge] Stack:', error.stack);
+      this.emitTyped('error', this.taskId, `${errorDetails}\nStack: ${error.stack}`, this.projectId);
       this.cleanup();
     });
 
@@ -121,10 +131,22 @@ export class WorkerBridge extends EventEmitter {
       // Code 0 = clean exit; non-zero = crash/error
       // Only emit exit if we haven't already emitted from a 'result' message
       if (this.worker) {
+        const exitMsg = `[Worker Exit] Task: ${this.taskId}, Code: ${code}, Type: ${this.processType}`;
+        console.log('[WorkerBridge]', exitMsg);
         this.emitTyped('exit', this.taskId, code === 0 ? 0 : code, this.processType, this.projectId);
         this.cleanup();
       }
     });
+
+    // Start heartbeat monitoring (emit warning if no heartbeat for 2 minutes)
+    this.heartbeatInterval = setInterval(() => {
+      const timeSinceLastHeartbeat = Date.now() - this.lastHeartbeat;
+      if (timeSinceLastHeartbeat > 2 * 60 * 1000) {
+        const warning = `[Worker Warning] No heartbeat from ${this.taskId} for ${Math.round(timeSinceLastHeartbeat / 1000)}s - may be stalled`;
+        console.warn('[WorkerBridge]', warning);
+        this.emitTyped('log', this.taskId, warning, this.projectId);
+      }
+    }, 30000); // Check every 30 seconds
   }
 
   /**
@@ -134,9 +156,16 @@ export class WorkerBridge extends EventEmitter {
   async terminate(): Promise<void> {
     if (!this.worker) return;
 
+    // Stop heartbeat monitoring
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+
     // Try graceful abort first
     try {
       this.worker.postMessage({ type: 'abort' });
+      console.log(`[WorkerBridge] Sent abort signal to worker ${this.taskId}`);
     } catch {
       // Worker may already be dead
     }
@@ -147,8 +176,9 @@ export class WorkerBridge extends EventEmitter {
 
     try {
       await worker.terminate();
+      console.log(`[WorkerBridge] Worker ${this.taskId} terminated`);
     } catch {
-      // Already terminated
+      // Worker may already be terminated
     }
   }
 
@@ -253,6 +283,14 @@ export class WorkerBridge extends EventEmitter {
   }
 
   private cleanup(): void {
-    this.worker = null;
+    if (this.worker) {
+      this.worker.removeAllListeners();
+      this.worker = null;
+    }
+    // Stop heartbeat monitoring on cleanup
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 }

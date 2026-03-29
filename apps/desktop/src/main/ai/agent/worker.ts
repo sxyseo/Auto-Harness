@@ -73,6 +73,19 @@ const logWriter = config.session.specDir
   : null;
 
 // =============================================================================
+// Worker Initialization Logging
+// =============================================================================
+
+// Log worker startup immediately for diagnostics
+postLog(`[INIT] Worker thread initialized at ${new Date().toISOString()}`);
+postLog(`[INIT] Task ID: ${config.taskId}`);
+postLog(`[INIT] Process Type: ${config.processType}`);
+postLog(`[INIT] Spec Dir: ${config.session.specDir || 'not set'}`);
+postLog(`[INIT] Project Dir: ${config.session.projectDir || 'not set'}`);
+postLog(`[INIT] Agent Type: ${config.session.agentType || 'not set'}`);
+postLog(`[INIT] Model: ${config.session.modelId || 'not set'}`);
+
+// =============================================================================
 // Messaging Helpers
 // =============================================================================
 
