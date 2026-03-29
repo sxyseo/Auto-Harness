@@ -59,7 +59,7 @@ import { getUsageMonitor } from './claude-profile/usage-monitor';
 import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handlers';
 import { initializeAppUpdater, stopPeriodicUpdates } from './app-updater';
 import { DEFAULT_APP_SETTINGS, IPC_CHANNELS, SPELL_CHECK_LANGUAGE_MAP, DEFAULT_SPELL_CHECK_LANGUAGE, ADD_TO_DICTIONARY_LABELS } from '../shared/constants';
-import { getAppLanguage, initAppLanguage } from './app-language';
+import { getAppLanguage } from './app-language';
 import { readSettingsFile } from './settings-utils';
 import { registerSettingsAccessor } from './ai/auth/resolver';
 import { appLog, setupErrorLogging } from './app-logger';
@@ -416,7 +416,18 @@ app.whenReady().then(() => {
   }
 
   // Initialize app language from OS locale for main process i18n (context menus)
-  initAppLanguage();
+  // Do this here instead of in app-language.ts to avoid bundling electron into worker threads
+  try {
+    const osLocale = app.getLocale();
+    // Extract base language (e.g., 'en-US' -> 'en')
+    const baseLanguage = osLocale.split('-')[0] || 'en';
+    const { setAppLanguage } = require('./app-language');
+    setAppLanguage(baseLanguage);
+  } catch {
+    // Fall back to 'en' if locale detection fails
+    const { setAppLanguage } = require('./app-language');
+    setAppLanguage('en');
+  }
 
   // Clean up stale update metadata from the old source updater system
   // This prevents version display desync after electron-updater installs a new version

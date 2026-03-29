@@ -6,7 +6,7 @@
  * Provides real-time access to agent activities, errors, and states.
  */
 
-import { ipcMain, BrowserWindow, app } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, LogLevel } from '../../shared/types';
 import { agentDebugLogger } from '../agent-debug-logger';
@@ -104,7 +104,10 @@ export function registerAgentDebugHandlers(getMainWindow: () => BrowserWindow | 
 
   // Configure the logger with the main window getter and log directory
   agentDebugLogger.configure(getMainWindow);
-  const logDir = path.join(app.getPath('userData'), 'logs');
+  // Use dynamic require to avoid bundling electron into worker threads
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const electron = require('electron');
+  const logDir = path.join(electron.app.getPath('userData'), 'logs');
   agentDebugLogger.setLogDirectory(logDir);
 
   console.log('[AgentDebug] Agent debug logging handlers registered');

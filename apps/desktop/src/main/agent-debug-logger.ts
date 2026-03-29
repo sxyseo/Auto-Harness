@@ -17,7 +17,11 @@ import path from 'path';
 import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
 import { safeSendToRenderer } from './ipc-handlers/utils';
 import { IPC_CHANNELS } from '../shared/constants';
-import type { BrowserWindow } from 'electron';
+
+// Use a generic type for BrowserWindow to avoid importing electron in worker threads
+type BrowserWindowLike = {
+  isDestroyed?: () => boolean;
+};
 
 // =============================================================================
 // Types
@@ -53,7 +57,7 @@ class AgentDebugLogger extends EventEmitter {
   private config: AgentDebugConfig;
   private logBuffer: AgentDebugEvent[] = [];
   private readonly MAX_BUFFER_SIZE = 1000;
-  private getMainWindow: (() => BrowserWindow | null) | null = null;
+  private getMainWindow: (() => BrowserWindowLike | null) | null = null;
   private agentStates: Map<string, { lastActivity: string; status: string }> = new Map();
   private logDirectory: string | null = null; // Configurable log directory
 
@@ -67,7 +71,7 @@ class AgentDebugLogger extends EventEmitter {
     };
   }
 
-  configure(getMainWindow: () => BrowserWindow | null): void {
+  configure(getMainWindow: () => BrowserWindowLike | null): void {
     this.getMainWindow = getMainWindow;
   }
 
