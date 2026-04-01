@@ -50,7 +50,6 @@ import type { McpClientResult } from '../mcp/types';
 import { runProjectIndexer } from '../project/project-indexer';
 import { resolvePhaseClient, isExternalCliClient } from '../config/client-config';
 import { invokeExternalCli } from '../external/invoker';
-import type { AppSettings } from '../../../shared/types/settings';
 
 // =============================================================================
 // Validation

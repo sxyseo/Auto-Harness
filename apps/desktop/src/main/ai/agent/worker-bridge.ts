@@ -80,6 +80,8 @@ export class WorkerBridge extends EventEmitter {
   private processType: ProcessType = 'task-execution';
   private lastHeartbeat: number = Date.now();
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private sawResult: boolean = false;
+  private sawFatalWorkerError: boolean = false;
 
   /**
    * Spawn a worker thread with the given configuration.
@@ -96,6 +98,8 @@ export class WorkerBridge extends EventEmitter {
     this.projectId = config.projectId;
     this.processType = config.processType;
     this.progressTracker = new ProgressTracker();
+    this.sawResult = false;
+    this.sawFatalWorkerError = false;
 
     const workerConfig: WorkerConfig = {
       taskId: config.taskId,
@@ -147,9 +151,11 @@ export class WorkerBridge extends EventEmitter {
       // Code 0 = clean exit; non-zero = crash/error
       // Only emit exit if we haven't already emitted from a 'result' message
       if (this.worker) {
-        const exitMsg = `[Worker Exit] Task: ${this.taskId}, Code: ${code}, Type: ${this.processType}`;
+        const normalizedCode =
+          code === 0 && !this.sawResult && this.sawFatalWorkerError ? 1 : code;
+        const exitMsg = `[Worker Exit] Task: ${this.taskId}, Code: ${code}, Normalized: ${normalizedCode}, Type: ${this.processType}`;
         console.log('[WorkerBridge]', exitMsg);
-        this.emitTyped('exit', this.taskId, code === 0 ? 0 : code, this.processType, this.projectId);
+        this.emitTyped('exit', this.taskId, normalizedCode === 0 ? 0 : normalizedCode, this.processType, this.projectId);
         this.cleanup();
       }
     });
@@ -219,6 +225,7 @@ export class WorkerBridge extends EventEmitter {
         break;
 
       case 'error':
+        this.sawFatalWorkerError = true;
         this.emitTyped('error', message.taskId, message.data, message.projectId);
         break;
 
@@ -268,6 +275,8 @@ export class WorkerBridge extends EventEmitter {
    * Maps SessionResult.outcome to an exit code.
    */
   private handleResult(taskId: string, result: SessionResult, projectId?: string): void {
+    this.sawResult = true;
+
     // Map outcome to exit code
     const exitCode = result.outcome === 'completed' || result.outcome === 'max_steps' || result.outcome === 'context_window' ? 0 : 1;
 
@@ -303,6 +312,8 @@ export class WorkerBridge extends EventEmitter {
       this.worker.removeAllListeners();
       this.worker = null;
     }
+    this.sawResult = false;
+    this.sawFatalWorkerError = false;
     // Stop heartbeat monitoring on cleanup
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
