@@ -412,6 +412,11 @@ export interface ElectronAPI {
   testProviderConnection: (provider: string, config: { apiKey?: string; baseUrl?: string; region?: string }) => Promise<IPCResult<{ success: boolean; error?: string }>>;
   checkEnvCredentials: () => Promise<IPCResult<Record<string, boolean>>>;
 
+  // External CLI Client management (multi-client orchestration)
+  selectExecutableFile: () => Promise<IPCResult<string | null>>;
+  validateExecutablePath: (path: string) => Promise<IPCResult<{ valid: boolean; error?: string }>>;
+  testExternalClientConnection: (config: { executable: string; args?: string[]; env?: Record<string, string> }) => Promise<IPCResult<{ success: boolean; error?: string; version?: string }>>;
+
   // Codex OAuth authentication
   codexAuthLogin: () => Promise<{ success: boolean; data?: { accessToken: string; refreshToken: string; expiresAt: number; email?: string }; error?: string }>;
   codexAuthStatus: () => Promise<{ success: boolean; data?: { isAuthenticated: boolean; expiresAt?: number }; error?: string }>;

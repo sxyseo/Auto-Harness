@@ -3,9 +3,17 @@ import type { AppSettings, PerProviderAgentConfig } from '../../shared/types';
 import type { APIProfile, ProfileFormData, TestConnectionResult, ModelInfo } from '@shared/types/profile';
 import type { BuiltinProvider, ProviderAccount } from '@shared/types/provider-account';
 import type { IPCResult } from '@shared/types/common';
+import type { ExternalClientConfig, PhaseClientMapping } from '@shared/types/client-config';
 import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 import { markSettingsLoaded } from '../lib/sentry';
+
+/**
+ * Generate a unique ID for external CLI clients
+ */
+function generateClientId(): string {
+  return `external-cli-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
 
 interface SettingsState {
   settings: AppSettings;
@@ -30,6 +38,11 @@ interface SettingsState {
   // Provider accounts state (unified multi-provider credentials)
   providerAccounts: ProviderAccount[];
   envCredentials: Record<string, boolean>;
+
+  // Multi-client orchestration state
+  multiClientEnabled: boolean;
+  externalCliClients: ExternalClientConfig[];
+  phaseClientMapping: PhaseClientMapping;
 
   // Actions
   setSettings: (settings: AppSettings) => void;
@@ -58,6 +71,13 @@ interface SettingsState {
   getProviderAccounts: (provider?: BuiltinProvider) => ProviderAccount[];
   checkEnvCredentials: () => Promise<IPCResult<Record<string, boolean>>>;
   loadProviderAccounts: () => Promise<void>;
+
+  // Multi-client orchestration actions
+  setMultiClientEnabled: (enabled: boolean) => Promise<boolean>;
+  setPhaseClientMapping: (mapping: PhaseClientMapping) => Promise<boolean>;
+  addExternalClient: (client: Omit<ExternalClientConfig, 'id'>) => Promise<boolean>;
+  updateExternalClient: (id: string, updates: Partial<ExternalClientConfig>) => Promise<boolean>;
+  deleteExternalClient: (id: string) => Promise<boolean>;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -83,6 +103,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   modelsLoading: false,
   modelsError: null,
   discoveredModels: new Map<string, ModelInfo[]>(),
+
+  // Multi-client orchestration state
+  multiClientEnabled: false,
+  externalCliClients: [],
+  phaseClientMapping: {
+    spec: { type: 'provider', provider: 'anthropic', modelId: 'sonnet' },
+    planning: { type: 'provider', provider: 'anthropic', modelId: 'sonnet' },
+    coding: { type: 'provider', provider: 'anthropic', modelId: 'sonnet' },
+    qa: { type: 'provider', provider: 'anthropic', modelId: 'sonnet' },
+  },
 
   setSettings: (settings) => set({ settings }),
 
@@ -413,6 +443,91 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       set({ envCredentials: result.data });
     }
     return result;
+  },
+
+  // ============================================================
+  // Multi-client orchestration actions
+  // ============================================================
+
+  setMultiClientEnabled: async (enabled: boolean): Promise<boolean> => {
+    try {
+      const result = await window.electronAPI.saveSettings({ multiClientEnabled: enabled });
+      if (result.success) {
+        set({ multiClientEnabled: enabled });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  setPhaseClientMapping: async (mapping: PhaseClientMapping): Promise<boolean> => {
+    try {
+      const result = await window.electronAPI.saveSettings({ phaseClientMapping: mapping });
+      if (result.success) {
+        set({ phaseClientMapping: mapping });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  addExternalClient: async (client: Omit<ExternalClientConfig, 'id'>): Promise<boolean> => {
+    try {
+      const newClient: ExternalClientConfig = {
+        ...client,
+        id: generateClientId(),
+      };
+      const result = await window.electronAPI.saveSettings({
+        externalCliClients: [...useSettingsStore.getState().externalCliClients, newClient]
+      });
+      if (result.success) {
+        set((state) => ({
+          externalCliClients: [...state.externalCliClients, newClient]
+        }));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  updateExternalClient: async (id: string, updates: Partial<ExternalClientConfig>): Promise<boolean> => {
+    try {
+      const updatedClients = useSettingsStore.getState().externalCliClients.map((client) =>
+        client.id === id ? { ...client, ...updates } : client
+      );
+      const result = await window.electronAPI.saveSettings({
+        externalCliClients: updatedClients
+      });
+      if (result.success) {
+        set({ externalCliClients: updatedClients });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  deleteExternalClient: async (id: string): Promise<boolean> => {
+    try {
+      const updatedClients = useSettingsStore.getState().externalCliClients.filter((client) => client.id !== id);
+      const result = await window.electronAPI.saveSettings({
+        externalCliClients: updatedClients
+      });
+      if (result.success) {
+        set({ externalCliClients: updatedClients });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   },
 }));
 

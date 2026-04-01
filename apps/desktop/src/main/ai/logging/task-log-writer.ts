@@ -360,7 +360,10 @@ export class TaskLogWriter {
       writeFileSync(tmpFile, JSON.stringify(this.data, null, 2), 'utf-8');
       // renameSync is atomic on same filesystem (POSIX)
       renameSync(tmpFile, this.logFile);
-    } catch {
+    } catch (error) {
+      // Log write failures - previously silent, now console logged
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[TaskLogWriter] Failed to save logs to ${this.logFile}:`, errMsg);
       // Non-fatal: log write failures don't break execution
       // (The UI will just show an empty log section)
     }

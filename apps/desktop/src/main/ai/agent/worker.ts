@@ -48,6 +48,9 @@ import { loadProjectInstructions, injectContext } from '../prompts/prompt-loader
 import { createMcpClientsForAgent, mergeMcpTools, closeAllMcpClients } from '../mcp/client';
 import type { McpClientResult } from '../mcp/types';
 import { runProjectIndexer } from '../project/project-indexer';
+import { resolvePhaseClient, isExternalCliClient } from '../config/client-config';
+import { invokeExternalCli } from '../external/invoker';
+import type { AppSettings } from '../../../shared/types/settings';
 
 // =============================================================================
 // Validation
@@ -71,6 +74,20 @@ if (!config?.taskId || !config?.session) {
 const logWriter = config.session.specDir
   ? new TaskLogWriter(config.session.specDir, basename(config.session.specDir))
   : null;
+
+// =============================================================================
+// Worker Initialization Logging
+// =============================================================================
+
+// Log worker startup immediately for diagnostics
+const initTimestamp = new Date().toISOString();
+postLog(`[INIT] Worker thread initialized at ${initTimestamp}`);
+postLog(`[INIT] Task ID: ${config.taskId}`);
+postLog(`[INIT] Process Type: ${config.processType}`);
+postLog(`[INIT] Spec Dir: ${config.session.specDir || 'not set'}`);
+postLog(`[INIT] Project Dir: ${config.session.projectDir || 'not set'}`);
+postLog(`[INIT] Agent Type: ${config.session.agentType || 'not set'}`);
+postLog(`[INIT] Model: ${config.session.modelId || 'not set'}`);
 
 // =============================================================================
 // Messaging Helpers
@@ -256,12 +273,57 @@ async function runSingleSession(
   skipPhaseLogging = false,
   outputSchema?: import('zod').ZodSchema,
 ): Promise<SessionResult> {
+  // Check if this phase should use an external CLI (multi-client mode)
+  if (baseSession.settings) {
+    const resolvedClient = resolvePhaseClient(
+      phase as 'spec' | 'planning' | 'coding' | 'qa',
+      {
+        settings: baseSession.settings,
+        providerQueue: [], // No provider queue in worker
+        defaultModelId: baseSession.modelId,
+      }
+    );
+
+    // If resolved to external CLI, invoke it instead of internal SDK
+    if (isExternalCliClient(resolvedClient) && resolvedClient.externalClient) {
+      postLog(`[EXTERNAL_CLI] Invoking ${resolvedClient.externalClient.name} for phase ${phase}`);
+      return invokeExternalCli(
+        {
+          client: resolvedClient.externalClient,
+          systemPrompt,
+          initialMessage: initialUserMessage ?? baseSession.initialMessages[0]?.content ?? '',
+          toolContext,
+          cwd: toolContext.projectDir,
+          abortSignal: abortController.signal,
+        },
+        (event) => {
+          // Forward events to main thread
+          postMessage({
+            type: 'stream-event',
+            taskId: config.taskId,
+            data: event,
+            projectId: config.projectId,
+          });
+          // Write to task logs
+          if (logWriter) {
+            logWriter.processEvent(event, phase);
+          }
+        }
+      );
+    }
+  }
+
+  // Use internal SDK (default or provider client)
   // Use queue-resolved model ID from baseSession (already mapped to the correct
   // provider-specific model, e.g., 'gpt-5.3-codex' for OpenAI Codex).
   // getPhaseModel() only knows local shorthands (opus → claude-opus-4-6) and
   // would create a mismatch when the provider queue selected a non-Anthropic account.
   const phaseModelId = baseSession.modelId;
   const phaseThinking = await getPhaseThinking(specDir, phase);
+
+  // Log session start
+  const sessionId = `${config.taskId}-session${sessionNumber}`;
+  postLog(`[SESSION] Starting ${agentType} session (phase: ${phase})`);
 
   const model = createProvider({
     config: {
@@ -316,6 +378,15 @@ async function runSingleSession(
   const runnerOptions = {
     tools,
     onEvent: (event: StreamEvent) => {
+      // Debug logging for tool calls (using postLog for worker threads)
+      if (event.type === 'tool-call') {
+        postLog(`[TOOL] ${event.toolName}`);
+      } else if (event.type === 'tool-result') {
+        postLog(`[TOOL_RESULT] ${event.toolName} - ${event.isError ? 'ERROR' : 'SUCCESS'}`);
+      } else if (event.type === 'error') {
+        postLog(`[ERROR] Session error: ${event.error.message}`);
+      }
+
       // Write stream events to task_logs.json for UI log display
       if (logWriter) {
         logWriter.processEvent(event, phase);

@@ -14,7 +14,6 @@ import { Worker } from 'worker_threads';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
-import { app } from 'electron';
 
 import type { AgentManagerEvents, ExecutionProgressData, ProcessType } from '../../agent/types';
 import type { TaskEventPayload } from '../../agent/task-event-schema';
@@ -37,9 +36,18 @@ const __dirname = path.dirname(__filename);
 /**
  * Resolve the path to the worker entry point.
  * Handles both dev (source via electron-vite) and production (bundled) paths.
+ *
+ * NOTE: Cannot use 'app.isPackaged' here because Worker threads may not have
+ * access to all Electron APIs. Use process.resourcesPath as a heuristic instead.
  */
 function resolveWorkerPath(): string {
-  if (app.isPackaged) {
+  // In production, process.resourcesPath points to the app's resources directory
+  // In dev, it typically points to a different location
+  const isProduction = process.resourcesPath.includes('app.asar') ||
+                       process.resourcesPath.includes('electron-app.asar') ||
+                       !process.resourcesPath.includes('node_modules');
+
+  if (isProduction) {
     // Production: worker is inside app.asar at out/main/ai/agent/worker.js
     return path.join(process.resourcesPath, 'app.asar', 'out', 'main', 'ai', 'agent', 'worker.js');
   }
@@ -70,6 +78,8 @@ export class WorkerBridge extends EventEmitter {
   private taskId: string = '';
   private projectId: string | undefined;
   private processType: ProcessType = 'task-execution';
+  private lastHeartbeat: number = Date.now();
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   /**
    * Spawn a worker thread with the given configuration.
@@ -96,16 +106,40 @@ export class WorkerBridge extends EventEmitter {
 
     const workerPath = resolveWorkerPath();
 
+    console.log(`[WorkerBridge] Spawning worker for task ${config.taskId}`);
+    console.log(`[WorkerBridge] Worker path: ${workerPath}`);
+    console.log(`[WorkerBridge] Worker config:`, {
+      taskId: config.taskId,
+      agentType: config.session?.agentType,
+      specDir: config.session?.specDir,
+      hasApiKey: !!config.session?.apiKey,
+      apiKeyLength: config.session?.apiKey?.length || 0,
+      provider: config.session?.provider,
+      modelId: config.session?.modelId
+    });
+
     this.worker = new Worker(workerPath, {
       workerData: workerConfig,
     });
 
+    console.log(`[WorkerBridge] Worker thread created successfully for task ${config.taskId}`);
+
     this.worker.on('message', (message: WorkerMessage) => {
+      // Update last heartbeat timestamp for health monitoring
+      // @ts-expect-error - heartbeat is a custom message type not in WorkerMessage
+      if (message.type === 'heartbeat') {
+        this.lastHeartbeat = Date.now();
+        return; // Don't emit heartbeat to main event emitter
+      }
       this.handleWorkerMessage(message);
     });
 
     this.worker.on('error', (error: Error) => {
-      this.emitTyped('error', this.taskId, error.message, this.projectId);
+      const errorDetails = `[Worker Error] Task: ${this.taskId}, Type: ${this.processType}, Error: ${error.message}`;
+      console.error('[WorkerBridge]', errorDetails);
+      console.error('[WorkerBridge] Stack:', error.stack);
+      console.error('[WorkerBridge] Worker config:', JSON.stringify(workerConfig, null, 2));
+      this.emitTyped('error', this.taskId, `${errorDetails}\nStack: ${error.stack}`, this.projectId);
       this.cleanup();
     });
 
@@ -113,10 +147,22 @@ export class WorkerBridge extends EventEmitter {
       // Code 0 = clean exit; non-zero = crash/error
       // Only emit exit if we haven't already emitted from a 'result' message
       if (this.worker) {
+        const exitMsg = `[Worker Exit] Task: ${this.taskId}, Code: ${code}, Type: ${this.processType}`;
+        console.log('[WorkerBridge]', exitMsg);
         this.emitTyped('exit', this.taskId, code === 0 ? 0 : code, this.processType, this.projectId);
         this.cleanup();
       }
     });
+
+    // Start heartbeat monitoring (emit warning if no heartbeat for 2 minutes)
+    this.heartbeatInterval = setInterval(() => {
+      const timeSinceLastHeartbeat = Date.now() - this.lastHeartbeat;
+      if (timeSinceLastHeartbeat > 2 * 60 * 1000) {
+        const warning = `[Worker Warning] No heartbeat from ${this.taskId} for ${Math.round(timeSinceLastHeartbeat / 1000)}s - may be stalled`;
+        console.warn('[WorkerBridge]', warning);
+        this.emitTyped('log', this.taskId, warning, this.projectId);
+      }
+    }, 30000); // Check every 30 seconds
   }
 
   /**
@@ -126,9 +172,16 @@ export class WorkerBridge extends EventEmitter {
   async terminate(): Promise<void> {
     if (!this.worker) return;
 
+    // Stop heartbeat monitoring
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+
     // Try graceful abort first
     try {
       this.worker.postMessage({ type: 'abort' });
+      console.log(`[WorkerBridge] Sent abort signal to worker ${this.taskId}`);
     } catch {
       // Worker may already be dead
     }
@@ -139,8 +192,9 @@ export class WorkerBridge extends EventEmitter {
 
     try {
       await worker.terminate();
+      console.log(`[WorkerBridge] Worker ${this.taskId} terminated`);
     } catch {
-      // Already terminated
+      // Worker may already be terminated
     }
   }
 
@@ -245,6 +299,14 @@ export class WorkerBridge extends EventEmitter {
   }
 
   private cleanup(): void {
-    this.worker = null;
+    if (this.worker) {
+      this.worker.removeAllListeners();
+      this.worker = null;
+    }
+    // Stop heartbeat monitoring on cleanup
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 }

@@ -7,6 +7,8 @@ import type { ChangelogFormat, ChangelogAudience, ChangelogEmojiLevel } from './
 import type { SupportedLanguage } from '../constants/i18n';
 import type { ProviderAccount, BuiltinProvider } from './provider-account';
 import type { ProviderModelSpec } from '../constants/models';
+import type { ExternalClientConfig, PhaseClientMapping } from './client-config';
+import type { ExternalApiConfig } from './external-api';
 
 // Color theme types for multi-theme support
 export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo' | 'forest';
@@ -359,6 +361,12 @@ export interface AppSettings {
   sidebarCollapsed?: boolean;
   // GPU acceleration for terminal rendering (WebGL)
   gpuAcceleration?: GpuAcceleration;
+  // Multi-client orchestration configuration
+  multiClientEnabled?: boolean;
+  externalCliClients?: ExternalClientConfig[];
+  phaseClientMapping?: PhaseClientMapping;
+  // External API configuration (for OpenCLaw and other automation tools)
+  externalApiConfig?: ExternalApiConfig;
 }
 
 // GPU acceleration mode for terminal WebGL rendering

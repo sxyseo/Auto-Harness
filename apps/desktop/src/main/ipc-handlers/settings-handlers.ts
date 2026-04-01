@@ -9,7 +9,7 @@ import { is } from '@electron-toolkit/utils';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { IPC_CHANNELS, DEFAULT_APP_SETTINGS, DEFAULT_AGENT_PROFILES, SPELL_CHECK_LANGUAGE_MAP, DEFAULT_SPELL_CHECK_LANGUAGE, sanitizeThinkingLevel, VALID_THINKING_LEVELS } from '../../shared/constants';
-import { setAppLanguage } from '../app-language';
+import { setAppLanguage } from '../index';
 import type {
   AppSettings,
   IPCResult
@@ -1130,6 +1130,152 @@ export function registerSettingsHandlers(
       } catch (error) {
         console.error('[PROVIDER_ACCOUNTS_CHECK_ENV] Error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Failed to check env credentials' };
+      }
+    }
+  );
+
+  // EXTERNAL CLIENT: Select file dialog
+  ipcMain.handle(
+    IPC_CHANNELS.EXTERNAL_CLIENT_SELECT_FILE,
+    async (): Promise<IPCResult<string | null>> => {
+      try {
+        const result = await dialog.showOpenDialog({
+          title: 'Select CLI Executable',
+          properties: ['openFile'],
+          filters: [
+            { name: 'Executable Files', extensions: ['exe', 'bin', 'sh', 'cmd', 'bash', 'zsh'] },
+            { name: 'All Files', extensions: ['*'] },
+          ],
+        });
+
+        if (result.canceled || result.filePaths.length === 0) {
+          return { success: true, data: null };
+        }
+
+        return { success: true, data: result.filePaths[0] };
+      } catch (error) {
+        console.error('[EXTERNAL_CLIENT_SELECT_FILE] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to select file' };
+      }
+    }
+  );
+
+  // EXTERNAL CLIENT: Validate executable path
+  ipcMain.handle(
+    IPC_CHANNELS.EXTERNAL_CLIENT_VALIDATE_PATH,
+    async (_event, filePath: string): Promise<IPCResult<{ valid: boolean; error?: string }>> => {
+      try {
+        if (!filePath || typeof filePath !== 'string') {
+          return { success: true, data: { valid: false, error: 'Invalid file path' } };
+        }
+
+        // Check if file exists
+        if (!existsSync(filePath)) {
+          return { success: true, data: { valid: false, error: 'File not found' } };
+        }
+
+        // Check if it's executable
+        try {
+          const stats = statSync(filePath);
+          if (!stats.isFile()) {
+            return { success: true, data: { valid: false, error: 'Not a file' } };
+          }
+
+          // On Unix-like systems, check executable bit
+          if (process.platform !== 'win32') {
+            const mode = stats.mode;
+            const isExecutable = (mode & parseInt('0001', 8)) !== 0; // Execute bit for owner
+            if (!isExecutable) {
+              return { success: true, data: { valid: false, error: 'File is not executable' } };
+            }
+          }
+
+          return { success: true, data: { valid: true } };
+        } catch (error) {
+          return { success: true, data: { valid: false, error: 'Cannot access file' } };
+        }
+      } catch (error) {
+        console.error('[EXTERNAL_CLIENT_VALIDATE_PATH] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to validate path' };
+      }
+    }
+  );
+
+  // EXTERNAL CLIENT: Test CLI connection
+  ipcMain.handle(
+    IPC_CHANNELS.EXTERNAL_CLIENT_TEST_CONNECTION,
+    async (_event, clientConfig: { executable: string; args?: string[]; env?: Record<string, string> }): Promise<IPCResult<{ success: boolean; error?: string; version?: string }>> => {
+      try {
+        const { executable, args = [], env = {} } = clientConfig;
+
+        // Check if executable exists
+        if (!existsSync(executable)) {
+          return { success: true, data: { success: false, error: 'Executable not found' } };
+        }
+
+        // Try to run CLI with --version or version argument
+        const versionArgs = ['--version', '-v', '-V', 'version'];
+        let lastError: Error | null = null;
+
+        for (const versionArg of versionArgs) {
+          try {
+            const testArgs = [...args, versionArg];
+            const output = execFileSync(executable, testArgs, {
+              env: { ...process.env, ...env },
+              encoding: 'utf-8',
+              timeout: 5000, // 5 second timeout
+              stdio: ['ignore', 'pipe', 'ignore'],
+            });
+
+            const version = output.trim();
+            return {
+              success: true,
+              data: {
+                success: true,
+                version: version.substring(0, 200), // Limit version string length
+              },
+            };
+          } catch (error) {
+            lastError = error as Error;
+            // Try next version argument
+          }
+        }
+
+        // If all version arguments failed, try just running the executable
+        try {
+          execFileSync(executable, args, {
+            env: { ...process.env, ...env },
+            encoding: 'utf-8',
+            timeout: 2000, // 2 second timeout
+            stdio: ['ignore', 'pipe', 'ignore'],
+          });
+
+          // Executable runs but doesn't support --version
+          return {
+            success: true,
+            data: {
+              success: true,
+              version: 'unknown',
+            },
+          };
+        } catch (error) {
+          return {
+            success: true,
+            data: {
+              success: false,
+              error: lastError?.message || 'Failed to run executable',
+            },
+          };
+        }
+      } catch (error) {
+        console.error('[EXTERNAL_CLIENT_TEST_CONNECTION] Error:', error);
+        return {
+          success: true,
+          data: {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to test connection',
+          },
+        };
       }
     }
   );

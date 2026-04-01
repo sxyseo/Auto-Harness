@@ -30,6 +30,9 @@ export default defineConfig({
   main: {
     define: { ...sentryDefines, ...embeddedKeys },
     plugins: [externalizeDepsPlugin({
+      // Externalize electron for ALL contexts (main + worker threads)
+      // This prevents electron from being bundled into worker threads
+      include: ['electron'],
       // Bundle these packages into the main process (they won't be in node_modules in packaged app)
       exclude: [
         'uuid',

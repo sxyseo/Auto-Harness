@@ -5,9 +5,10 @@
  * main process code that needs localized strings (e.g., context menus).
  *
  * Updated via IPC when user changes language in settings.
+ *
+ * IMPORTANT: This module must NOT import electron directly, as it will be
+ * bundled into worker threads where electron APIs are not available.
  */
-
-import { app } from 'electron';
 
 // Current app language, defaults to 'en'
 // Updated via setAppLanguage() when renderer notifies of language change
@@ -32,14 +33,13 @@ export function setAppLanguage(language: string): void {
 /**
  * Initialize app language from OS locale as a starting point.
  * The renderer will update this once i18n initializes.
+ *
+ * This function is safe to call in any context (main process, worker thread, etc).
+ * In worker contexts, it simply keeps the default 'en' language.
  */
 export function initAppLanguage(): void {
-  try {
-    // app.getLocale() may not be available in test environments
-    const osLocale = app?.getLocale?.() || 'en';
-    // Extract base language (e.g., 'en-US' -> 'en')
-    currentAppLanguage = osLocale.split('-')[0] || 'en';
-  } catch {
-    currentAppLanguage = 'en';
-  }
+  // Do NOT import electron here - keep this module worker-thread safe
+  // The renderer will set the correct language via IPC anyway
+  // In main process, language will be initialized separately
+  currentAppLanguage = 'en';
 }

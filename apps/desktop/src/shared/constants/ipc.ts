@@ -65,6 +65,13 @@ export const IPC_CHANNELS = {
   TASK_LOGS_UNWATCH: 'task:logsUnwatch',   // Stop watching for log changes
   TASK_LOGS_CHANGED: 'task:logsChanged',   // Event: logs changed (main -> renderer)
   TASK_LOGS_STREAM: 'task:logsStream',     // Event: streaming log chunk (main -> renderer)
+
+  // Agent Debug Logging
+  AGENT_DEBUG_EVENT: 'agent:debugEvent',             // Event: real-time agent debug event (main -> renderer)
+  AGENT_DEBUG_GET_LOGS: 'agent:debugGetLogs',        // Get recent debug logs
+  AGENT_DEBUG_GET_STATES: 'agent:debugGetStates',    // Get all agent states
+  AGENT_DEBUG_SET_LEVEL: 'agent:debugSetLevel',      // Set debug log level
+  AGENT_DEBUG_CLEAR: 'agent:debugClear',             // Clear debug log buffer
   TASK_MERGE_PROGRESS: 'task:mergeProgress',  // Event: merge progress update (main -> renderer)
 
   // Terminal operations
@@ -174,6 +181,11 @@ export const IPC_CHANNELS = {
   PROVIDER_ACCOUNTS_TEST_CONNECTION: 'provider-accounts:test-connection',
   PROVIDER_ACCOUNTS_CHECK_ENV: 'provider-accounts:check-env',
   MODEL_OVERRIDES_SAVE: 'model-overrides:save',
+
+  // External CLI Client management (multi-client orchestration)
+  EXTERNAL_CLIENT_SELECT_FILE: 'external-client:selectFile',
+  EXTERNAL_CLIENT_VALIDATE_PATH: 'external-client:validatePath',
+  EXTERNAL_CLIENT_TEST_CONNECTION: 'external-client:test-connection',
 
   // Dialogs
   DIALOG_SELECT_DIRECTORY: 'dialog:selectDirectory',
@@ -592,5 +604,28 @@ export const IPC_CHANNELS = {
   // Queue routing events (main -> renderer)
   QUEUE_PROFILE_SWAPPED: 'queue:profileSwapped',      // Task switched to different profile
   QUEUE_SESSION_CAPTURED: 'queue:sessionCaptured',    // Session ID captured from running task
-  QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles' // All profiles unavailable
+  QUEUE_BLOCKED_NO_PROFILES: 'queue:blockedNoProfiles', // All profiles unavailable
+
+  // External API (for OpenCLaw and other external tools)
+  EXTERNAL_API_PROJECT_LIST: 'external-api:project:list',
+  EXTERNAL_API_PROJECT_GET: 'external-api:project:get',
+  EXTERNAL_API_PROJECT_CREATE: 'external-api:project:create',
+  EXTERNAL_API_PROJECT_UPDATE: 'external-api:project:update',
+  EXTERNAL_API_PROJECT_DELETE: 'external-api:project:delete',
+  EXTERNAL_API_TASK_LIST: 'external-api:task:list',
+  EXTERNAL_API_TASK_CREATE: 'external-api:task:create',
+  EXTERNAL_API_TASK_UPDATE: 'external-api:task:update',
+  EXTERNAL_API_TASK_REORDER: 'external-api:task:reorder',
+  EXTERNAL_API_TASK_BATCH: 'external-api:task:batch',
+  EXTERNAL_API_ROADMAP_GET: 'external-api:roadmap:get',
+  EXTERNAL_API_ROADMAP_GENERATE: 'external-api:roadmap:generate',
+  EXTERNAL_API_ROADMAP_UPDATE: 'external-api:roadmap:update',
+  EXTERNAL_API_IDEATION_GET: 'external-api:ideation:get',
+  EXTERNAL_API_IDEATION_GENERATE: 'external-api:ideation:generate',
+  EXTERNAL_API_IDEATION_CONVERT: 'external-api:ideation:convert',
+  EXTERNAL_API_PROGRESS_GET: 'external-api:progress:get',
+  EXTERNAL_API_WEBHOOK_REGISTER: 'external-api:webhook:register',
+  EXTERNAL_API_WEBHOOK_UNREGISTER: 'external-api:webhook:unregister',
+  EXTERNAL_API_WEBHOOK_LIST: 'external-api:webhook:list',
+
 } as const;
