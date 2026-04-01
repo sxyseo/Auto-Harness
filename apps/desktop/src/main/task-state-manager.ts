@@ -118,6 +118,10 @@ export class TaskStateManager {
         const currentState = this.getCurrentState(taskId);
         if (currentState === 'plan_review') {
           this.handleUiEvent(taskId, { type: 'PLAN_APPROVED' }, task, project);
+        } else if (currentState === 'backlog') {
+          this.handleUiEvent(taskId, { type: 'PLANNING_STARTED' }, task, project);
+        } else if (!currentState && (task.status === 'backlog' || task.status === 'queue')) {
+          this.handleUiEvent(taskId, { type: 'PLANNING_STARTED' }, task, project);
         } else if (currentState === 'human_review' || currentState === 'error') {
           this.handleUiEvent(taskId, { type: 'USER_RESUMED' }, task, project);
         } else if (!currentState && task.reviewReason === 'plan_review') {
