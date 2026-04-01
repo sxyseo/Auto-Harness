@@ -12,10 +12,7 @@
  * 4. Returns a structured SessionResult compatible with runAgentSession()
  */
 
-import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { existsSync } from 'node:fs';
+import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 
 import type { ExternalClientConfig } from '../../../shared/types/client-config';
 import type { SessionResult, SessionMessage, TokenUsage, StreamEvent } from '../session/types';
@@ -43,6 +40,11 @@ export interface ExternalCliInvocation {
   abortSignal?: AbortSignal;
 }
 
+interface CliLaunchConfig {
+  args: string[];
+  stdinContent?: string;
+}
+
 // =============================================================================
 // External CLI Invoker
 // =============================================================================
@@ -51,7 +53,7 @@ export interface ExternalCliInvocation {
  * Run an external CLI and return a session result.
  *
  * This function:
- * 1. Validates the CLI executable exists
+ * 1. Builds the CLI command and lets the OS resolve the executable via PATH
  * 2. Constructs the command with appropriate arguments
  * 3. Spawns the process and streams output
  * 4. Captures the final response and usage
@@ -65,32 +67,20 @@ export async function invokeExternalCli(
 
   const startTime = Date.now();
 
-  // Validate executable exists
-  if (!existsSync(client.executable)) {
-    return {
-      outcome: 'error',
-      stepsExecuted: 0,
-      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-      error: {
-        code: 'cli_not_found',
-        message: `External CLI executable not found: ${client.executable}`,
-        retryable: false,
-      },
-      messages: [],
-      toolCallCount: 0,
-      durationMs: Date.now() - startTime,
-    };
-  }
-
   // Build command arguments
-  const args = buildCliArgs(client, systemPrompt, initialMessage, toolContext);
+  const launchConfig = buildCliArgs(client, systemPrompt, initialMessage, toolContext);
 
   // Spawn the CLI process
-  const cliProcess = spawn(client.executable, args, {
+  const cliProcess = spawn(client.executable, launchConfig.args, {
     cwd,
     env: { ...process.env, ...client.env },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
+
+  if (launchConfig.stdinContent) {
+    cliProcess.stdin.write(launchConfig.stdinContent);
+  }
+  cliProcess.stdin.end();
 
   // Track output
   let stdoutOutput = '';
@@ -125,9 +115,7 @@ export async function invokeExternalCli(
   });
 
   // Handle process exit
-  const exitCode = await new Promise<number>((resolve) => {
-    cliProcess.on('close', (code: number | null) => resolve(code ?? -1));
-  });
+  const { exitCode, spawnError } = await waitForProcessExit(cliProcess);
 
   // Check if process was aborted
   if (abortSignal?.aborted) {
@@ -136,6 +124,37 @@ export async function invokeExternalCli(
       outcome: 'cancelled',
       stepsExecuted: 0,
       usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      messages: [],
+      toolCallCount: 0,
+      durationMs: Date.now() - startTime,
+    };
+  }
+
+  if (spawnError) {
+    const isMissingExecutable = isExecutableNotFoundError(spawnError);
+    const errorCode = isMissingExecutable ? 'cli_not_found' : 'cli_spawn_error';
+    const errorMessage = isMissingExecutable
+      ? `External CLI executable not found: ${client.executable}`
+      : `Failed to start external CLI ${client.executable}: ${spawnError.message}`;
+
+    onEvent?.({
+      type: 'error',
+      error: {
+        code: errorCode,
+        message: errorMessage,
+        retryable: false,
+      },
+    });
+
+    return {
+      outcome: 'error',
+      stepsExecuted: 0,
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      error: {
+        code: errorCode,
+        message: errorMessage,
+        retryable: false,
+      },
       messages: [],
       toolCallCount: 0,
       durationMs: Date.now() - startTime,
@@ -190,7 +209,7 @@ function buildCliArgs(
   systemPrompt: string,
   userMessage: string,
   toolContext: ToolContext,
-): string[] {
+): CliLaunchConfig {
   const baseArgs = client.args ?? [];
 
   switch (client.type) {
@@ -201,10 +220,10 @@ function buildCliArgs(
       return buildClaudeCodeArgs(client, systemPrompt, userMessage, toolContext, baseArgs);
 
     case 'custom':
-      return baseArgs; // Custom CLIs should handle prompts via stdin/env
+      return { args: baseArgs }; // Custom CLIs should handle prompts via stdin/env
 
     default:
-      return baseArgs;
+      return { args: baseArgs };
   }
 }
 
@@ -217,27 +236,29 @@ function buildCodexArgs(
   userMessage: string,
   toolContext: ToolContext,
   baseArgs: string[],
-): string[] {
-  // Codex expects: codex --prompt "..." --cwd "..."
-  const args = [...baseArgs];
+): CliLaunchConfig {
+  // The installed Codex CLI uses `codex exec` for non-interactive runs and
+  // reads stdin when the prompt argument is `-`.
+  const args = baseArgs[0] === 'exec' ? [...baseArgs] : ['exec', ...baseArgs];
 
-  // Add system prompt if supported
-  if (client.capabilities.supportsThinking) {
-    args.push('--system', systemPrompt);
+  if (!hasAnyFlag(args, ['-C', '--cd'])) {
+    args.push('--cd', toolContext.projectDir);
   }
 
-  // Add user message
-  args.push('--prompt', userMessage);
-
-  // Add working directory
-  args.push('--cwd', toolContext.projectDir);
-
-  // Add YOLO mode if enabled
-  if (client.yoloMode) {
-    args.push('--yolo');
+  if (!hasAnyFlag(args, ['--color'])) {
+    args.push('--color', 'never');
   }
 
-  return args;
+  if (client.yoloMode && !hasAnyFlag(args, ['--dangerously-bypass-approvals-and-sandbox'])) {
+    args.push('--dangerously-bypass-approvals-and-sandbox');
+  }
+
+  args.push('-');
+
+  return {
+    args,
+    stdinContent: buildCodexPrompt(systemPrompt, userMessage),
+  };
 }
 
 /**
@@ -249,7 +270,7 @@ function buildClaudeCodeArgs(
   userMessage: string,
   toolContext: ToolContext,
   baseArgs: string[],
-): string[] {
+): CliLaunchConfig {
   // Claude Code expects: claude-code --prompt "..." --directory "..."
   const args = [...baseArgs];
 
@@ -269,7 +290,47 @@ function buildClaudeCodeArgs(
     args.push('--yolo');
   }
 
-  return args;
+  return { args };
+}
+
+function buildCodexPrompt(systemPrompt: string, userMessage: string): string {
+  return [
+    'System instructions:',
+    systemPrompt,
+    '',
+    'User request:',
+    userMessage,
+    '',
+  ].join('\n');
+}
+
+function hasAnyFlag(args: string[], flags: string[]): boolean {
+  return flags.some((flag) => args.includes(flag));
+}
+
+async function waitForProcessExit(
+  cliProcess: ChildProcessWithoutNullStreams,
+): Promise<{ exitCode: number; spawnError: Error | null }> {
+  return await new Promise((resolve) => {
+    let settled = false;
+
+    cliProcess.once('error', (error) => {
+      if (settled) return;
+      settled = true;
+      resolve({ exitCode: -1, spawnError: error });
+    });
+
+    cliProcess.once('close', (code) => {
+      if (settled) return;
+      settled = true;
+      resolve({ exitCode: code ?? -1, spawnError: null });
+    });
+  });
+}
+
+function isExecutableNotFoundError(error: Error): boolean {
+  const withCode = error as Error & { code?: string };
+  return withCode.code === 'ENOENT' || error.message.includes('ENOENT');
 }
 
 // =============================================================================
