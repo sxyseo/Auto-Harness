@@ -10,6 +10,7 @@
 import type { ExecutionProgressData, ProcessType } from '../../../main/agent/types';
 import type { SessionConfig, SessionResult, StreamEvent } from '../session/types';
 import type { RunnerOptions } from '../session/runner';
+import type { AppSettings } from '../../../shared/types/settings';
 
 // =============================================================================
 // Worker Configuration
@@ -77,6 +78,8 @@ export interface SerializableSessionConfig {
   };
   /** Enable agentic orchestration mode where the AI drives the pipeline via SpawnSubagent tool */
   useAgenticOrchestration?: boolean;
+  /** App settings for multi-client configuration */
+  settings?: Pick<AppSettings, 'multiClientEnabled' | 'phaseClientMapping' | 'externalCliClients'>;
   /** Tool context serialized fields */
   toolContext: {
     cwd: string;

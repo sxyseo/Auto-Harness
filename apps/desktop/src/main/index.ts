@@ -60,25 +60,13 @@ import { initializeUsageMonitorForwarding } from './ipc-handlers/terminal-handle
 import { initializeAppUpdater, stopPeriodicUpdates } from './app-updater';
 import { DEFAULT_APP_SETTINGS, IPC_CHANNELS, SPELL_CHECK_LANGUAGE_MAP, DEFAULT_SPELL_CHECK_LANGUAGE, ADD_TO_DICTIONARY_LABELS } from '../shared/constants';
 import { readSettingsFile } from './settings-utils';
-
-// =============================================================================
-// App Language (inlined to avoid bundling issues)
-// =============================================================================
-
-let currentAppLanguage = 'en';
-
-export function getAppLanguage(): string {
-  return currentAppLanguage;
-}
-
-export function setAppLanguage(language: string): void {
-  currentAppLanguage = language;
-}
-
-function initAppLanguageInline(): void {
-  currentAppLanguage = 'en';
-}
+import { getAppLanguage as _getAppLanguage, setAppLanguage as _setAppLanguage, initAppLanguage as _initAppLanguage } from './app-language';
 import { registerSettingsAccessor } from './ai/auth/resolver';
+
+// Re-export app-language functions for other modules
+export const getAppLanguage = _getAppLanguage;
+export const setAppLanguage = _setAppLanguage;
+export const initAppLanguage = _initAppLanguage;
 import { appLog, setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
 import { preWarmToolCache } from './cli-tool-manager';
