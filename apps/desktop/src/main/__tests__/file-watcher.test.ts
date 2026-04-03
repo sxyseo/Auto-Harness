@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 import path from 'path';
+import { existsSync, readFileSync } from 'fs';
 
 // ---------------------------------------------------------------------------
 // Mock chokidar BEFORE importing FileWatcher so the module sees our mock.
@@ -56,12 +57,16 @@ import { FileWatcher } from '../file-watcher';
 
 describe('FileWatcher concurrency', () => {
   let fw: FileWatcher;
+  const mockExistsSync = vi.mocked(existsSync);
+  const mockReadFileSync = vi.mocked(readFileSync);
 
   beforeEach(() => {
     fw = new FileWatcher();
     createdWatchers = [];
     watchFactory = null;
     vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(JSON.stringify({ phases: [] }));
   });
 
   afterEach(async () => {
@@ -296,6 +301,57 @@ describe('FileWatcher concurrency', () => {
 
       await fw.watch(taskId, specDir2);
       expect(fw.getWatchedSpecDir(taskId)).toBe(specDir2);
+    });
+  });
+
+  describe('missing implementation plan handling', () => {
+    it('does not emit an error when implementation_plan.json does not exist yet', async () => {
+      const taskId = 'task-missing-plan';
+      const specDir = path.join('/project', '.auto-claude', 'specs', 'missing-plan');
+      const onError = vi.fn();
+
+      mockExistsSync.mockReturnValue(false);
+      fw.on('error', onError);
+
+      await fw.watch(taskId, specDir);
+
+      expect(onError).not.toHaveBeenCalled();
+      expect(createdWatchers).toHaveLength(1);
+      expect(fw.isWatching(taskId)).toBe(true);
+    });
+
+    it('emits progress when implementation_plan.json is created after watch starts', async () => {
+      const taskId = 'task-plan-created-later';
+      const specDir = path.join('/project', '.auto-claude', 'specs', 'created-later');
+      const onProgress = vi.fn();
+
+      mockExistsSync.mockReturnValue(false);
+      fw.on('progress', onProgress);
+
+      await fw.watch(taskId, specDir);
+
+      mockReadFileSync.mockReturnValue(JSON.stringify({
+        phases: [
+          {
+            subtasks: [{ title: 'Implement watcher add handling' }]
+          }
+        ]
+      }));
+      createdWatchers[0].emit('add');
+
+      expect(onProgress).toHaveBeenCalledTimes(1);
+      expect(onProgress).toHaveBeenCalledWith(
+        taskId,
+        expect.objectContaining({
+          phases: [
+            expect.objectContaining({
+              subtasks: [
+                expect.objectContaining({ status: 'pending' })
+              ]
+            })
+          ]
+        })
+      );
     });
   });
 });

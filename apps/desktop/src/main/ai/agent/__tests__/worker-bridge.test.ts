@@ -105,6 +105,10 @@ describe('WorkerBridge', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     createdWorkers.length = 0;
+    Object.defineProperty(process, 'resourcesPath', {
+      value: '/tmp/node_modules/electron',
+      configurable: true,
+    });
     bridge = new WorkerBridge();
   });
 
@@ -257,6 +261,24 @@ describe('WorkerBridge', () => {
         undefined,
       );
     });
+
+    it('normalizes raw worker exit to failure when a fatal worker error was emitted without a result', () => {
+      const exitHandler = vi.fn();
+      const errorHandler = vi.fn();
+      bridge.on('exit', exitHandler);
+      bridge.on('error', errorHandler);
+      bridge.spawn(createConfig());
+
+      getWorker().emit('message', {
+        type: 'error',
+        taskId: 'task-123',
+        data: 'Agent session failed: spec not found',
+      });
+      getWorker().emit('exit', 0);
+
+      expect(errorHandler).toHaveBeenCalledWith('task-123', 'Agent session failed: spec not found', undefined);
+      expect(exitHandler).toHaveBeenCalledWith('task-123', 1, 'task-execution', 'proj-456');
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -271,7 +293,11 @@ describe('WorkerBridge', () => {
 
       getWorker().emit('error', new Error('Worker crashed'));
 
-      expect(errorHandler).toHaveBeenCalledWith('task-123', 'Worker crashed', 'proj-456');
+      expect(errorHandler).toHaveBeenCalledWith(
+        'task-123',
+        expect.stringContaining('Worker crashed'),
+        'proj-456',
+      );
       expect(bridge.isActive).toBe(false);
     });
 

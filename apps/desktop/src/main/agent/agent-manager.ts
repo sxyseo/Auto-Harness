@@ -129,6 +129,23 @@ export class AgentManager extends EventEmitter {
   }
 
   /**
+   * Snapshot the worker-safe subset of app settings needed for multi-client routing.
+   */
+  private getWorkerSettingsSnapshot(): NonNullable<SerializableSessionConfig['settings']> {
+    const settings = readSettingsFile();
+    return {
+      multiClientEnabled: typeof settings?.multiClientEnabled === 'boolean'
+        ? settings.multiClientEnabled
+        : false,
+      phaseClientMapping:
+        settings?.phaseClientMapping as NonNullable<SerializableSessionConfig['settings']>['phaseClientMapping'],
+      externalCliClients: Array.isArray(settings?.externalCliClients)
+        ? settings.externalCliClients as NonNullable<SerializableSessionConfig['settings']>['externalCliClients']
+        : [],
+    };
+  }
+
+  /**
    * Resolve auth using the provider accounts priority queue.
    * Falls back to legacy Claude profile if no provider accounts exist.
    */
@@ -395,6 +412,7 @@ export class AgentManager extends EventEmitter {
       baseURL: resolved.auth?.baseURL,
       configDir: resolved.configDir,
       oauthTokenFilePath: resolved.auth?.oauthTokenFilePath,
+      settings: this.getWorkerSettingsSnapshot(),
       mcpOptions: {
         context7Enabled: true,
         memoryEnabled: !!process.env.GRAPHITI_MCP_URL,
@@ -519,6 +537,7 @@ export class AgentManager extends EventEmitter {
       baseURL: resolved.auth?.baseURL,
       configDir: resolved.configDir,
       oauthTokenFilePath: resolved.auth?.oauthTokenFilePath,
+      settings: this.getWorkerSettingsSnapshot(),
       mcpOptions: {
         context7Enabled: true,
         memoryEnabled: !!process.env.GRAPHITI_MCP_URL,
@@ -622,6 +641,7 @@ export class AgentManager extends EventEmitter {
       baseURL: resolved.auth?.baseURL,
       configDir: resolved.configDir,
       oauthTokenFilePath: resolved.auth?.oauthTokenFilePath,
+      settings: this.getWorkerSettingsSnapshot(),
       mcpOptions: {
         context7Enabled: true,
         memoryEnabled: !!process.env.GRAPHITI_MCP_URL,
