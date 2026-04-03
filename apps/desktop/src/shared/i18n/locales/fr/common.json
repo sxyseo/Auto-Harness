@@ -322,6 +322,41 @@
     "previousReview": "Révision précédente ({{count}} résultats)",
     "findingsPosted": "{{count}} publiés",
     "followupInProgress": "Analyse de suivi en cours...",
+    "template": {
+      "label": "Modèle de révision",
+      "tooltip": "Sélectionnez un modèle de révision pour personnaliser le type d'analyse effectuée.",
+      "selected": "Sélectionné :"
+    },
+    "templates": {
+      "comprehensive": {
+        "label": "Complet",
+        "description": "Révision complète couvrant tous les aspects des modifications du code."
+      },
+      "quick": {
+        "label": "Rapide",
+        "description": "Révision rapide pour les petites modifications à faible risque avec une analyse minimale."
+      },
+      "security": {
+        "label": "Sécurité",
+        "description": "Révision axée sur la sécurité vérifiant les vulnérabilités et les pratiques de codage sécurisé."
+      },
+      "quality": {
+        "label": "Qualité",
+        "description": "Révision axée sur la qualité et la maintenabilité pour améliorer la qualité du code."
+      },
+      "architecture": {
+        "label": "Architecture",
+        "description": "Révision architecturale et structurelle des modèles de conception et de la conception du système."
+      },
+      "testCoverage": {
+        "label": "Couverture des tests",
+        "description": "Révision axée sur la couverture des tests et les meilleures pratiques de test."
+      },
+      "documentation": {
+        "label": "Documentation",
+        "description": "Révision des modifications de documentation et de la qualité des docstrings."
+      }
+    },
     "severity": {
       "critical": "Bloquant",
       "high": "Requis",

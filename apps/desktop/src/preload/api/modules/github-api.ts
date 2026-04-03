@@ -12,6 +12,11 @@ import type {
   PRStatusUpdate,
   PollingMetadata
 } from '../../../shared/types';
+import type {
+  ReviewTemplateType,
+  ReviewTemplate,
+  ReviewTemplateConfig
+} from '../../../main/ipc-handlers/github/types';
 import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
 
 /**
@@ -151,6 +156,9 @@ export interface WorkflowsAwaitingApprovalResult {
 // Re-export PaginatedIssuesResult from shared types for API consumers
 export type { PaginatedIssuesResult };
 
+// Re-export review template types for API consumers
+export type { ReviewTemplateType, ReviewTemplate, ReviewTemplateConfig };
+
 /**
  * GitHub Integration API operations
  */
@@ -274,7 +282,12 @@ export interface GitHubAPI {
   /** Load more PRs using cursor-based pagination */
   listMorePRs: (projectId: string, cursor: string) => Promise<PRListResult>;
   getPR: (projectId: string, prNumber: number) => Promise<PRData | null>;
-  runPRReview: (projectId: string, prNumber: number) => void;
+  /** Run PR review with optional template selection */
+  runPRReview: (
+    projectId: string,
+    prNumber: number,
+    templateConfig?: ReviewTemplateConfig
+  ) => void;
   cancelPRReview: (projectId: string, prNumber: number) => Promise<boolean>;
   postPRReview: (projectId: string, prNumber: number, selectedFindingIds?: string[], options?: { forceApprove?: boolean }) => Promise<boolean>;
   deletePRReview: (projectId: string, prNumber: number) => Promise<boolean>;
@@ -330,6 +343,20 @@ export interface GitHubAPI {
   /** Subscribe to PR status updates from background polling */
   onPRStatusUpdate: (
     callback: (update: PRStatusUpdate) => void
+  ) => IpcListenerCleanup;
+
+  // PR auto-fix event listeners
+  /** Subscribe to PR fix progress updates */
+  onPRFixProgress: (
+    callback: (progress: { prNumber: number; findingId: string; phase: string; progress: number; message: string }) => void
+  ) => IpcListenerCleanup;
+  /** Subscribe to PR fix complete updates */
+  onPRFixComplete: (
+    callback: (result: { prNumber: number; findingId: string; success: boolean; status: string; appliedAt?: string; errorMessage?: string }) => void
+  ) => IpcListenerCleanup;
+  /** Subscribe to PR fix error updates */
+  onPRFixError: (
+    callback: (error: { prNumber: number; findingId: string; error: string }) => void
   ) => IpcListenerCleanup;
 }
 
@@ -733,8 +760,8 @@ export const createGitHubAPI = (): GitHubAPI => ({
   getPR: (projectId: string, prNumber: number): Promise<PRData | null> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_GET, projectId, prNumber),
 
-  runPRReview: (projectId: string, prNumber: number): void =>
-    sendIpc(IPC_CHANNELS.GITHUB_PR_REVIEW, projectId, prNumber),
+  runPRReview: (projectId: string, prNumber: number, templateConfig?: ReviewTemplateConfig): void =>
+    sendIpc(IPC_CHANNELS.GITHUB_PR_REVIEW, projectId, prNumber, templateConfig),
 
   cancelPRReview: (projectId: string, prNumber: number): Promise<boolean> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_REVIEW_CANCEL, projectId, prNumber),
@@ -831,5 +858,21 @@ export const createGitHubAPI = (): GitHubAPI => ({
   onPRStatusUpdate: (
     callback: (update: PRStatusUpdate) => void
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.GITHUB_PR_STATUS_UPDATE, callback)
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_STATUS_UPDATE, callback),
+
+  // PR auto-fix event listeners
+  onPRFixProgress: (
+    callback: (progress: { prNumber: number; findingId: string; phase: string; progress: number; message: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_FIX_PROGRESS, callback),
+
+  onPRFixComplete: (
+    callback: (result: { prNumber: number; findingId: string; success: boolean; status: string; appliedAt?: string; errorMessage?: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_FIX_COMPLETE, callback),
+
+  onPRFixError: (
+    callback: (error: { prNumber: number; findingId: string; error: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.GITHUB_PR_FIX_ERROR, callback)
 });
