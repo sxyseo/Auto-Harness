@@ -64,12 +64,6 @@ export class FileWatcher extends EventEmitter {
 
       const planPath = path.join(specDir, 'implementation_plan.json');
 
-      // Check if plan file exists
-      if (!existsSync(planPath)) {
-        this.emit('error', taskId, `Plan file not found: ${planPath}`);
-        return;
-      }
-
       // Create watcher with settings to handle frequent writes
       const watcher = chokidar.watch(planPath, {
         persistent: true,
@@ -94,8 +88,7 @@ export class FileWatcher extends EventEmitter {
         planPath
       });
 
-      // Handle file changes
-      watcher.on('change', () => {
+      const emitPlanProgress = () => {
         try {
           const content = readFileSync(planPath, 'utf-8');
           const plan = safeParseJson<ImplementationPlan>(content);
@@ -104,9 +97,14 @@ export class FileWatcher extends EventEmitter {
           }
           // If null, JSON is corrupt even after repair — skip this event
         } catch {
-          // File might be in the middle of being written
+          // The file may not exist yet or might be in the middle of a write.
         }
-      });
+      };
+
+      // A missing implementation_plan.json is normal during fresh planning.
+      // Watch for both creation and updates so the task can progress naturally.
+      watcher.on('add', emitPlanProgress);
+      watcher.on('change', emitPlanProgress);
 
       // Handle errors
       watcher.on('error', (error: unknown) => {
@@ -114,15 +112,9 @@ export class FileWatcher extends EventEmitter {
         this.emit('error', taskId, message);
       });
 
-      // Read and emit initial state
-      try {
-        const content = readFileSync(planPath, 'utf-8');
-        const plan = safeParseJson<ImplementationPlan>(content);
-        if (plan) {
-          this.emit('progress', taskId, this.normalizePlanStatuses(plan));
-        }
-      } catch {
-        // Initial read failed - not critical
+      // Read and emit initial state if the plan already exists.
+      if (existsSync(planPath)) {
+        emitPlanProgress();
       }
     } finally {
       // Only clean up if this call still owns the entry. If a superseding
